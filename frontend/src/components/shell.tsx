@@ -1,4 +1,5 @@
 "use client";
+import { WebsiteShell } from "./website-shell";
 import { tw } from "@/lib/tailwind";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -30,7 +31,7 @@ const adminNavigation = [
     { href: "/admin/scheduled-tasks", label: "Tác vụ theo lịch", icon: SlidersHorizontal },
     { href: "/admin/audit", label: "Nhật ký", icon: SlidersHorizontal },
 ];
-export function Shell({ children }: {
+function AdminShell({ children }: {
     children: ReactNode;
 }) {
     const pathname = usePathname();
@@ -176,4 +177,9 @@ export function Shell({ children }: {
         </main>
       </div>
     </div>);
+}
+
+export function Shell({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  return pathname.startsWith("/admin") ? <AdminShell>{children}</AdminShell> : <WebsiteShell>{children}</WebsiteShell>;
 }

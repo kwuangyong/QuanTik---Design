@@ -185,5 +185,5 @@ export default function ModelVisual({ model = 'monte', paused = false, large = f
             rotation.current.yaw += (e.clientX - drag.current.x) * .008;
             rotation.current.pitch = Math.max(-.8, Math.min(.8, rotation.current.pitch + (e.clientY - drag.current.y) * .005));
             drag.current = { x: e.clientX, y: e.clientY };
-        }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}/><div className="home-visual-note flex justify-between [gap:12px] [color:#749781] [font:8px/1.5_ui-monospace,monospace] [letter-spacing:1px] [padding:0_10px_13px] [&_span:last-child]:[letter-spacing:0]"><span>MINH HỌA CƠ CHẾ</span>{is3d && <span>Kéo để xoay 3D</span>}</div></div>;
+        }} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}/><div className="home-visual-note"><span>MINH HỌA CƠ CHẾ</span>{is3d && <span>Kéo để xoay 3D</span>}</div></div>;
 }

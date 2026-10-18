@@ -11,8 +11,21 @@ import { PageHeading, Panel } from "./ui";
 const percent = (v: number) => new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 1 }).format(v);
 type Publication = { latest: ScreeningLatest; best: ScreeningItem[]; avoid: ScreeningItem[] };
 
+function ScanArtwork() {
+  return <svg className="website-scan-artwork" viewBox="0 0 540 320" fill="none" aria-hidden="true">
+    <defs><linearGradient id="scan-beam" x1="0" y1="320" x2="540" y2="0" gradientUnits="userSpaceOnUse"><stop stopColor="#ff6a1a" stopOpacity="0"/><stop offset=".5" stopColor="#ff6a1a"/><stop offset="1" stopColor="#ff6a1a" stopOpacity="0"/></linearGradient></defs>
+    <path d="M40 230 290 88 500 210 250 352Z" fill="#0f3528" fillOpacity=".42" stroke="#2d7758"/>
+    <path d="M40 190 290 48 500 170 250 312Z" stroke="#2d7758" strokeOpacity=".45"/>
+    <path d="M10 253 294 87 539 227" stroke="url(#scan-beam)" strokeWidth="3"/>
+    {[70,118,166,214,262,310,358,406].map((x,i)=><g key={x} transform={`translate(${x} ${190-i*13})`} stroke={i===3||i===6?'#ff762b':'#45d89c'}><path d="M0-30V38"/><rect x="-6" y={i%2?-9:-17} width="12" height={i%2?30:23} fill="currentColor" className={i===3||i===6?'website-accent':'website-up'}/></g>)}
+    <circle cx="292" cy="122" r="55" stroke="#7be8b7" strokeOpacity=".6"/><path d="m330 163 45 44" stroke="#ff762b" strokeWidth="8"/>
+    <path d="M292 43V60M292 184V201M213 122H230M354 122H371" stroke="#7be8b7"/>
+  </svg>;
+}
+
+
 export function Screener() {
-  return <><PageHeading title="Quét toàn sàn"/><Guard><ScreeningBoard/></Guard></>;
+  return <><PageHeading title="Quét toàn sàn" description="Tìm cơ hội và nhận diện rủi ro."/><section className="website-scan-hero"><div className="website-scan-copy"><span className="website-eyebrow">PHÂN TÍCH TOÀN THỊ TRƯỜNG</span><h2>Khai mở góc nhìn<br/><em>toàn sàn.</em></h2><p>Khám phá 5 mã nổi bật, 5 mã cần thận trọng và các chỉ số đánh giá. Kết quả đã công bố sẽ hiển thị khi bạn đăng nhập và có gói sử dụng phù hợp.</p></div><ScanArtwork/></section><Guard><ScreeningBoard/></Guard></>;
 }
 function ScreeningBoard() {
   const [version, setVersion] = useState(0);
