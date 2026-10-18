@@ -2,12 +2,11 @@
 import { tw } from "@/lib/tailwind";
 import { useState } from "react";
 import { Search, X } from "lucide-react";
-import { indices, sectors, stocks, format, signed, tone } from "@/lib/mock-data";
+import { sectors, stocks } from "@/lib/mock-data";
 import { PageHeading, Panel, EmptyState, Modal } from "./ui";
 import { ChartSurface } from "./chart-workspace";
 import { StockTable } from "./stock-table";
 import { usePreferences } from "./preferences";
-import { PurchaseResume } from "./account/purchase-resume";
 export function Dashboard() {
     const { watchlist } = usePreferences();
     const [tab, setTab] = useState("all");
@@ -16,22 +15,16 @@ export function Dashboard() {
     const [exchange, setExchange] = useState("all");
     const [depth, setDepth] = useState(true);
     const [selected, setSelected] = useState<string | null>(null);
-    const [statistics, setStatistics] = useState(false);
-    const [foreign, setForeign] = useState(false);
+    const [statistics, setStatistics] = useState(true);
+    const [foreign, setForeign] = useState(true);
     const items = stocks.filter((stock) => (tab !== "watch" || watchlist.includes(stock.symbol)) &&
         (sector === "all" || stock.sector === sector) &&
         (exchange === "all" || stock.exchange === exchange) &&
         `${stock.symbol} ${stock.name}`.toUpperCase().includes(query.toUpperCase()));
-    return (<><PurchaseResume/>
+    return (<div className="stock-dashboard font-mono [&_button]:font-mono [&_input]:font-mono [&_select]:font-mono">
       <PageHeading title="Dashboard"/>
-      <div className="index-grid grid [grid-template-columns:repeat(4,_minmax(0,_1fr))] [gap:16px] [margin-bottom:26px] max-[900px]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[700px]:[gap:12px] max-[700px]:[margin-bottom:20px]">
-        {indices.map((index) => (<article className="index-card [padding:20px_22px_13px] [border-width:1px] [border-style:solid] [border-color:var(--border)] [background:var(--surface)] [border-radius:4px] [&_>_div:first-child]:flex [&_>_div:first-child]:items-center [&_>_div:first-child]:justify-between [&_>_div:first-child]:[gap:8px] [&_>_div:first-child]:[font-size:14px] [&_>_div:first-child]:[font-weight:500] [&_strong]:block [&_strong]:[font-size:29px] [&_strong]:[font-weight:500] [&_strong]:[margin-top:11px] [&_strong]:[line-height:1.3] max-[1250px]:[padding:17px_16px_10px] max-[1250px]:[&_strong]:[font-size:25px] max-[900px]:[&_strong]:[font-size:29px] max-[700px]:[padding:16px_14px_10px] max-[700px]:[&_strong]:[font-size:26px] max-[700px]:[&_>_div:first-child]:flex-wrap max-[700px]:[&_>_div:first-child]:[gap:4px]" key={index.name}>
-            <div><span>{index.name}</span><span className={tw(`number ${tone(index.change)}`)}>{signed(index.change)}</span></div>
-            <strong className="number [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em]">{format(index.value)}</strong>
-          </article>))}
-      </div>
       <div className="dashboard-stack grid [gap:24px] min-w-0">
-        <Panel title="Bảng điện" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Snapshot mẫu · {items.length} mã</span>}>
+        <Panel title="Bảng điện" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Bản xem trước · {items.length} mã</span>}>
           <div className="table-toolbar flex justify-between items-center [gap:14px] [padding:16px_20px] flex-wrap max-[1250px]:[flex-wrap:nowrap] max-[900px]:flex-wrap max-[700px]:[padding:14px]">
             <div className="segmented inline-flex items-center [gap:4px] [flex-shrink:0] [&_button]:inline-flex [&_button]:items-center [&_button]:justify-center [&_button]:[gap:8px] [&_button]:[border-width:0] [&_button]:[border-radius:4px] [&_button]:[padding:8px_12px] [&_button]:[background:none] [&_button]:[color:var(--muted)] [&_button]:[font-size:14px] [&_button]:[font-weight:500] [&_button]:[min-height:38px] [&_button]:whitespace-nowrap [&_button:hover]:[background:var(--raised)] [&_span]:[font-size:13px] [&_span]:[opacity:0.9]" role="group" aria-label="Danh sách cổ phiếu">
               <button className={tw(tab === "all" ? "active" : "")} aria-pressed={tab === "all"} onClick={() => setTab("all")}>Tất cả</button>
@@ -53,26 +46,9 @@ export function Dashboard() {
             <label><input type="checkbox" checked={foreign} onChange={(event) => setForeign(event.target.checked)}/>Nước ngoài</label>
           </div>
           {sector !== "all" && <div className="active-filter inline-flex items-center [gap:10px] [margin:0_20px_14px] [color:var(--accent)] [background:var(--accent-soft)] [padding:5px_10px] [font-size:14px] [border-radius:4px] [&_button]:flex [&_button]:[border-width:0] [&_button]:[background:none]">{sector}<button aria-label="Xóa lọc ngành" onClick={() => setSector("all")}><X size={14}/></button></div>}
-          {items.length ? <StockTable items={items} depth={depth} statistics={statistics} foreign={foreign} onSelect={setSelected}/> : <EmptyState title="Chưa có mã phù hợp"/>}
-        </Panel>
-        <Panel title="Dòng tiền theo ngành" className="sector-panel" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Toàn thị trường · Snapshot mẫu</span>}>
-          <div className="table-scroll relative overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent]" tabIndex={0} role="region" aria-label="Bảng nhóm ngành; cuộn ngang để xem đủ cột">
-            <table className="sector-table w-full border-collapse [font-size:14px] [min-width:900px] [&_th]:[color:var(--muted)] [&_th]:[font-weight:400] [&_th]:[padding:13px_18px] [&_th]:[background:var(--background)] [&_th]:text-right [&_th]:whitespace-nowrap [&_td]:[padding:15px_18px] [&_td]:text-right [&_td]:[border-top-width:1px] [&_td]:[border-top-style:solid] [&_td]:[border-top-color:var(--border)] [&_td]:whitespace-nowrap [&_th:first-child]:text-left [&_td:first-child]:text-left">
-              <thead><tr><th>Nhóm ngành</th><th>Số mã</th><th>Tăng / Giảm / Đứng</th><th>Thay đổi TB</th><th>GTGD (tỷ ₫)</th><th>Tỷ trọng GTGD</th><th>Độ phủ GTGD</th><th>Điểm TB</th></tr></thead>
-              <tbody>{sectors.map((item) => <tr key={item.name} className={tw(sector === item.name ? "selected" : "")}>
-                <td><button className="sector-name [border-width:0] [background:none] [padding:0] text-left [font:inherit] [color:var(--text)] [&:hover]:[color:var(--accent)] [&[aria-pressed='true']]:[color:var(--accent)]" aria-pressed={sector === item.name} onClick={() => setSector(sector === item.name ? "all" : item.name)}>{item.name}</button></td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.count, 0)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.up, 0)} / {format(item.down, 0)} / {format(item.flat, 0)}</td>
-                <td className={tw(`number ${tone(item.change)}`)}>{signed(item.change)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.value)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.share)}%</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{item.covered}/{item.count}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.score)}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>
+          {items.length ? <StockTable pageSize={50} items={items} depth={depth} statistics={statistics} foreign={foreign} onSelect={setSelected}/> : <EmptyState title="Chưa có mã phù hợp"/>}
         </Panel>
       </div>
-      {selected && <Modal title={`Biểu đồ ${selected}`} onClose={() => setSelected(null)} className="chart-dialog"><ChartSurface key={selected} symbol={selected} onSymbolChange={setSelected}/></Modal>}
-    </>);
+      {selected && <Modal title={`Biểu đồ ${selected}`} onClose={() => setSelected(null)} className="chart-dialog"><ChartSurface key={selected} symbol={selected}/></Modal>}
+    </div>);
 }

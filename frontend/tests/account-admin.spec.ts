@@ -292,7 +292,7 @@ test("Tài khoản: phân biệt kỳ hiện tại, sắp tới và đã kết t
   ], next_cursor: null }) }));
   await page.goto("/account");
   const panel = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: "Các kỳ gói", exact: true }) });
-  await panel.getByText("Xem các kỳ đã mua", { exact: true }).click();
+  await panel.getByText("Xem các kỳ sử dụng", { exact: true }).click();
   await expect(panel.getByRole("row").filter({ hasText: "Gói cũ" })).toContainText("Đã kết thúc");
   await expect(panel.getByRole("row").filter({ hasText: "Gói hiện tại" })).toContainText("Đang hiệu lực");
   await expect(panel.getByRole("row").filter({ hasText: "Gói tiếp theo" })).toContainText("Sắp tới");

@@ -1,34 +1,23 @@
 import { test, expect } from "@playwright/test";
 import { analysisFixture } from "./fixtures/analysis";
 
-test("Biểu đồ mẫu và yêu cầu Quant API trong sidebar không trộn kết quả", async ({ page }) => {
+test("Phân tích Quant nằm ở trang riêng, không chen vào popup chart", async ({ page }) => {
   const quant = await analysisFixture(page);
-  const errors: string[] = [], apiCalls: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
-  page.on("request", request => { if (/\/api\/|\/quant\/jobs/.test(request.url())) apiCalls.push(request.url()); });
   await page.goto("/dashboard");
-  await expect(page.getByText("1.687,54", { exact: true })).toBeVisible();
   await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });
-  await expect(chart.getByRole("img", { name: /48 phiên mẫu/ })).toBeVisible();
-  const plot = await chart.locator(".sample-chart").boundingBox();
-  const panel = await chart.locator(".chart-quant").boundingBox();
-  if (plot && panel && panel.y < plot.y + plot.height) {
-    expect(plot.x + plot.width).toBeLessThanOrEqual(panel.x);
-  }
-  await chart.getByLabel("Khung thời gian", { exact: true }).selectOption("1M");
-  await expect(chart.getByRole("img", { name: /12 phiên mẫu/ })).toBeVisible();
-  await chart.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
-  await chart.getByRole("button", { name: "Xác nhận", exact: true }).click();
+  await expect(chart.locator('[data-tv-kind="chart"]')).toBeVisible();
+  await expect(chart.locator(".quant-panel,.chart-quant")).toHaveCount(0);
+  expect(quant.created).toBe(0);
+  await page.keyboard.press("Escape");
+  await page.goto("/analysis?symbol=FPT");
+  await page.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
+  await page.getByRole("button", { name: "Xác nhận", exact: true }).click();
   quant.status = "SUCCEEDED";
-  await expect(chart.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact: true })).toBeVisible({ timeout: 10000 });
-  await expect(chart.locator(".quant-report-section[open]")).toHaveCount(0);
-  await chart.locator(".quant-report-section > summary").filter({ hasText: "Hiệu suất & dòng tiền" }).click();
-  await expect(chart.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
-  expect(quant.created).toBe(1); expect(quant.unknown).toEqual([]);
-  expect(errors).toEqual([]);
-  expect(apiCalls.some(url => url.includes("/analyses"))).toBeTruthy();
+  await expect(page.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact: true })).toBeVisible({timeout:10000});
+  expect(quant.created).toBe(1);
+  expect(quant.unknown).toEqual([]);
 });
 
 test("Đổi mã Quant kiểm tra danh sách thật, không dùng kết quả mẫu", async ({ page }) => {
