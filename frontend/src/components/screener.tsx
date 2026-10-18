@@ -107,7 +107,7 @@ function ScreeningTable({ kind, title, description, items, loading, onSelect }: 
           <caption className={styles.srOnly}>{title}: giá, thanh khoản và ba nhóm điểm screening</caption>
           <thead><tr>{columnLabels.map(([key, label]) => <th key={key} scope="col">{label}</th>)}<th scope="col">Trạng thái</th></tr></thead>
           <tbody>{items.map(item => <tr key={item.symbol}>
-            <th scope="row"><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><span className={styles.exchange}>{item.exchange}</span></th>
+            <th scope="row"><div className={styles.symbolActions}><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><Link className={styles.quantAction} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`} aria-label={`Chạy phân tích Quant ${item.symbol}`}>Chạy phân tích Quant ↗</Link></div><span className={styles.exchange}>{item.exchange}</span></th>
             <td>{number(item.price_vnd, 0)}</td><td><Change value={item.change_ratio}/></td><td><Change value={item.change_5d_ratio}/></td><td><Change value={item.change_20d_ratio}/></td>
             <td>{number(item.volume_shares, 0)}</td><td>{number(item.average_volume_20_shares, 0)}</td><td>{item.volume_ratio_20 == null ? "—" : `${number(item.volume_ratio_20, 2)}×`}</td><td>{item.price_to_high20_ratio == null ? "—" : `${number(item.price_to_high20_ratio*100)}%`}</td>
             {groupNames.map(group => <td key={group}><Score value={item.groups[group]} warning={group === "DISTRIBUTION"}/></td>)}
@@ -155,7 +155,7 @@ function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; i
         </dl></section>
         <div className={styles.notes}><Note title="Ghi chú nhà đầu tư" text={assessment?.investor_note}/><Note title="Ghi chú môi giới" text={assessment?.broker_note}/><Note title="Chiến lược theo thị trường · Nhà đầu tư" text={market?.investor_strategy}/><Note title="Chiến lược theo thị trường · Môi giới" text={market?.broker_strategy}/></div>
       </>}
-      <div className={styles.actions}><Link className={styles.button} href={`/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange || "")}`}>Xem biểu đồ ↗</Link><Link className={styles.primary} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`}>Phân tích Quant ↗</Link></div>
+      <div className={styles.actions}><Link className={styles.button} href={`/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange || "")}`}>Xem biểu đồ ↗</Link><Link className={styles.primary} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`}>Chạy phân tích Quant ↗</Link></div>
     </div>
   </Modal>;
 }

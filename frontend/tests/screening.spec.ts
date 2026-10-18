@@ -73,6 +73,8 @@ test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ p
       await expect(table.getByRole("columnheader", { name:label, exact:true })).toHaveCount(1);
     }
   }
+  await expect(best.getByRole("link", { name:"Chạy phân tích Quant FPT", exact:true })).toHaveAttribute("href", "/analysis?symbol=FPT");
+  await expect(worst.getByRole("link", { name:"Chạy phân tích Quant BAD1", exact:true })).toHaveAttribute("href", "/analysis?symbol=BAD1");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();
   await page.screenshot({ path:testInfo.outputPath("screening-table.png"), fullPage:true });
   await best.getByRole("button", { name:"FPT", exact:true }).click();
