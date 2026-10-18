@@ -29,6 +29,7 @@ export async function analysisFixture(page: Page) {
     if (!state.user) return json({ code: "UNAUTHENTICATED" }, 401);
     if (path === "me") return json({ id: "analysis-customer", role: "user", display_name: "Khách kiểm thử", email: "analysis@example.test" });
     if (path === "me/entitlements") return json({ active: state.active, remaining: state.limit-state.created, active_jobs: state.jobs.filter(job => !["SUCCEEDED", "FAILED"].includes(state.status)).length, active_limit: 2, daily_limit: state.limit, daily_reset_at: 1792256400 });
+    if (path === "rules/search") return json({ items: [], next_cursor: null });
     if (path === "analyses/options") return json({ sessions: ["2026-10-16", "2026-10-15"], selected_session: url.searchParams.get("target_session") || "2026-10-16", symbols: state.ready ? ["FPT", "HPG", "VNM"] : [], ready: state.ready, reason: state.ready ? null : state.reason });
     if (path === "analyses" && method === "POST") {
       const key = request.headers()["idempotency-key"], body = request.postDataJSON();

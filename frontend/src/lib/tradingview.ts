@@ -29,11 +29,3 @@ export function chartConfig(symbol: string, interval: string, theme: string, pre
     support_host: "https://www.tradingview.com",
   };
 }
-export function quotesConfig(theme: string, groups: {name: string; symbols: {name: string; displayName: string}[]}[], chartUrl: string) {
-  return { width: "100%", height: "100%", locale: "vi_VN", colorTheme: theme === "light" ? "light" : "dark",
-    isTransparent: false, showSymbolLogo: true, symbolsGroups: groups, largeChartUrl: chartUrl };
-}
-export function marketConfig(theme: string) {
-  return { width: "100%", height: "100%", defaultColumn: "overview", defaultScreen: "most_capitalized",
-    showToolbar: true, locale: "vi_VN", market: "vietnam", colorTheme: theme === "light" ? "light" : "dark" };
-}

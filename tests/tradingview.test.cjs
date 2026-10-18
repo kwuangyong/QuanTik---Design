@@ -19,23 +19,33 @@ test('Qualified symbols retain their exchange and reject invalid input without g
   assert.throws(() => chartConfig('FPT','D','dark','standard'));
   assert.equal(chartConfig('HNX:PVS','invalid','dark','standard').interval,'D');
 });
-test('Dashboard renders actual widget slots by default, independently of scan and sample prices', async () => {
+test('Dashboard is a stock price board with depth, no source switch or account purchase content', async () => {
   const {Dashboard} = await load('frontend/src/components/dashboard.tsx');
   const html = renderToStaticMarkup(React.createElement(Dashboard));
-  assert.match(html,/data-tv-kind="quotes"/);
-  assert.match(html,/data-tv-kind="chart"/);
-  assert.match(html,/PVS/);
-  assert.match(html,/15 phút/);
-  assert.match(html,/4 giờ/);
-  assert.match(html,/MACD/);
-  assert.doesNotMatch(html,/class="sample-chart /);
-  assert.doesNotMatch(html,/data-tv-state="live"/);
+  assert.match(html,/price-board/);
+  assert.match(html,/Dư mua/);
+  assert.match(html,/Khớp lệnh/);
+  assert.match(html,/KL 3/);
+  assert.match(html,/Nước ngoài/);
+  assert.doesNotMatch(html,/Dòng tiền theo ngành|sector-panel/);
+  assert.doesNotMatch(html,/Nguồn dashboard|Dữ liệu mẫu · xem bố cục|Tiếp tục mua gói/);
+  assert.doesNotMatch(html,/data-tv-kind="quotes"|data-tv-kind="market"/);
 });
-test('Charts opened from scan accept exchange hints; samples stay explicitly labeled', async () => {
+test('Preview routes keep Plans and Account independent from Dashboard', async () => {
+  const {PreviewContent} = await load('frontend/preview/routes.tsx');
+  for (const pathname of ['/plans','/account','/does-not-exist']) {
+    const html = renderToStaticMarkup(React.createElement(PreviewContent,{pathname}));
+    assert.doesNotMatch(html,/price-board/);
+    if (pathname === '/plans') assert.match(html,/Gói phân tích/);
+  }
+});
+test('Chart accepts scan exchange hints and only renders a TradingView embed', async () => {
   const {ChartSurface} = await load('frontend/src/components/chart-workspace.tsx');
   const html = renderToStaticMarkup(React.createElement(ChartSurface,{symbol:'A32',exchangeHint:'HNX',onSymbolChange(){},initialQuant:false}));
   assert.match(html,/data-tv-kind="chart"/);
-  assert.match(html,/HNX:A32/);
+  assert.match(html,/HNX%3AA32/);
+
+  assert.doesNotMatch(html,/Nguồn biểu đồ|Dữ liệu mẫu|sample-chart|chart-controls|Mở Quant|Indicator ban đầu/);
   const missing = renderToStaticMarkup(React.createElement(ChartSurface,{symbol:'ZZZZ',onSymbolChange(){}}));
   assert.doesNotMatch(missing,/data-tv-kind="chart"/);
 });

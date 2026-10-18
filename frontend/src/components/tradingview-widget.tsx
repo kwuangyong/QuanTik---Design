@@ -3,8 +3,6 @@ import { useEffect, useRef, useState } from "react";
 
 const scripts = {
   chart: "embed-widget-advanced-chart.js",
-  quotes: "embed-widget-market-quotes.js",
-  market: "embed-widget-screener.js",
 };
 
 /** Each embed owns its DOM. An iframe appearing is not proof of price availability. */
