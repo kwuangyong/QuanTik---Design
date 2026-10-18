@@ -1,6 +1,9 @@
 "use client";
 import { tw } from "@/lib/tailwind";
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { parseTVSymbol } from "@/lib/tradingview";
+import { TradingViewBoard } from "./tradingview-board";
 import { Search, X } from "lucide-react";
 import { indices, sectors, stocks, format, signed, tone } from "@/lib/mock-data";
 import { PageHeading, Panel, EmptyState, Modal } from "./ui";
@@ -10,6 +13,10 @@ import { usePreferences } from "./preferences";
 import { PurchaseResume } from "./account/purchase-resume";
 export function Dashboard() {
     const { watchlist } = usePreferences();
+    const params = useSearchParams();
+    const linkedSymbol = parseTVSymbol(params.get("tvwidgetsymbol") || "");
+    const [boardSource, setBoardSource] = useState("tradingview");
+    const [chartSymbol, setChartSymbol] = useState(linkedSymbol?.full || "PVS");
     const [tab, setTab] = useState("all");
     const [query, setQuery] = useState("");
     const [sector, setSector] = useState("all");
@@ -23,15 +30,20 @@ export function Dashboard() {
         (exchange === "all" || stock.exchange === exchange) &&
         `${stock.symbol} ${stock.name}`.toUpperCase().includes(query.toUpperCase()));
     return (<><PurchaseResume/>
-      <PageHeading title="Dashboard"/>
+      <PageHeading title="Dashboard" description="Bảng giá và biểu đồ TradingView trong không gian QuanTik."/>
+      <div className="mb-5 flex flex-wrap items-center gap-3 text-sm" role="group" aria-label="Nguồn dashboard">
+        {[["tradingview", "TradingView"], ["sample", "Dữ liệu mẫu · xem bố cục"]].map(([id, label]) => <button key={id} aria-pressed={boardSource === id} onClick={() => setBoardSource(id)} className={`rounded border px-4 py-2 ${boardSource === id ? "border-[var(--accent)] text-[var(--accent)]" : "border-[var(--border)] text-[var(--muted)]"}`}>{label}</button>)}
+      </div>
+      {boardSource === "sample" && <><p className="mb-3 text-xs text-[var(--muted)]">Chỉ số mô phỏng · Không phải giá hiện tại.</p>
       <div className="index-grid grid [grid-template-columns:repeat(4,_minmax(0,_1fr))] [gap:16px] [margin-bottom:26px] max-[900px]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[700px]:[gap:12px] max-[700px]:[margin-bottom:20px]">
         {indices.map((index) => (<article className="index-card [padding:20px_22px_13px] [border-width:1px] [border-style:solid] [border-color:var(--border)] [background:var(--surface)] [border-radius:4px] [&_>_div:first-child]:flex [&_>_div:first-child]:items-center [&_>_div:first-child]:justify-between [&_>_div:first-child]:[gap:8px] [&_>_div:first-child]:[font-size:14px] [&_>_div:first-child]:[font-weight:500] [&_strong]:block [&_strong]:[font-size:29px] [&_strong]:[font-weight:500] [&_strong]:[margin-top:11px] [&_strong]:[line-height:1.3] max-[1250px]:[padding:17px_16px_10px] max-[1250px]:[&_strong]:[font-size:25px] max-[900px]:[&_strong]:[font-size:29px] max-[700px]:[padding:16px_14px_10px] max-[700px]:[&_strong]:[font-size:26px] max-[700px]:[&_>_div:first-child]:flex-wrap max-[700px]:[&_>_div:first-child]:[gap:4px]" key={index.name}>
             <div><span>{index.name}</span><span className={tw(`number ${tone(index.change)}`)}>{signed(index.change)}</span></div>
             <strong className="number [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em]">{format(index.value)}</strong>
           </article>))}
       </div>
+      </>}
       <div className="dashboard-stack grid [gap:24px] min-w-0">
-        <Panel title="Bảng điện" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Snapshot mẫu · {items.length} mã</span>}>
+        {boardSource === "tradingview" ? <TradingViewBoard/> : <Panel title="Bảng điện mẫu" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Snapshot mẫu · {items.length} mã</span>}>
           <div className="table-toolbar flex justify-between items-center [gap:14px] [padding:16px_20px] flex-wrap max-[1250px]:[flex-wrap:nowrap] max-[900px]:flex-wrap max-[700px]:[padding:14px]">
             <div className="segmented inline-flex items-center [gap:4px] [flex-shrink:0] [&_button]:inline-flex [&_button]:items-center [&_button]:justify-center [&_button]:[gap:8px] [&_button]:[border-width:0] [&_button]:[border-radius:4px] [&_button]:[padding:8px_12px] [&_button]:[background:none] [&_button]:[color:var(--muted)] [&_button]:[font-size:14px] [&_button]:[font-weight:500] [&_button]:[min-height:38px] [&_button]:whitespace-nowrap [&_button:hover]:[background:var(--raised)] [&_span]:[font-size:13px] [&_span]:[opacity:0.9]" role="group" aria-label="Danh sách cổ phiếu">
               <button className={tw(tab === "all" ? "active" : "")} aria-pressed={tab === "all"} onClick={() => setTab("all")}>Tất cả</button>
@@ -55,6 +67,8 @@ export function Dashboard() {
           {sector !== "all" && <div className="active-filter inline-flex items-center [gap:10px] [margin:0_20px_14px] [color:var(--accent)] [background:var(--accent-soft)] [padding:5px_10px] [font-size:14px] [border-radius:4px] [&_button]:flex [&_button]:[border-width:0] [&_button]:[background:none]">{sector}<button aria-label="Xóa lọc ngành" onClick={() => setSector("all")}><X size={14}/></button></div>}
           {items.length ? <StockTable items={items} depth={depth} statistics={statistics} foreign={foreign} onSelect={setSelected}/> : <EmptyState title="Chưa có mã phù hợp"/>}
         </Panel>
+        }
+        <ChartSurface key={chartSymbol} symbol={chartSymbol} onSymbolChange={setChartSymbol} initialQuant={false}/>
         <Panel title="Dòng tiền theo ngành" className="sector-panel" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Toàn thị trường · Snapshot mẫu</span>}>
           <div className="table-scroll relative overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent]" tabIndex={0} role="region" aria-label="Bảng nhóm ngành; cuộn ngang để xem đủ cột">
             <table className="sector-table w-full border-collapse [font-size:14px] [min-width:900px] [&_th]:[color:var(--muted)] [&_th]:[font-weight:400] [&_th]:[padding:13px_18px] [&_th]:[background:var(--background)] [&_th]:text-right [&_th]:whitespace-nowrap [&_td]:[padding:15px_18px] [&_td]:text-right [&_td]:[border-top-width:1px] [&_td]:[border-top-style:solid] [&_td]:[border-top-color:var(--border)] [&_td]:whitespace-nowrap [&_th:first-child]:text-left [&_td:first-child]:text-left">

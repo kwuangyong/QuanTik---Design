@@ -7,17 +7,19 @@ test("Biểu đồ mẫu và yêu cầu Quant API trong sidebar không trộn k�
   page.on("pageerror", error => errors.push(error.message));
   page.on("request", request => { if (/\/api\/|\/quant\/jobs/.test(request.url())) apiCalls.push(request.url()); });
   await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
   await expect(page.getByText("1.687,54", { exact: true })).toBeVisible();
   await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });
+  await chart.getByLabel("Nguồn biểu đồ", { exact: true }).selectOption("sample");
   await expect(chart.getByRole("img", { name: /48 phiên mẫu/ })).toBeVisible();
   const plot = await chart.locator(".sample-chart").boundingBox();
   const panel = await chart.locator(".chart-quant").boundingBox();
   if (plot && panel && panel.y < plot.y + plot.height) {
     expect(plot.x + plot.width).toBeLessThanOrEqual(panel.x);
   }
-  await chart.getByLabel("Khung thời gian", { exact: true }).selectOption("1M");
+  await chart.getByLabel("Khung thời gian", { exact: true }).selectOption("M");
   await expect(chart.getByRole("img", { name: /12 phiên mẫu/ })).toBeVisible();
   await chart.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
   await chart.getByRole("button", { name: "Xác nhận", exact: true }).click();

@@ -21,6 +21,7 @@ test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async 
 
 test("Dashboard hợp nhất bảng điện, nhóm ngành và Theo dõi", async ({ page }) => {
   await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
   const board = page.getByRole("region", { name: "Bảng cổ phiếu; cuộn ngang để xem đủ cột" });
   await expect(board.locator("tbody tr")).toHaveCount(8);
   await page.screenshot({ path: `test-results/ui/${test.info().project.name}/dashboard.png`, fullPage: true });
@@ -28,6 +29,7 @@ test("Dashboard hợp nhất bảng điện, nhóm ngành và Theo dõi", async 
   await expect(board.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Theo dõi SSI", exact: true }).click();
   await page.reload();
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
   await page.getByRole("button", { name: /^Theo dõi 4$/ }).click();
   await expect(board.getByRole("button", { name: "SSI", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Bỏ theo dõi SSI", exact: true }).click();
@@ -37,7 +39,7 @@ test("Dashboard hợp nhất bảng điện, nhóm ngành và Theo dõi", async 
   await expect(board.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Xóa lọc ngành" }).click();
   const positions = await page.locator(".dashboard-stack > section").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().top));
-  expect(positions.length).toBe(2);
+  expect(positions.length).toBe(3);
   expect(positions[1]).toBeGreaterThan(positions[0]);
   await expect(page.locator(".selected-stock")).toHaveCount(0);
 });
@@ -45,15 +47,15 @@ test("Dashboard hợp nhất bảng điện, nhóm ngành và Theo dõi", async 
 test("Bấm mã mở biểu đồ mô phỏng cùng Quant, mở/thu sidebar và toàn màn hình", async ({ page }) => {
   const quant = await analysisFixture(page);
   await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
   await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });
   await expect(chart).toBeVisible();
-  await expect(chart.getByLabel("Nguồn biểu đồ", { exact: true })).toHaveCount(0);
+  await chart.getByLabel("Nguồn biểu đồ", { exact: true }).selectOption("sample");
   await expect(chart.getByRole("img", { name: /Biểu đồ nến mô phỏng FPT/ })).toBeVisible();
-  await chart.getByLabel("Khung thời gian", { exact: true }).selectOption("1W");
+  await chart.getByLabel("Khung thời gian", { exact: true }).selectOption("W");
   await expect(chart.getByText("Nến mẫu · FPT · 1W", { exact: true })).toBeVisible();
-  await expect(chart.getByRole("link", { name: "Mở dữ liệu thật trên TradingView ↗", exact: true })).toHaveAttribute("href", "https://www.tradingview.com/chart/?symbol=HOSE%3AFPT&interval=W");
   await chart.getByRole("button", { name: "Thu phân tích", exact: true }).click();
   await expect(chart.getByRole("complementary")).toHaveCount(0);
   await chart.getByRole("button", { name: "Mở phân tích bên chart", exact: true }).click();
@@ -75,6 +77,7 @@ test("Quét toàn sàn yêu cầu đăng nhập và không có nút phát độn
 
 test("Theme và các trang giữ bố cục trong màn hình desktop/mobile", async ({ page, isMobile }) => {
   await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
   await page.getByRole("button", { name: "Chuyển chế độ sáng" }).click();
   await page.reload();
   await expect(page.locator(".terminal")).toHaveAttribute("data-theme", "light");
@@ -85,6 +88,7 @@ test("Theme và các trang giữ bố cục trong màn hình desktop/mobile", as
   }
   if (isMobile) {
     await page.goto("/dashboard");
+  await page.getByRole("button", { name: "Dữ liệu mẫu · xem bố cục", exact: true }).click();
     await page.getByRole("button", { name: "Mở menu", exact: true }).click();
     await page.getByRole("link", { name: "Quét toàn sàn", exact: true }).click();
     await expect(page).toHaveURL(/screener/);
@@ -95,7 +99,8 @@ test("Theme và các trang giữ bố cục trong màn hình desktop/mobile", as
 test("Biểu đồ: mã chưa có mẫu hiển thị trạng thái rõ ràng", async ({ page }) => {
   await analysisFixture(page);
   await page.goto("/charts?symbol=ACG&exchange=HOSE");
+  await page.getByLabel("Nguồn biểu đồ", { exact: true }).selectOption("sample");
   await expect(page.getByText("Chưa có nến mẫu cho ACG",{ exact:true })).toBeVisible();
   await expect(page.getByLabel("Chọn mã biểu đồ",{ exact:true })).toHaveValue("ACG");
-  await expect(page.getByLabel("Nguồn biểu đồ",{ exact:true })).toHaveCount(0);
+  await expect(page.getByLabel("Nguồn biểu đồ",{ exact:true })).toHaveValue("sample");
 });

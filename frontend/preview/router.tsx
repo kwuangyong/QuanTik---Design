@@ -1,7 +1,7 @@
 import {createContext, useContext, useMemo, useState, type ReactNode, type AnchorHTMLAttributes} from "react";
 const Context=createContext({pathname:"/dashboard",search:"",navigate:(_href:string)=>{}});
 export function PreviewRouter({children}:{children:ReactNode}){
-  const [location,setLocation]=useState(() => ({pathname:document.getElementById("quantik-design-preview")?.dataset.route ?? "/dashboard",search:""}));
+  const [location,setLocation]=useState(() => ({pathname:document.getElementById("quantik-design-preview")?.dataset.route ?? "/dashboard",search:window.location.search}));
   const navigate=(href:string)=>{const url=new URL(href,"https://preview.local");setLocation({pathname:url.pathname,search:url.search});};
   return <Context.Provider value={{...location,navigate}}>{children}</Context.Provider>;
 }
