@@ -34,10 +34,10 @@ export function Dashboard() {
               <label className="inline-search max-[900px]:[.table-controls_&]:[flex-basis:100%] min-w-0 flex items-center [gap:8px] [border-width:1px] [border-style:solid] [border-color:var(--border)] [border-radius:4px] [background:var(--background)] [padding:8px_10px] [color:var(--muted)] [&_input]:[border-width:0] [&_input]:[outline:none] [&_input]:[background:none] [&_input]:[color:var(--text)] [&_input]:[width:135px] [&_input]:min-w-0 [&_input]:[font-size:14px] [&:focus-within]:[outline:2px_solid_var(--accent)] [&:focus-within]:[outline-offset:2px] max-[900px]:[flex:1] max-[900px]:[&_input]:w-full max-[700px]:[padding:9px_8px] max-[700px]:[&_input]:[font-size:14px]">
                 <Search size={16} aria-hidden="true"/>
                 <span className="sr-only">Tìm trong danh sách cổ phiếu</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên"/>
+                <input aria-label="Tìm trong danh sách cổ phiếu" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên"/>
               </label>
-              <label><span className="sr-only">Lọc sàn</span><select value={exchange} onChange={(event) => setExchange(event.target.value)}><option value="all">Tất cả sàn</option>{[...new Set(stocks.map((stock) => stock.exchange))].map((name) => <option key={name}>{name}</option>)}</select></label>
-              <label><span className="sr-only">Lọc nhóm ngành</span><select value={sector} onChange={(event) => setSector(event.target.value)}><option value="all">Tất cả ngành</option>{sectors.map((item) => <option key={item.name}>{item.name}</option>)}</select></label>
+              <label><span className="sr-only">Lọc sàn</span><select aria-label="Lọc sàn" value={exchange} onChange={(event) => setExchange(event.target.value)}><option value="all">Tất cả sàn</option>{[...new Set(stocks.map((stock) => stock.exchange))].map((name) => <option key={name}>{name}</option>)}</select></label>
+              <label><span className="sr-only">Lọc nhóm ngành</span><select aria-label="Lọc nhóm ngành" value={sector} onChange={(event) => setSector(event.target.value)}><option value="all">Tất cả ngành</option>{sectors.map((item) => <option key={item.name}>{item.name}</option>)}</select></label>
             </div>
           </div>
           <div className="board-options flex flex-wrap [gap:20px] [padding:0_20px_16px] [color:var(--muted)] [font-size:14px] [&_label]:inline-flex [&_label]:items-center [&_label]:[gap:8px] [&_label]:cursor-pointer [&_input]:[accent-color:var(--accent)] [&_input]:[width:16px] [&_input]:[height:16px]" role="group" aria-label="Cột bảng điện">

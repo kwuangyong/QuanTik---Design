@@ -1,0 +1,26 @@
+import {test,expect} from "@playwright/test";
+import {readFile} from "node:fs/promises";
+import path from "node:path";
+test("Standalone mock opens interactive canvas with timeframe and indicators",async({page})=>{
+  const errors:string[]=[];page.on("pageerror",error=>errors.push(error.message));
+  const html=(await readFile(path.resolve(process.cwd(),"../preview/index.html"),"utf8")).replace('id="quantik-design-preview"','id="quantik-design-preview" data-route="/dashboard"');
+  await page.route("**/mock-preview",route=>route.fulfill({contentType:"text/html",body:html}));
+  await page.goto("/mock-preview");
+  await page.getByRole("textbox", {name:"Tìm trong danh sách cổ phiếu",exact:true}).fill("FPT");
+  await page.getByRole("button",{name:"FPT",exact:true}).click();
+  const popup=page.getByRole("dialog",{name:"Biểu đồ FPT",exact:true}),chart=popup.locator('[data-chart-engine="lightweight-mock"]');
+  await expect(chart).toHaveAttribute("data-chart-state","ready");
+  await expect(chart.locator("canvas").first()).toBeVisible();
+  await expect(chart).toContainText("MÔ PHỎNG");
+  await chart.getByRole("button",{name:"EMA 20",exact:true}).click();
+  await expect(chart.getByRole("button",{name:"EMA 20",exact:true})).toHaveAttribute("aria-pressed","true");
+  await chart.getByRole("button",{name:"RSI 14",exact:true}).click();
+  await expect(chart).toHaveAttribute("data-chart-state","ready");
+  await chart.getByRole("button",{name:"W",exact:true}).click();
+  await expect(chart.getByRole("img")).toHaveAttribute("aria-label",/khung W/);
+  await expect(chart).toHaveAttribute("data-chart-state","ready");
+  await page.screenshot({path:`test-results/ui/${test.info().project.name}/chart-mock.png`,fullPage:true});
+  await page.keyboard.press("Escape");
+  await expect(popup).not.toBeVisible();
+  expect(errors).toEqual([]);
+});

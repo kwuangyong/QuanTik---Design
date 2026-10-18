@@ -475,14 +475,15 @@ test("Đơn hết hạn có giao dịch cần đối soát: không gợi ý tr�
   await expect(page.getByRole("button", { name: "Hủy đơn", exact: true })).toHaveCount(0);
 });
 
-test("Chọn gói trước login: dashboard giữ bước tiếp tục, không tự tạo đơn", async ({ page }) => {
+test("Chọn gói trước login: dashboard chỉ có bảng điện, gói vẫn ở trang riêng", async ({ page }) => {
   const { state } = await fixture(page);
   await page.goto("/plans");
   await page.getByRole("link", { name: "Đăng nhập để mua", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Đăng nhập hệ thống", exact: true })).toBeVisible();
   state.user = true;
   await page.goto("/dashboard");
-  await page.getByRole("link", { name: "Tiếp tục mua gói", exact: true }).click();
+  await expect(page.getByRole("link", { name: "Tiếp tục mua gói", exact: true })).toHaveCount(0);
+  await page.goto("/plans?selected=" + planId);
   await expect(page).toHaveURL(new RegExp("/plans\\?selected=" + planId));
   await expect(page.getByRole("button", { name: "Tiếp tục thanh toán", exact: true })).toBeEnabled();
   expect(state.creates).toBe(0);

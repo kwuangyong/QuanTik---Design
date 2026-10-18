@@ -24,7 +24,7 @@ test("Dashboard chỉ hiển thị bảng điện và Theo dõi", async ({ page 
   const board = page.getByRole("region", { name: "Bảng cổ phiếu; cuộn ngang để xem đủ cột" });
   await expect(board.locator("tbody tr")).toHaveCount(16);
   await page.screenshot({ path: `test-results/ui/${test.info().project.name}/dashboard.png`, fullPage: true });
-  await page.getByPlaceholder("Tìm mã hoặc tên").fill("SSI");
+  await page.getByRole("textbox", {name:"Tìm trong danh sách cổ phiếu",exact:true}).fill("SSI");
   await expect(board.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Theo dõi SSI", exact: true }).click();
   await page.reload();
@@ -44,7 +44,7 @@ test("Dashboard chỉ hiển thị bảng điện và Theo dõi", async ({ page 
 
 test("Bấm mã chỉ mở popup chart TradingView", async ({ page }) => {
   await page.goto("/dashboard");
-  await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
+  await page.getByRole("textbox", {name:"Tìm trong danh sách cổ phiếu",exact:true}).fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });
   await expect(chart).toBeVisible();

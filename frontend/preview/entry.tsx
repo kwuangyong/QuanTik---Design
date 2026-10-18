@@ -5,6 +5,7 @@ import {Shell} from "../src/components/shell";
 import {PreviewContent} from "./routes";
 import {Login} from "../src/components/account/login";
 import {AuthSurface} from "../src/components/account/auth-surface";
+import {MockChartPreview} from "../src/components/chart-preview-context";
 import HomePage from "../src/components/home/home-page";
 function Preview(){
   const pathname=usePathname(),router=useRouter();
@@ -13,4 +14,4 @@ function Preview(){
   return <Shell><PreviewContent pathname={pathname}/></Shell>;
 }
 const root=document.getElementById("quantik-design-preview");
-if(root)createRoot(root).render(<PreviewRouter><Preferences><Preview/></Preferences></PreviewRouter>);
+if(root)createRoot(root).render(<PreviewRouter><Preferences><MockChartPreview><Preview/></MockChartPreview></Preferences></PreviewRouter>);

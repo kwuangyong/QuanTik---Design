@@ -4,7 +4,7 @@ import { analysisFixture } from "./fixtures/analysis";
 test("Phân tích Quant nằm ở trang riêng, không chen vào popup chart", async ({ page }) => {
   const quant = await analysisFixture(page);
   await page.goto("/dashboard");
-  await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
+  await page.getByRole("textbox", {name:"Tìm trong danh sách cổ phiếu",exact:true}).fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });
   await expect(chart.locator('[data-tv-kind="chart"]')).toBeVisible();

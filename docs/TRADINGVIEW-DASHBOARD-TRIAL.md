@@ -21,3 +21,11 @@ Node tests kiểm tra dashboard không có bộ chọn nguồn/nội dung mua g�
 Widget không cung cấp API giá cho bảng điện QuanTik. Giá của bảng và widget có nguồn riêng. Quyền hiển thị mã và khung intraday phụ thuộc TradingView; không coi dựng iframe hoặc HTTP 200 là xác nhận giá/realtime. Không tự thay mã lỗi bằng mã khác hoặc nến mẫu. Lỗi tải có nút thử lại và liên kết mở TradingView.
 
 Nguồn: https://www.tradingview.com/widget-docs/widgets/charts/advanced-chart/demos/technical-analysis/ và https://www.tradingview.com/widget-docs/faq/data/.
+
+## Mock chart hiện tại
+
+Bản HTML preview bật MockChartPreview phía frontend: dùng Lightweight Charts 5.2.1 của TradingView với fixture sao chép sang frontend/src/content/chart-preview.json. Không thay file backend, proxy hoặc endpoint. Các route Next.js thực vẫn giữ widget cũ; không tự chuyển nguồn khi lỗi.
+
+Popup mock có nến, volume, crosshair, kéo/zoom, khung D/W/M và SMA20/EMA20/RSI14. Khung tuần/tháng được tổng hợp từ cùng chuỗi ngày; chỉ báo thiếu số nến cần thiết không được tính giả. Ngày gắn vào fixture chỉ phục vụ trình bày. Có nhãn MÔ PHỎNG và attribution TradingView. Đây chưa phải Advanced Charts và không có toàn bộ thư viện chỉ báo/công cụ vẽ của sản phẩm đó.
+
+Kiểm tra thêm aggregate OHLC/volume và công thức chỉ báo; test trình duyệt cho riêng bản HTML mock kiểm tra canvas, đổi khung/chỉ báo, mở/đóng popup và lỗi runtime.
