@@ -7,7 +7,7 @@ test("Biểu đồ mẫu và yêu cầu Quant API trong sidebar không trộn k�
   page.on("pageerror", error => errors.push(error.message));
   page.on("request", request => { if (/\/api\/|\/quant\/jobs/.test(request.url())) apiCalls.push(request.url()); });
   await page.goto("/dashboard");
-  await expect(page.getByText("1.687,54", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Toàn cảnh thị trường", exact: true })).toBeVisible();
   await page.getByPlaceholder("Tìm mã hoặc tên").fill("FPT");
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   const chart = page.getByRole("dialog", { name: "Biểu đồ FPT", exact: true });

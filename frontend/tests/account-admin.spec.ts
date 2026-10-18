@@ -243,7 +243,7 @@ test("Khách hàng đã đăng nhập vào dashboard từ trang đăng nhập", 
   await fixture(page, { user: true });
   await page.goto("/login");
   await expect(page).toHaveURL(/\/dashboard$/);
-  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Toàn cảnh thị trường", exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Quản trị", exact: true })).toHaveCount(0);
 });
 

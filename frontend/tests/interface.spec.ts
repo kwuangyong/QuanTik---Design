@@ -2,7 +2,7 @@ import { test, expect, type Page } from "@playwright/test";
 import { analysisFixture } from "./fixtures/analysis";
 
 
-test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async ({ page }) => {
+test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async ({ page, isMobile }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
@@ -11,6 +11,7 @@ test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async 
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.route("**/api/v1/auth/refresh", route => route.fulfill({ status: 401, contentType: "application/json", body: '{"code":"UNAUTHENTICATED"}' }));
+  if (isMobile) await page.getByRole("button", { name: /^Menu/ }).click();
   await page.getByRole("button", { name: "Đăng nhập hệ thống" }).click();
   await expect(page).toHaveURL(/login/);
   await expect(page.getByRole("heading", { name: "Đăng nhập hệ thống" })).toBeVisible();
@@ -33,7 +34,8 @@ test("Dashboard hợp nhất bảng điện, nhóm ngành và Theo dõi", async 
   await page.getByRole("button", { name: "Bỏ theo dõi SSI", exact: true }).click();
   await expect(board.getByRole("button", { name: "SSI", exact: true })).not.toBeVisible();
   await page.getByRole("button", { name: "Tất cả", exact: true }).click();
-  await page.getByRole("button", { name: "Công nghệ Thông tin", exact: true }).click();
+  await page.getByRole("button", { name: "Nhóm ngành", exact: true }).click();
+  await page.getByRole("button", { name: /^Công nghệ Thông tin/ }).click();
   await expect(board.locator("tbody tr")).toHaveCount(1);
   await page.getByRole("button", { name: "Xóa lọc ngành" }).click();
   const positions = await page.locator(".dashboard-stack > section").evaluateAll(elements => elements.map(el => el.getBoundingClientRect().top));

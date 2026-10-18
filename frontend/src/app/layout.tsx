@@ -18,6 +18,8 @@ import "@fontsource/ibm-plex-mono/vietnamese-400.css";
 import "@fontsource/ibm-plex-mono/vietnamese-500.css";
 import "@fontsource/ibm-plex-mono/vietnamese-600.css";
 import "./globals.css";
+import "./website-home.css";
+import "./website-shell.css";
 
 import "katex/dist/katex.min.css";
 import { Preferences } from "@/components/preferences";

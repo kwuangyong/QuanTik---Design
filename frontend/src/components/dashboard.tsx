@@ -1,78 +1,53 @@
 "use client";
-import { tw } from "@/lib/tailwind";
+import Link from "next/link";
 import { useState } from "react";
-import { Search, X } from "lucide-react";
-import { indices, sectors, stocks, format, signed, tone } from "@/lib/mock-data";
-import { PageHeading, Panel, EmptyState, Modal } from "./ui";
+import { sectors, stocks, format, signed, tone, getDemoCandles } from "@/lib/mock-data";
+import { PageHeading, EmptyState, Modal } from "./ui";
 import { ChartSurface } from "./chart-workspace";
 import { StockTable } from "./stock-table";
 import { usePreferences } from "./preferences";
 import { PurchaseResume } from "./account/purchase-resume";
-export function Dashboard() {
-    const { watchlist } = usePreferences();
-    const [tab, setTab] = useState("all");
-    const [query, setQuery] = useState("");
-    const [sector, setSector] = useState("all");
-    const [exchange, setExchange] = useState("all");
-    const [depth, setDepth] = useState(true);
-    const [selected, setSelected] = useState<string | null>(null);
-    const [statistics, setStatistics] = useState(false);
-    const [foreign, setForeign] = useState(false);
-    const items = stocks.filter((stock) => (tab !== "watch" || watchlist.includes(stock.symbol)) &&
-        (sector === "all" || stock.sector === sector) &&
-        (exchange === "all" || stock.exchange === exchange) &&
-        `${stock.symbol} ${stock.name}`.toUpperCase().includes(query.toUpperCase()));
-    return (<><PurchaseResume/>
-      <PageHeading title="Dashboard"/>
-      <div className="index-grid grid [grid-template-columns:repeat(4,_minmax(0,_1fr))] [gap:16px] [margin-bottom:26px] max-[900px]:[grid-template-columns:repeat(2,_minmax(0,_1fr))] max-[700px]:[gap:12px] max-[700px]:[margin-bottom:20px]">
-        {indices.map((index) => (<article className="index-card [padding:20px_22px_13px] [border-width:1px] [border-style:solid] [border-color:var(--border)] [background:var(--surface)] [border-radius:4px] [&_>_div:first-child]:flex [&_>_div:first-child]:items-center [&_>_div:first-child]:justify-between [&_>_div:first-child]:[gap:8px] [&_>_div:first-child]:[font-size:14px] [&_>_div:first-child]:[font-weight:500] [&_strong]:block [&_strong]:[font-size:29px] [&_strong]:[font-weight:500] [&_strong]:[margin-top:11px] [&_strong]:[line-height:1.3] max-[1250px]:[padding:17px_16px_10px] max-[1250px]:[&_strong]:[font-size:25px] max-[900px]:[&_strong]:[font-size:29px] max-[700px]:[padding:16px_14px_10px] max-[700px]:[&_strong]:[font-size:26px] max-[700px]:[&_>_div:first-child]:flex-wrap max-[700px]:[&_>_div:first-child]:[gap:4px]" key={index.name}>
-            <div><span>{index.name}</span><span className={tw(`number ${tone(index.change)}`)}>{signed(index.change)}</span></div>
-            <strong className="number [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em]">{format(index.value)}</strong>
-          </article>))}
-      </div>
-      <div className="dashboard-stack grid [gap:24px] min-w-0">
-        <Panel title="Bảng điện" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Snapshot mẫu · {items.length} mã</span>}>
-          <div className="table-toolbar flex justify-between items-center [gap:14px] [padding:16px_20px] flex-wrap max-[1250px]:[flex-wrap:nowrap] max-[900px]:flex-wrap max-[700px]:[padding:14px]">
-            <div className="segmented inline-flex items-center [gap:4px] [flex-shrink:0] [&_button]:inline-flex [&_button]:items-center [&_button]:justify-center [&_button]:[gap:8px] [&_button]:[border-width:0] [&_button]:[border-radius:4px] [&_button]:[padding:8px_12px] [&_button]:[background:none] [&_button]:[color:var(--muted)] [&_button]:[font-size:14px] [&_button]:[font-weight:500] [&_button]:[min-height:38px] [&_button]:whitespace-nowrap [&_button:hover]:[background:var(--raised)] [&_span]:[font-size:13px] [&_span]:[opacity:0.9]" role="group" aria-label="Danh sách cổ phiếu">
-              <button className={tw(tab === "all" ? "active" : "")} aria-pressed={tab === "all"} onClick={() => setTab("all")}>Tất cả</button>
-              <button className={tw(tab === "watch" ? "active" : "")} aria-pressed={tab === "watch"} onClick={() => setTab("watch")}>Theo dõi <span>{watchlist.length}</span></button>
-            </div>
-            <div className="table-controls max-[900px]:flex-wrap min-w-0 flex [gap:10px] items-center max-[1250px]:[flex:1] max-[1250px]:justify-end max-[900px]:[flex-basis:100%] max-[900px]:justify-between max-[700px]:[gap:8px] max-[700px]:[&_select]:[max-width:155px] max-[700px]:[&_select]:[padding-left:8px]">
-              <label className="inline-search max-[900px]:[.table-controls_&]:[flex-basis:100%] min-w-0 flex items-center [gap:8px] [border-width:1px] [border-style:solid] [border-color:var(--border)] [border-radius:4px] [background:var(--background)] [padding:8px_10px] [color:var(--muted)] [&_input]:[border-width:0] [&_input]:[outline:none] [&_input]:[background:none] [&_input]:[color:var(--text)] [&_input]:[width:135px] [&_input]:min-w-0 [&_input]:[font-size:14px] [&:focus-within]:[outline:2px_solid_var(--accent)] [&:focus-within]:[outline-offset:2px] max-[900px]:[flex:1] max-[900px]:[&_input]:w-full max-[700px]:[padding:9px_8px] max-[700px]:[&_input]:[font-size:14px]">
-                <Search size={16} aria-hidden="true"/>
-                <span className="sr-only">Tìm trong danh sách cổ phiếu</span>
-                <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên"/>
-              </label>
-              <label><span className="sr-only">Lọc sàn</span><select value={exchange} onChange={(event) => setExchange(event.target.value)}><option value="all">Tất cả sàn</option>{[...new Set(stocks.map((stock) => stock.exchange))].map((name) => <option key={name}>{name}</option>)}</select></label>
-              <label><span className="sr-only">Lọc nhóm ngành</span><select value={sector} onChange={(event) => setSector(event.target.value)}><option value="all">Tất cả ngành</option>{sectors.map((item) => <option key={item.name}>{item.name}</option>)}</select></label>
-            </div>
-          </div>
-          <div className="board-options flex flex-wrap [gap:20px] [padding:0_20px_16px] [color:var(--muted)] [font-size:14px] [&_label]:inline-flex [&_label]:items-center [&_label]:[gap:8px] [&_label]:cursor-pointer [&_input]:[accent-color:var(--accent)] [&_input]:[width:16px] [&_input]:[height:16px]" role="group" aria-label="Cột bảng điện">
-            <label><input type="checkbox" checked={depth} onChange={(event) => setDepth(event.target.checked)}/>Ba mức giá</label>
-            <label><input type="checkbox" checked={statistics} onChange={(event) => setStatistics(event.target.checked)}/>Thống kê</label>
-            <label><input type="checkbox" checked={foreign} onChange={(event) => setForeign(event.target.checked)}/>Nước ngoài</label>
-          </div>
-          {sector !== "all" && <div className="active-filter inline-flex items-center [gap:10px] [margin:0_20px_14px] [color:var(--accent)] [background:var(--accent-soft)] [padding:5px_10px] [font-size:14px] [border-radius:4px] [&_button]:flex [&_button]:[border-width:0] [&_button]:[background:none]">{sector}<button aria-label="Xóa lọc ngành" onClick={() => setSector("all")}><X size={14}/></button></div>}
-          {items.length ? <StockTable items={items} depth={depth} statistics={statistics} foreign={foreign} onSelect={setSelected}/> : <EmptyState title="Chưa có mã phù hợp"/>}
-        </Panel>
-        <Panel title="Dòng tiền theo ngành" className="sector-panel" action={<span className="count-label [font-size:14px] [color:var(--muted)] whitespace-nowrap">Toàn thị trường · Snapshot mẫu</span>}>
-          <div className="table-scroll relative overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--border)_transparent]" tabIndex={0} role="region" aria-label="Bảng nhóm ngành; cuộn ngang để xem đủ cột">
-            <table className="sector-table w-full border-collapse [font-size:14px] [min-width:900px] [&_th]:[color:var(--muted)] [&_th]:[font-weight:400] [&_th]:[padding:13px_18px] [&_th]:[background:var(--background)] [&_th]:text-right [&_th]:whitespace-nowrap [&_td]:[padding:15px_18px] [&_td]:text-right [&_td]:[border-top-width:1px] [&_td]:[border-top-style:solid] [&_td]:[border-top-color:var(--border)] [&_td]:whitespace-nowrap [&_th:first-child]:text-left [&_td:first-child]:text-left">
-              <thead><tr><th>Nhóm ngành</th><th>Số mã</th><th>Tăng / Giảm / Đứng</th><th>Thay đổi TB</th><th>GTGD (tỷ ₫)</th><th>Tỷ trọng GTGD</th><th>Độ phủ GTGD</th><th>Điểm TB</th></tr></thead>
-              <tbody>{sectors.map((item) => <tr key={item.name} className={tw(sector === item.name ? "selected" : "")}>
-                <td><button className="sector-name [border-width:0] [background:none] [padding:0] text-left [font:inherit] [color:var(--text)] [&:hover]:[color:var(--accent)] [&[aria-pressed='true']]:[color:var(--accent)]" aria-pressed={sector === item.name} onClick={() => setSector(sector === item.name ? "all" : item.name)}>{item.name}</button></td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.count, 0)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.up, 0)} / {format(item.down, 0)} / {format(item.flat, 0)}</td>
-                <td className={tw(`number ${tone(item.change)}`)}>{signed(item.change)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.value)}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.share)}%</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{item.covered}/{item.count}</td>
-                <td className="number muted [font-family:var(--font-mono),_ui-monospace,_monospace] [font-variant-numeric:tabular-nums] [letter-spacing:-0.025em] [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{format(item.score)}</td>
-              </tr>)}</tbody>
-            </table>
-          </div>
-        </Panel>
-      </div>
-      {selected && <Modal title={`Biểu đồ ${selected}`} onClose={() => setSelected(null)} className="chart-dialog"><ChartSurface key={selected} symbol={selected} onSymbolChange={setSelected}/></Modal>}
-    </>);
+
+function Spark({ symbol }: { symbol: string }) {
+  const values = getDemoCandles(symbol, "1D").slice(-30).map(bar => bar.close);
+  if (values.length < 2) return <span className="website-muted">Chưa có nến mẫu</span>;
+  const min = Math.min(...values), max = Math.max(...values);
+  return <svg viewBox="0 0 160 50" role="img" aria-label={`Xu hướng mẫu ${symbol}`}><polyline points={values.map((value, i) => `${i / (values.length - 1) * 160},${46 - (value - min) / (max - min || 1) * 42}`).join(" ")} fill="none" stroke="currentColor" strokeWidth="1.5"/></svg>;
+}
+export function Dashboard({ watchOnly = false }: { watchOnly?: boolean }) {
+  const { watchlist, toggleWatch } = usePreferences();
+  const [tab, setTab] = useState(watchOnly ? "watch" : "all"), [query, setQuery] = useState("");
+  const [sector, setSector] = useState("all"), [exchange, setExchange] = useState("all");
+  const [depth, setDepth] = useState(true), [statistics, setStatistics] = useState(true), [foreign, setForeign] = useState(true), [dense, setDense] = useState(true);
+  const [selected, setSelected] = useState<string | null>(null), [focused, setFocused] = useState("FPT");
+  const [mode, setMode] = useState("board");
+  const items = stocks.filter(stock => (tab !== "watch" || watchlist.includes(stock.symbol)) && (sector === "all" || stock.sector === sector) && (exchange === "all" || stock.exchange === exchange) && `${stock.symbol} ${stock.name}`.toLocaleLowerCase("vi").includes(query.toLocaleLowerCase("vi")));
+  const current = items.find(stock => stock.symbol === focused) || items[0];
+  const changes = items.filter(stock => stock.change !== null), rising = changes.filter(stock => stock.change! > 0).length, falling = changes.filter(stock => stock.change! < 0).length;
+  const leaders = items.filter(stock => stock.quantScore !== null).sort((a, b) => b.quantScore! - a.quantScore!).slice(0, 5);
+  const quantHref = (symbol: string) => `/analysis?symbol=${encodeURIComponent(symbol)}`;
+  return <div className={`website-market ${dense ? "is-dense" : ""}`}><PurchaseResume/>
+    <PageHeading title={watchOnly ? "Theo dõi" : "Toàn cảnh thị trường"} description={watchOnly ? "Tập trung vào những doanh nghiệp bạn quan tâm." : "Theo dõi cổ phiếu và nhóm ngành."}/>
+    <div className="website-market-strip">
+      <article><span>Mã trong bộ lọc</span><strong>{items.length}</strong><small>{exchange === "all" ? "Tất cả sàn" : exchange} · {sector === "all" ? "Tất cả ngành" : sector}</small></article>
+      <article><span>Cổ phiếu tăng</span><strong className="website-up">{rising}</strong><small>{changes.length ? Math.round(rising / changes.length * 100) : 0}% số mã có giá</small></article>
+      <article><span>Cổ phiếu giảm</span><strong className="website-down">{falling}</strong><small>{changes.length - rising - falling} mã đứng giá</small></article>
+      <article><span>Điểm Quant cao nhất</span><strong className="website-accent">{leaders[0]?.quantScore ?? "—"}<small> /100</small></strong><small>{leaders[0]?.symbol ?? "—"}</small></article>
+    </div>
+    <p className="website-badge website-data-label">Dữ liệu minh họa · Snapshot mẫu</p>
+    <div className="website-market-filters"><label>Sàn <select aria-label="Lọc sàn" value={exchange} onChange={event => setExchange(event.target.value)}><option value="all">Tất cả sàn</option>{[...new Set(stocks.map(stock => stock.exchange))].map(name => <option key={name}>{name}</option>)}</select></label><label>Ngành <select aria-label="Lọc nhóm ngành" value={sector} onChange={event => setSector(event.target.value)}><option value="all">Tất cả ngành</option>{sectors.map(item => <option key={item.name}>{item.name}</option>)}</select></label><label className="website-market-search"><span className="sr-only">Tìm trong danh sách cổ phiếu</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm mã hoặc tên"/></label><button className="website-button" onClick={() => { setExchange("all"); setSector("all"); setQuery(""); }}>Xóa lọc</button></div>
+    <div className="website-tabs" role="group" aria-label="Chế độ xem thị trường">{[["overview", "Tổng quan"], ["board", "Bảng giá"], ["sectors", "Nhóm ngành"]].map(([id, label]) => <button key={id} aria-pressed={mode === id} onClick={() => setMode(id)}>{label}</button>)}</div>
+    <div className="dashboard-stack website-dashboard-stack">
+      <section className="website-window">
+        <div className="website-window-title"><h2>{mode === "sectors" ? "Dòng tiền theo ngành" : tab === "watch" ? "Danh sách theo dõi" : "Bảng giá cổ phiếu"}</h2><span>Giá: 1.000 ₫ · KL: cổ phiếu</span></div>
+        {mode !== "sectors" && <div className="website-board-toolbar"><div className="website-tabs" role="group" aria-label="Danh sách cổ phiếu"><button aria-pressed={tab === "all"} onClick={() => setTab("all")}>Tất cả</button><button aria-pressed={tab === "watch"} onClick={() => setTab("watch")}>Theo dõi {watchlist.length}</button></div>{mode === "board" && <div className="website-column-options"><label><input type="checkbox" checked={depth} onChange={event => setDepth(event.target.checked)}/>Dư mua/bán</label><label><input type="checkbox" checked={statistics} onChange={event => setStatistics(event.target.checked)}/>Thống kê</label><label><input type="checkbox" checked={foreign} onChange={event => setForeign(event.target.checked)}/>Nước ngoài</label><label><input type="checkbox" checked={dense} onChange={event => setDense(event.target.checked)}/>Thu gọn</label></div>}</div>}
+        {sector !== "all" && <button className="website-filter-chip" aria-label="Xóa lọc ngành" onClick={() => setSector("all")}>{sector} ×</button>}
+        {mode === "sectors" ? <div className="website-sector-grid">{sectors.map(item => <button key={item.name} onClick={() => { setSector(item.name); setMode("board"); }}><b>{item.name}</b><strong className={tone(item.change)}>{signed(item.change)}</strong><span>{item.count} mã · GTGD {format(item.value)} tỷ ₫</span></button>)}</div>
+        : mode === "board" ? (items.length ? <StockTable items={items} depth={depth} statistics={statistics} foreign={foreign} onSelect={setSelected}/> : <EmptyState title="Chưa có mã phù hợp"/>)
+        : <div className="website-overview" role="region" aria-label="Tổng quan cổ phiếu; cuộn ngang để xem đủ cột" tabIndex={0}><table><thead><tr><th>Mã</th><th>Doanh nghiệp</th><th>Sàn / Ngành</th><th>Giá</th><th>+/− %</th><th>Tổng KL</th><th>30 phiên</th><th>Quant</th><th/></tr></thead><tbody>{items.map(stock => <tr key={stock.symbol} tabIndex={0} className={current?.symbol === stock.symbol ? "selected" : ""} onClick={() => setFocused(stock.symbol)} onDoubleClick={() => setSelected(stock.symbol)} onKeyDown={event => { if (event.target === event.currentTarget && event.key === "Enter") setSelected(stock.symbol); }}><td><button className="website-star" aria-label={`${watchlist.includes(stock.symbol) ? "Bỏ theo dõi" : "Theo dõi"} ${stock.symbol}`} aria-pressed={watchlist.includes(stock.symbol)} onClick={event => { event.stopPropagation(); toggleWatch(stock.symbol); }}>{watchlist.includes(stock.symbol) ? "★" : "☆"}</button><button onClick={() => setSelected(stock.symbol)}>{stock.symbol}</button></td><td>{stock.name}</td><td>{stock.exchange} · {stock.sector}</td><td className={tone(stock.change)}>{format(stock.price)}</td><td className={tone(stock.change)}>{signed(stock.change)}</td><td>{format(stock.volume, 0)}</td><td className={tone(stock.change)}><Spark symbol={stock.symbol}/></td><td>{stock.quantScore ?? "—"}</td><td><Link className="website-quant-link" href={quantHref(stock.symbol)}>Quant ›</Link></td></tr>)}</tbody></table>{!items.length && <EmptyState title="Chưa có mã phù hợp"/>}</div>}
+      </section>
+      {mode !== "sectors" && <section className="website-market-bottom"><div className="website-window"><div className="website-window-title"><h2>Chi tiết cổ phiếu</h2><span>{current?.exchange ?? "—"}</span></div>{current ? <><div className="website-security"><b>{current.symbol}</b><span>{current.name}</span><strong className={tone(current.change)}>{format(current.price)}</strong><button className="website-button" onClick={() => setSelected(current.symbol)}>Biểu đồ ↗</button></div><div className="website-security-body"><div className={tone(current.change)}><small>30 PHIÊN · MÔ PHỎNG</small><Spark symbol={current.symbol}/></div><dl><div><dt>Tham chiếu</dt><dd>{format(current.reference)}</dd></div><div><dt>Tổng khối lượng</dt><dd>{format(current.volume, 0)}</dd></div><div><dt>Điểm Quant</dt><dd>{current.quantScore ?? "—"}</dd></div></dl></div></> : <EmptyState title="Chưa có mã phù hợp"/>}</div><div className="website-window"><div className="website-window-title"><h2>Xếp hạng Quant</h2><span>Trong bộ lọc</span></div>{leaders.map(stock => <div key={stock.symbol} className="website-ranking"><button aria-label={`Chọn mã ${stock.symbol} trong xếp hạng`} onClick={() => setFocused(stock.symbol)}>{stock.symbol}</button><span className="website-accent">{stock.quantScore}</span><span className={tone(stock.change)}>{signed(stock.change)}</span><Link href={quantHref(stock.symbol)} aria-label={`Phân tích Quant ${stock.symbol}`}>↗</Link></div>)}</div></section>}
+    </div>
+    {selected && <Modal title={`Biểu đồ ${selected}`} onClose={() => setSelected(null)} className="chart-dialog"><ChartSurface key={selected} symbol={selected} onSymbolChange={setSelected}/></Modal>}
+  </div>;
 }
