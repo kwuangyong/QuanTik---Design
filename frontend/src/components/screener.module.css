@@ -111,77 +111,51 @@
   .gateArt > span { font-size: 8px; }
 }
 
-/* Summary sheet: retain every requested column, with a frozen stock identity. */
-.sheetNotice { color: var(--text); font: 11px/1.9 var(--font-mono); padding: 12px 16px; background: var(--surface); border-left: 2px solid var(--accent); }
+/* A compact sheet: one field per column, frozen ticker and header. */
+.sheetNotice { color: var(--text); font-size: 12px; padding: 10px 14px; border-left: 2px solid var(--accent); }
 .sheetNotice span { display: block; color: var(--muted); }
-.sheetEyebrow { display: block; color: var(--muted); font: 9px/1.6 var(--font-mono); letter-spacing: 1.2px; margin-bottom: 8px; }
+.sheetEyebrow { display: block; color: var(--muted); font: 9px/1.6 var(--font-mono); letter-spacing: 1px; }
 .rowCount { color: var(--muted); font: 11px var(--font-mono); }
-.rowCount b { font-size: 26px; color: var(--positive); font-weight: 500; }
+.rowCount b { font-size: 24px; color: var(--positive); }
 .caution .rowCount b { color: var(--negative); }
-.sheetNav { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0 6px; }
-.sheetNav button { display: inline-flex; gap: 7px; align-items: center; border: 1px solid var(--border); background: transparent; color: var(--muted); border-radius: 4px; padding: 7px 10px; font: 10px/1.5 var(--font-mono); min-height: 34px; }
-.sheetNav button span { color: var(--accent); font-size: 9px; }
-.sheetNav button:hover { background: var(--raised); color: var(--text); border-color: var(--muted); }
-.sheetScroll { max-height: 820px; scrollbar-width: thin; scrollbar-color: var(--accent) var(--background); overscroll-behavior-x: contain; }
-.sheet { table-layout: fixed; width: max-content; min-width: 100%; font: 12px/1.7 var(--font-mono); }
-.identityCol { width: 228px; }
-.metricCol { width: 180px; }
-.wideCol { width: 280px; }
-.sheet th, .sheet td { box-sizing: border-box; border-right: 1px solid color-mix(in srgb,var(--border) 60%,transparent); padding: 14px 16px; width: 180px; min-width: 180px; vertical-align: middle; }
-.sheet tbody th { padding: 16px; }
-.sheet tr > :first-child { width: 228px; min-width: 228px; box-shadow: 2px 0 var(--border), 8px 0 18px #0001; }
-.sheet .groupRow th { top: 0; height: 38px; padding: 8px 16px; text-align: left; background: var(--raised); color: var(--text); font-size: 10px; text-transform: uppercase; letter-spacing: .4px; }
-.sheet .groupRow th span { color: var(--accent); margin-right: 8px; font-size: 9px; }
-.sheet .groupRow th:first-child { z-index: 5; text-transform: none; letter-spacing: 0; background: var(--surface); }
-.sheet .groupRow th:first-child > button { color: var(--muted); font-size: 12px; }
-.sheet .columnRow th { top: 38px; height: 72px; padding: 12px 16px; text-align: right; white-space: normal; line-height: 1.7; }
-.sheet .columnRow > :first-child { left: auto; width: 180px; min-width: 180px; box-shadow: none; z-index: 2; text-align: right; }
-.sheet thead button svg { display: inline; vertical-align: middle; opacity: .65; margin-left: 3px; flex-shrink: 0; }
-.sheet .unitNote { display: block; color: var(--muted); font: 8px/1.5 var(--font-mono); letter-spacing: .4px; margin: 6px 0 0; }
-.identity { width: 196px; display: grid; gap: 9px; font-weight: 400; }
-.symbolLine { display: flex; gap: 9px; align-items: center; }
-.symbolLine .symbol { border: 0; background: none; padding: 0; font: 600 18px var(--font-mono); text-decoration: none; }
-.symbol:hover { text-decoration: underline; }
-.symbolLine > span { color: var(--muted); font-size: 9px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 3px; }
-.symbolLine small { margin-left: auto; color: var(--muted); font-size: 9px; }
-.company { display: block; color: var(--muted); white-space: normal; overflow-wrap: anywhere; font: 11px/1.6 var(--font-mono); }
-.quantAction { display: inline-flex; align-items: center; justify-content: space-between; gap: 6px; min-height: 33px; padding: 6px 8px; border: 1px solid color-mix(in srgb,var(--accent) 45%,var(--border)); border-radius: 3px; color: var(--accent); background: var(--accent-soft); font: 10px/1.6 var(--font-mono); text-decoration: none; }
-.quantAction:hover { border-color: var(--accent); background: color-mix(in srgb,var(--accent) 15%,transparent); }
+.viewSwitch, .sheetNav { display: flex; flex-wrap: wrap; gap: 6px; }
+.viewSwitch button, .sheetNav button { border: 1px solid var(--border); background: var(--surface); color: var(--muted); border-radius: 4px; padding: 7px 10px; font: 11px/1.5 var(--font-mono); min-height: 36px; cursor: pointer; }
+.viewSwitch button[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.sheetNav button span { color: var(--accent); margin-right: 7px; }
+.sheetScroll { max-height: 65vh; scrollbar-width: thin; scrollbar-color: var(--accent) var(--background); overscroll-behavior-x: contain; }
+.sheet { table-layout: fixed; min-width: 100%; font: 12px/1.5 var(--font-mono); }
+.identityCol { width: 132px; }
+.metricCol { width: 160px; }
+.wideCol { width: 260px; }
+.sheet th, .sheet td { box-sizing: border-box; border-right: 1px solid var(--border); padding: 8px 10px; vertical-align: top; height: 44px; }
+.sheet tr > :first-child { width: 132px; min-width: 132px; box-shadow: 1px 0 var(--border); }
+.sheet .columnRow th { top: 0; height: 60px; text-align: left; white-space: normal; background: var(--raised); color: var(--text); line-height: 1.5; }
+.sheet thead button svg { display: inline; vertical-align: middle; opacity: .6; }
+.sheet .unitNote { display: block; color: var(--muted); font: 9px/1.3 var(--font-mono); margin-top: 3px; }
+.symbolLine { display: flex; gap: 8px; align-items: center; min-height: 26px; }
+.symbolLine .symbol { border: 0; background: none; padding: 0; font: 600 13px var(--font-mono); }
+.symbolLine small { color: var(--muted); font-size: 9px; }
+.quantAction { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; min-width: 26px; min-height: 26px; border: 1px solid var(--border); border-radius: 3px; color: var(--accent); }
 .sheet .textCell { text-align: left; white-space: normal; overflow-wrap: anywhere; }
 .missing { color: var(--muted); opacity: .6; }
-.badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); background: color-mix(in srgb,currentColor 5%,transparent); border-radius: 3px; padding: 3px 8px; font-size: 11px; }
-.quantScore { color: var(--accent); font-size: 18px; font-weight: 600; }
-.compactCell { display: grid; gap: 7px; width: 248px; }
-.compactCell > div:first-child { font-size: 15px; color: var(--text); }
-.compactLine { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; font-size: 10px; color: var(--muted); }
-.compactLine > span { white-space: nowrap; }
-.compactLine > div { text-align: right; }
-.compactFlags { border-top: 1px dashed var(--border); padding-top: 7px; }
-.subHints { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px 10px; margin-top: 6px; color: var(--muted); font: 9px/1.6 var(--font-mono); }
-.subHints > button { white-space: nowrap; }
-.cellDetail { width: 248px; white-space: normal; font-size: 11px; }
+.badge { font-size: 11px; }
+.quantScore { color: var(--accent); font-weight: 600; }
+.cellDetail { white-space: normal; font-size: 11px; }
 .cellDetail summary { cursor: pointer; color: var(--accent); }
-.cellDetail summary > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); line-height: 1.7; margin-top: 5px; }
+.cellDetail summary > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--muted); line-height: 1.5; }
 .cellDetail[open] summary > span { display: none; }
-.cellDetail p { color: var(--text); font: 11px/1.9 var(--font-mono); margin-top: 8px; white-space: pre-line; overflow-wrap: anywhere; }
-.sheetFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font: 10px/1.8 var(--font-mono); }
+.cellDetail p { color: var(--text); font: 11px/1.7 var(--font-mono); margin-top: 6px; white-space: pre-line; overflow-wrap: anywhere; }
+.sheetFooter { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--muted); font: 10px/1.6 var(--font-mono); }
 .sheetFooter > span { display: inline-flex; align-items: center; gap: 6px; }
-.sheetNav button:focus-visible, .sheet button:focus-visible, .quantAction:focus-visible, .cellDetail summary:focus-visible, .sheetScroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sheetNav button:focus-visible, .viewSwitch button:focus-visible, .sheet button:focus-visible, .quantAction:focus-visible, .cellDetail summary:focus-visible, .scroll:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.watchlistScroll { max-height: 65vh; }
+.watchlist { width: max-content; font: 12px/1.5 var(--font-mono); }
+.watchlist th, .watchlist td { min-width: 150px; padding: 8px 12px; border-right: 1px solid var(--border); text-align: center; }
+.watchlist th { white-space: normal; max-width: 200px; }
+.watchlist tr > :first-child { min-width: 48px; text-align: center; color: var(--muted); }
+.watchlist td a { color: var(--accent); text-underline-offset: 3px; }
 @media (max-width: 700px) {
-  .sheetScroll { max-height: 660px; }
-  .sheet tr > :first-child { width: 140px; min-width: 140px; }
-  .identityCol { width: 140px; }
-  .wideCol { width: 180px; }
-  .sheet tbody th { padding: 12px; }
-  .identity { width: 116px; gap: 8px; }
-  .symbolLine { gap: 6px; }
-  .symbolLine .symbol { font-size: 16px; }
-  .symbolLine small { display: none; }
-  .company { font-size: 10px; }
-  .quantAction { font-size: 9px; padding: 6px; min-height: 38px; white-space: normal; }
-  .compactCell, .cellDetail { width: 148px; }
-  .compactLine { gap: 6px; font-size: 9px; }
-  .sheet .columnRow > :first-child { width: 180px; min-width: 180px; }
-  .sheetNav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 9px; }
+  .sheetNav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
   .sheetNav button { flex-shrink: 0; }
+  .viewSwitch button { font-size: 10px; }
 }

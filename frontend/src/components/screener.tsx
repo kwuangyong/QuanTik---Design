@@ -9,6 +9,7 @@ import { ErrorNotice } from "./account/common";
 import { Modal, PageHeading } from "./ui";
 import styles from "./screener.module.css";
 import { ScreeningSheet } from "./screening-sheet";
+import { IndustryWatchlist } from "./industry-watchlist";
 
 const number = (value: number | null | undefined, digits = 1) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value) : "—";
 const percent = (value: number | null | undefined) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(value) : "—";
@@ -22,8 +23,17 @@ export function Screener() {
 }
 function ScreeningExperience() {
   const [activated, setActivated] = useState(false);
-  return activated ? <ScreeningBoard onReset={() => setActivated(false)}/> : <ScanActivation onActivate={() => setActivated(true)}/>;
+  const [view, setView] = useState<"results" | "watchlist">("results");
+  return <div className={styles.board}>
+    <div className={styles.viewSwitch} aria-label="Bảng quét và Watchlist">
+      <button aria-pressed={view === "results"} onClick={() => setView("results")}>Kết quả quét</button>
+      <button aria-pressed={view === "watchlist"} onClick={() => setView("watchlist")}>Watchlist theo ngành</button>
+    </div>
+    <div hidden={view !== "results"}>{activated ? <ScreeningBoard onReset={() => setActivated(false)}/> : <ScanActivation onActivate={() => setActivated(true)}/>}</div>
+    {view === "watchlist" && <IndustryWatchlist/>}
+  </div>;
 }
+
 function ScanActivation({ onActivate }: { onActivate: () => void }) {
   return <section className={styles.gate} aria-label="Kích hoạt kết quả quét toàn sàn">
     <div className={styles.gateCopy}><span className={styles.tag}><i/> PHÂN TÍCH TOÀN THỊ TRƯỜNG</span>

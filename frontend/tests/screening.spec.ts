@@ -69,7 +69,9 @@ test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ p
   await expect(page.getByLabel("Tìm mã", { exact:true })).toHaveCount(0);
   await expect(page.getByLabel("Số mã / trang")).toHaveCount(0);
   for (const table of [best, worst]) {
-    await expect(table.locator("tbody tr").first().locator("th, td")).toHaveCount(34);
+    await expect(table.locator("tbody tr").first().locator("th, td")).toHaveCount(42);
+    // Independent header order read from the supplied Google Sheet, not the component schema.
+    await expect(table.locator("thead button")).toHaveText(["Mã", "Khuyến nghị", "Đạt bộ lọc", "Giải thích điều kiện", "Điểm", "Đánh giá", "Thời gian nắm giữ", "Xu hướng VN-Index", "Nhóm ngành", "Xu hướng ngành", "Lợi nhuận ngành 20 phiên (%)", "Tương quan ngành", "Mã dẫn dắt ngành", "Sharpe", "Win Rate (%)", "Max DD (%)", "Annual Return (%)", "HMM", "Volatility Regime", "Dự báo", "Lợi nhuận dự báo (%)", "Đồng thuận (%)", "Lợi nhuận gộp (%)", "Chi phí (%)", "Lợi nhuận ròng (%)", "Biến động mô phỏng", "Sụt giảm khi chờ T+2 (%)", "Xác suất lỗ trên 3% (%)", "Chất lượng dữ liệu", "Điểm dữ liệu", "Cảnh báo dữ liệu", "Thanh khoản", "GTGD TB 20 phiên (tỷ)", "Sức chứa tối đa (cổ phiếu)", "Khoảng trống giá 95% (%)", "Entry", "SL", "TP1", "TP2", "Model Agreement (%)", "RiskPctNAV", "Nhận xét chi tiết"]);
     await expect(table.locator("tbody tr").first().locator("[data-sheet-key]")).toHaveCount(41);
     await expect(table.getByRole("link", { name: /Kích hoạt phân tích quant chi tiết/ })).toHaveCount(5);
     for (const label of ["Khuyến nghị", "Đạt bộ lọc", "Giải thích điều kiện", "Điểm", "Sharpe", "RiskPctNAV"]) {
@@ -137,7 +139,7 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
   const row = best.locator("tbody tr").first();
-  await expect(row.getByText("Công ty Cổ phần FPT", { exact: true })).toBeVisible();
+  expect((await row.boundingBox())!.height).toBeLessThan(100);
   const key = (name: string) => row.locator(`[data-sheet-key="${name}"]`);
   await expect(key("gate_pass")).toHaveText("Chưa đạt");
   await expect(key("gate_reasons")).toContainText("Chưa đủ điều kiện thời điểm vào lệnh.");
@@ -204,4 +206,38 @@ test("Screening: giữ ngày dữ liệu và bản cũ khi cập nhật lỗi", 
   state.mode="network"; await page.clock.fastForward(61000);
   await expect(page.getByRole("button",{ name:"FPT", exact:true })).toBeVisible();
   await expect(page.getByRole("button",{ name:"Thử lại", exact:true })).toBeVisible();
+});
+
+
+test("Screening: bảng dữ liệu hiện có giữ giá và điểm nguồn khi chưa có Quant", async ({ page }) => {
+  const state = await fixture(page);
+  await page.goto("/screener");
+  await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
+  await expect(best.getByRole("status")).toContainText("chưa có các chỉ số Quant");
+  await best.getByRole("button", { name: "Dữ liệu quét hiện có", exact: true }).click();
+  const row = best.locator("tbody tr").first();
+  await expect(row.locator("td").nth(1)).toHaveText("58.000");
+  await expect(row.locator("td").nth(2)).toHaveText("2%");
+  await expect(row.locator("td").nth(5)).toHaveText("71,4");
+  await best.getByRole("button", { name: "Theo mẫu Google Sheet · 42 cột", exact: true }).click();
+  await expect(best.locator("thead th")).toHaveCount(42);
+  await expect(best.locator('[data-sheet-column="score"]').first()).toHaveText("—");
+  expect(state.calls.some(path => path.startsWith("analyses"))).toBeFalsy();
+  expect(state.mutations).toEqual([]);
+});
+
+test("Watchlist: giữ đúng các nhóm và vị trí mã của file tham chiếu", async ({ page }, testInfo) => {
+  const state = await fixture(page);
+  await page.goto("/screener");
+  await page.getByRole("button", { name: "Watchlist theo ngành", exact: true }).click();
+  const table = page.getByRole("region", { name: "Watchlist theo ngành", exact: true });
+  await expect(table.locator("thead th")).toHaveCount(24); // 23 source groups + row number.
+  await expect(table.locator("thead th").nth(1)).toHaveText("Ngân hàng (BANK)");
+  await expect(table.locator("tbody tr").first().locator("td").nth(0)).toHaveText("LPB");
+  await expect(table.locator("tbody tr").first().locator("td").nth(1)).toHaveText("DPG");
+  await expect(table.getByRole("link", { name: "LPB", exact: true })).toHaveAttribute("href", "/analysis?symbol=LPB");
+  expect(state.calls.filter(path => path.startsWith("screenings/") || path.startsWith("analyses"))).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
+  await page.screenshot({ path: testInfo.outputPath("industry-watchlist.png"), fullPage: true });
 });
