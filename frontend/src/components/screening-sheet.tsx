@@ -72,7 +72,7 @@ export function ScreeningSheet({ kind, title, description, items, loading, onSel
     {items.length > 0 && !hasQuantValues && <p role="status" className={styles.notice}>Bản quét này chưa có các chỉ số Quant của bảng Google Sheet. Chọn “Dữ liệu quét hiện có” để xem giá, khối lượng và điểm screening của phiên.</p>}
     {view === "screening" ? <ScreeningValues items={items} onSelect={onSelect}/> : <>
     <nav className={styles.sheetNav} aria-label={`Đi tới nhóm cột · ${title}`}>
-      {sheetGroups.map(group => <button key={group.id} onClick={() => goTo(group.id)}><span>{group.index}</span>{group.label}</button>)}
+      {sheetGroups.map(group => <button key={group.id} aria-label={`${group.index} ${group.label}`} onClick={() => goTo(group.id)}><span>{group.index}</span>{group.label}</button>)}
     </nav>
     <div className={styles.tableFrame} aria-busy={loading}>
       <div ref={scroll} className={`${styles.scroll} ${styles.sheetScroll}`} tabIndex={0} role="region" aria-label={`${title} · cuộn ngang để xem đầy đủ`}>

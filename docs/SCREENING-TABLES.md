@@ -37,6 +37,18 @@ scores. It never substitutes screening eligibility for Quant gate status or a
 group score for the Quant score. False, zero and explicit empty lists retain their
 meaning. Missing values are never fabricated from the reference spreadsheet.
 
+## Cross-repository deployment check
+
+The inspected `QuanTik-website` main exposes `/api/v1/scans/latest/highlights`
+in `backend/server.py` and enriches saved Quant output through
+`backend/scan_presentation.py`. This Design frontend calls `/screenings/...`
+instead. These are different API contracts. Do not assume that deploying this
+frontend connects it to the former endpoint. Verify the actual production
+backend version, proxy target (`QUANTIK_API_URL`) and response fields against
+local before diagnosing model failure. Production configuration/traffic was
+not available for inspection in this task. This PR does not switch endpoints
+or alter access controls.
+
 ## Data boundaries
 
 Only frontend presentation, reference content, tests and documentation change.
