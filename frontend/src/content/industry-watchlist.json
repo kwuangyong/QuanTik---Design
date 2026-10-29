@@ -1,0 +1,418 @@
+[
+  {
+    "column": "B",
+    "name": "Ngân hàng (BANK)",
+    "symbols": [
+      "LPB",
+      "VIB",
+      "NVB",
+      "BID",
+      "STB",
+      "HDB",
+      "TPB",
+      "MBB",
+      "ACB",
+      "TCB",
+      "VPB",
+      "VCB",
+      "CTG",
+      "NAB",
+      "EVF",
+      "ABB",
+      "MSB",
+      "EIB",
+      "SSB",
+      "BVB",
+      "SHB",
+      "VAB",
+      "BAB",
+      "OCB",
+      "KLB"
+    ]
+  },
+  {
+    "column": "C",
+    "name": "Bất động sản (BĐS)",
+    "symbols": [
+      "DPG",
+      "CII",
+      "DIG",
+      "KBC",
+      "IDC",
+      "CEO",
+      "HHS",
+      "VGC",
+      "DXG",
+      "HDG",
+      "TCH",
+      "HQC",
+      "NHA",
+      "SGR",
+      "DXS",
+      "QCG",
+      "PDR",
+      "HDC",
+      "KDH",
+      "KHG",
+      "VPI",
+      "NTL",
+      "NVL",
+      "VC7",
+      "TIG",
+      "SCR",
+      "CKG",
+      "NLG",
+      "AGG",
+      "L14",
+      "HPX",
+      "DC4",
+      "TAL"
+    ]
+  },
+  {
+    "column": "D",
+    "name": "Chứng khoán",
+    "symbols": [
+      "BVS",
+      "SBS",
+      "MBS",
+      "BSI",
+      "VCI",
+      "AAS",
+      "SHS",
+      "PSI",
+      "CTS",
+      "VFS",
+      "SSI",
+      "ABW",
+      "AGR",
+      "VIG",
+      "IPA",
+      "FTS",
+      "VIX",
+      "VCK",
+      "VDS",
+      "VPX",
+      "ORS",
+      "TCX",
+      "DSE",
+      "APG"
+    ]
+  },
+  {
+    "column": "E",
+    "name": "Thép",
+    "symbols": [
+      "NKG",
+      "VGS",
+      "HSG",
+      "TVN",
+      "TLH",
+      "HPG",
+      "HSV"
+    ]
+  },
+  {
+    "column": "F",
+    "name": "XD-VLXD-Đầu tư công",
+    "symbols": [
+      "VCG",
+      "FCN",
+      "G36",
+      "HHV",
+      "LCG",
+      "C4G",
+      "DPG",
+      "CII",
+      "HBC",
+      "CTI",
+      "VLB",
+      "KSB",
+      "MSR",
+      "SZC",
+      "BMP",
+      "CTD",
+      "IJC",
+      "VCS",
+      "BCC",
+      "C32",
+      "GDA",
+      "EVG",
+      "DC4",
+      "HT1",
+      "NTP"
+    ]
+  },
+  {
+    "column": "G",
+    "name": "Dầu khí",
+    "symbols": [
+      "PVD",
+      "PLC",
+      "PVS",
+      "PVC",
+      "PVT",
+      "LAS",
+      "PVB",
+      "GAS",
+      "OIL",
+      "BSR",
+      "PVI",
+      "PXL"
+    ]
+  },
+  {
+    "column": "H",
+    "name": "Phân bón - Hoá chất",
+    "symbols": [
+      "DGC",
+      "PHR",
+      "GVR",
+      "DPM",
+      "LAS",
+      "DCM",
+      "CSV",
+      "VFG",
+      "BFC",
+      "DHB",
+      "DDV"
+    ]
+  },
+  {
+    "column": "I",
+    "name": "Cảng biển",
+    "symbols": [
+      "PVP",
+      "PVT",
+      "VSC",
+      "SGP",
+      "MVN",
+      "GMD",
+      "VOS",
+      "TCL",
+      "DVP",
+      "PHP",
+      "HAH"
+    ]
+  },
+  {
+    "column": "K",
+    "name": "Dệt may",
+    "symbols": [
+      "VGT",
+      "TNG",
+      "MSH",
+      "HDM",
+      "GIL",
+      "TCM"
+    ]
+  },
+  {
+    "column": "L",
+    "name": "Không thiết yếu",
+    "symbols": [
+      "STH",
+      "DHC",
+      "VEA",
+      "PAN",
+      "DLG",
+      "YEG"
+    ]
+  },
+  {
+    "column": "M",
+    "name": "Công nghệ",
+    "symbols": [
+      "ELC",
+      "VTP",
+      "CTR",
+      "CMG",
+      "FPT",
+      "VGI"
+    ]
+  },
+  {
+    "column": "N",
+    "name": "BĐS Khu công nghiệp",
+    "symbols": [
+      "PHR",
+      "KBC",
+      "CTI",
+      "GVR",
+      "IDC",
+      "VGC",
+      "SZC",
+      "CTD",
+      "SIP",
+      "IJC",
+      "LHG",
+      "BCM",
+      "TIP",
+      "NTC"
+    ]
+  },
+  {
+    "column": "O",
+    "name": "Viettel",
+    "symbols": [
+      "VTK",
+      "VTP",
+      "CTR",
+      "VGI"
+    ]
+  },
+  {
+    "column": "Q",
+    "name": "FPT nhóm",
+    "symbols": [
+      "FRT",
+      "FOC",
+      "FTS",
+      "FPT",
+      "FOX"
+    ]
+  },
+  {
+    "column": "R",
+    "name": "Hàng không",
+    "symbols": [
+      "HVN",
+      "SCS",
+      "ACV",
+      "VJC",
+      "ATS"
+    ]
+  },
+  {
+    "column": "S",
+    "name": "Điện",
+    "symbols": [
+      "PC1",
+      "GEE",
+      "TV2",
+      "HDG",
+      "REE",
+      "TV1",
+      "GEX",
+      "GEG",
+      "NT2",
+      "POW",
+      "QTP",
+      "DRL",
+      "PPC"
+    ]
+  },
+  {
+    "column": "T",
+    "name": "Báo hiểm",
+    "symbols": [
+      "BVH",
+      "BIC",
+      "PVI",
+      "MIG"
+    ]
+  },
+  {
+    "column": "U",
+    "name": "Dược phẩm",
+    "symbols": [
+      "DVM",
+      "DCL"
+    ]
+  },
+  {
+    "column": "V",
+    "name": "Bán lẻ",
+    "symbols": [
+      "PET",
+      "DGW",
+      "MSN",
+      "FRT",
+      "MWG",
+      "TLG",
+      "VNM",
+      "PNJ",
+      "FPT",
+      "HAX",
+      "SAB"
+    ]
+  },
+  {
+    "column": "W",
+    "name": "Vingroup",
+    "symbols": [
+      "VPL",
+      "VRE",
+      "VHM",
+      "VIC"
+    ]
+  },
+  {
+    "column": "X",
+    "name": "Tự doanh Tuấn Mượt",
+    "symbols": [
+      "PC1",
+      "PET",
+      "GEE",
+      "VSC",
+      "VGC",
+      "MHC",
+      "GEX",
+      "EVF",
+      "BSR",
+      "EIB",
+      "GEL",
+      "VIX",
+      "PXL",
+      "HAH"
+    ]
+  },
+  {
+    "column": "Y",
+    "name": "Thuỷ sản",
+    "symbols": [
+      "ASM",
+      "FMC",
+      "IDI",
+      "ACL",
+      "VHC",
+      "CMX",
+      "ANV"
+    ]
+  },
+  {
+    "column": "AA",
+    "name": "List CMSC",
+    "symbols": [
+      "PVD",
+      "PVS",
+      "HVN",
+      "PGS",
+      "PVT",
+      "SFG",
+      "PVB",
+      "GVR",
+      "DPM",
+      "LAS",
+      "MBB",
+      "DCM",
+      "PLX",
+      "GAS",
+      "OIL",
+      "ACV",
+      "BSR",
+      "PAC",
+      "CSV",
+      "POW",
+      "DPR",
+      "TRC",
+      "DHG",
+      "VNM",
+      "FPT",
+      "FOX",
+      "DDV",
+      "RTB",
+      "BRR"
+    ]
+  }
+]
