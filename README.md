@@ -28,20 +28,26 @@ Mở `http://localhost:3000`. Bấm **Đăng nhập hệ thống**; sau đăng n
 - **Dashboard**: VN-INDEX, VN30, UPCOM, HNX-INDEX → bảng điện có TC/trần/sàn, ba mức dư mua/bán, khớp lệnh, tổng KL, GTGD, thống kê và nước ngoài → bảng nhóm ngành. Theo dõi nằm trong cùng bảng. Bấm mã mở cửa sổ chart với Quant bên cạnh; có thể thu/mở Quant hoặc mở trang phân tích toàn màn hình.
 - **Quét toàn sàn**: kích hoạt để đọc bản công bố mới nhất, hiển thị hai bảng 5 mã tốt nhất và 5 mã nên tránh nhất theo thứ hạng screening. Mỗi bảng có đủ 42 chỉ số theo sheet lọc cổ phiếu, thu gọn trong 34 cột, chia nhóm và cuộn ngang, cố định mã và nút Quant. Bấm tiêu đề bất kỳ để xem định nghĩa/cách tính; bấm mã để mở screening, nút Quant mở luồng yêu cầu hiện có. Các trường Quant/tên doanh nghiệp chưa có trong API giữ trạng thái thiếu dữ liệu; không lấy điểm screening làm điểm Quant và không chạy phân tích ngầm.
 
-- **Phân tích Quant**: nhập/chọn mã → xem tiêu chí trước khi chạy → vùng kết quả. Các nút chạy cuối cùng chưa nối backend.
+- **Phân tích Quant**: chọn mã → gửi yêu cầu → đọc kết luận dễ hiểu, biểu đồ xu hướng/kịch bản/rủi ro và các mốc giá cần theo dõi. Có mô hình 3D tương tác từ dữ liệu báo cáo; phần mô hình chuyên sâu mở thêm khi cần.
 - **Biểu đồ**: giữ đường dẫn `/charts?symbol=FPT` cho chế độ toàn màn hình. Biểu đồ nằm trong luồng chọn mã, không thêm mục riêng vào menu.
 
 Hợp đồng API và xác nhận production: [Screening tables](docs/SCREENING-TABLES.md).
 
 ## Dữ liệu và phạm vi
 
+Bảng điện AGR đã lên production ngày 18/10/2026. Xem [bằng chứng và khôi phục release](docs/AGR-PRICEBOARD-PRODUCTION.md).
+
+Biểu đồ đã chuyển sang iframe VPS và nội dung giao diện đã được rút gọn. Xem [release VPS Chart](docs/VPS-CHART-PRODUCTION.md).
+
 `backend/` chỉ có **mock JSON**, không có API server, scheduler, job runner, scoring, backtest hoặc engine Quant. Không dựng lại bộ nạp dữ liệu hay vòng lặp hai lần/ngày. Theme, Theo dõi, lọc và trạng thái mở/thu chỉ là tương tác giao diện cục bộ.
 
-- `market.json`: 16 mã mẫu chép từ bảng điện QuanTik tại thời điểm đọc; nguồn gốc `vnstock_price_board`. Snapshot cố định, không phải realtime. Giá theo nghìn đồng; KL theo cổ phiếu; GTGD bảng điện theo triệu đồng. Bảng ngành là snapshot toàn thị trường, GTGD theo tỷ đồng, không tính từ 16 mã mẫu. GTGD không phải tiền ròng vào/ra. Chỉ số thị trường thiếu nguồn được để `null`, hiển thị “—”.
+- Bảng điện Dashboard dùng dữ liệu AGR thật: tải snapshot qua `/api/market/agr`, sau đó nhận delta qua `wss://trading.agr.vn/market/socket.io/` (Engine.IO 3 / Socket.IO 2), đăng ký `e:HOSE`, `e:HNX`, `e:UPCOM`. Kết nối trực tiếp từ trình duyệt, có heartbeat, tự nối lại và tải snapshot sau reconnect/đổi phiên/quay lại tab. Không cần API key ở thời điểm tích hợp. Chỉ báo “Đã kết nối AGR” sau khi đăng ký thành công và tải được snapshot; ngày phiên hiển thị riêng vì ngoài giờ không có giao dịch mới. Nếu lỗi, giữ dữ liệu đã nhận và báo trạng thái; không thay bằng giá mẫu. Bảng cổ phiếu loại chứng quyền/phái sinh; giá theo nghìn đồng, KL theo cổ phiếu, GTGD theo triệu đồng, hỗ trợ ATO/ATC/PLO. Quant để trống vì AGR không cung cấp điểm Quant. API/protocol công khai của AGR có thể thay đổi, cần kiểm tra lại khi kết nối bị từ chối.
+- VN-INDEX, VN30, UPCOM và HNX-INDEX trên Dashboard dùng giá trị/biến động thật từ AGR, tải ban đầu rồi cập nhật qua các kênh `idx` trên cùng WebSocket bảng điện. Không lấy giá trị từ JSON mẫu. Xem [release chỉ số AGR](docs/AGR-INDICES-PRODUCTION.md).
+- `market.json`: snapshot 16 mã được giữ cho các màn mẫu và metadata ngành hiện có. Mã AGR chưa có metadata hiển thị “Chưa phân ngành”. Bảng ngành vẫn là số liệu tham khảo, không tính từ bảng giá AGR. GTGD không phải tiền ròng vào/ra.
 - `scan.json`: bản mẫu cũ từ **LỌC CỔ PHIẾU.xlsx**, sheet **Summary_20261005_2338**, lưu tham khảo bố cục. Trang screening hiện dùng API bản công bố, không đọc file mẫu này.
 - File Excel không chứa bảng hệ số trọng số %. Giao diện ghi rõ phần còn thiếu, không tự đặt hệ số hoặc công thức.
 - `analysis.json`, `charts.json`: vùng dữ liệu để nối sau; không có dự báo giả hoặc nến tự sinh.
-- Chart **TradingView** nhúng script Advanced Chart thật, giữ cách cấu hình của repo gốc. Không dùng SVG giả làm TradingView. Dữ liệu, độ trễ và quyền khung intraday phụ thuộc TradingView. Nguồn “Dữ liệu Quantik” giữ vùng hiển thị trống để nối hệ thống cũ.
+- Biểu đồ nhúng iframe **VPS Chart** tại `https://chart.vps.com.vn/tv/`, truyền `symbol`, `allowFullscreen=true`, `resolution` (1D/1W/1M) và `lang=vi`. Bấm mã ở Dashboard sẽ dẫn đến trang `/charts?symbol=...`; giữ sidebar Quant và liên kết mở biểu đồ riêng. Không sử dụng nến mẫu trong giao diện này. Nội dung và độ trễ bên trong iframe do VPS cung cấp.
 
 ## Kiểm tra và xem thử
 
@@ -56,18 +62,18 @@ npm run preview:export
 
 `preview/index.html` dùng cùng các component frontend, với router thay thế để mở độc lập. TradingView cần Internet và môi trường cho phép script/iframe bên ngoài.
 
-`npm run test:e2e` kiểm tra các luồng giao diện desktop/mobile. CI chạy tự động trên main. Trong kiểm thử, script bên ngoài của TradingView được thay bằng stub để kiểm tra cấu hình và bố cục ổn định; kiểm thử không xác nhận nguồn giá realtime.
+`npm run test:e2e` kiểm tra các luồng giao diện desktop/mobile. CI chạy tự động trên main. Trong kiểm thử, nội dung iframe VPS được thay bằng trang kiểm thử để kiểm tra tham số và bố cục ổn định; kiểm thử không xác nhận nguồn giá realtime.
 
 ## Chế độ kiểm tra bằng dữ liệu tự do
 
 `backend/mock/demo.json` bật `enabled: true` để nạp 4 chỉ số mô phỏng, khối lượng lần khớp mẫu, 16 kết quả Quant và các bộ nến mẫu 48/24/12 phiên cho ngày/tuần/tháng. Các trọng số nhóm cộng 100% là ví dụ kiểm thử, không được lấy từ Excel hay hệ thống thật. Đặt `enabled: false` để trở về vỏ chưa nối bộ chạy.
 
-Ở chế độ này, **Chạy phân tích mẫu** nạp JSON có sẵn và không gọi API, không chạy mô hình, không tạo kết quả phân tích mới. Nguồn **Dữ liệu mẫu** dùng nến giả lập, ghi rõ không phải TradingView. Chọn **TradingView** vẫn dùng widget thật trong bản Next.js hoặc HTML độc lập. Home và các snapshot gốc được giữ nguyên.
+Ở chế độ này, **Chạy phân tích mẫu** nạp JSON có sẵn và không gọi API, không chạy mô hình, không tạo kết quả phân tích mới. Biểu đồ trong ứng dụng dùng iframe VPS; nến kiểm thử vẫn lưu trong JSON phục vụ kiểm thử và không được hiển thị bởi `ChartSurface`. Home và các snapshot gốc được giữ nguyên.
 
 ## Diễn giải và biểu đồ Quant
 
-Phân tích Quant đọc theo thứ tự Hành động → Hiệu suất & dòng tiền → HMM/Hurst → GARCH → Monte Carlo → Rủi ro & kế hoạch. Biểu đồ nằm trong phần diễn giải tương ứng; **Hiểu mô hình** mở định nghĩa, đầu vào, đầu ra và giới hạn. Nhận định gốc và toàn bộ chỉ tiêu vẫn có thể mở khi cần.
+Phân tích Quant ưu tiên cách đọc đơn giản: kết luận → xu hướng → vùng giá mô phỏng → rủi ro và các mốc theo dõi. Mô hình 3D dùng các lớp giá hoặc tỷ lệ trạng thái từ đúng báo cáo API, có thể xoay và chọn phiên; không dựng dữ liệu mẫu để lấp phần thiếu. Nhận định gốc, 16 nhóm chỉ tiêu, định nghĩa và biểu đồ nghiên cứu nằm trong phần mở rộng. Xem [Quant simple reader](docs/QUANT-SIMPLE-READER.md).
 
 `backend/mock/analysis-visuals.json` chứa 25 báo cáo minh họa, xác suất trạng thái, đường biến động, các đường giá và phân vị đã lưu. Đây là fixture trình bày, không phải kết quả mô hình của các mã và không phải trọng số mới. Không khớp GARCH/HMM hoặc chạy Monte Carlo trong trình duyệt.
 
-3D dùng canvas nhẹ, mặc định đứng yên; phát chuyển động tối đa 30 khung/giây, dừng lịch vẽ khi không còn trong màn hình hoặc tab bị ẩn. Tôn trọng reduced motion, hỗ trợ kéo/phím mũi tên và đổi theme. Sidebar chỉ dựng biểu đồ khi mở phần diễn giải. Home giữ nguyên renderer cũ.
+3D trong báo cáo thật dùng SVG với phép chiếu 3D, hỗ trợ kéo, phím mũi tên, thanh xoay và đổi theme; không tự chạy chuyển động. Home và các fixture minh họa giữ renderer riêng.

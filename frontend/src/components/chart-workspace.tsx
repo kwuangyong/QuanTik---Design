@@ -6,7 +6,6 @@ import { useState } from "react";
 import { PanelRightClose, PanelRightOpen } from "lucide-react";
 import { stocks, getStock } from "@/lib/mock-data";
 import { PageHeading, EmptyState } from "./ui";
-import { SampleChart } from "./sample-chart";
 import { QuantPanel } from "./quant-panel";
 export function ChartWorkspace() {
     const router = useRouter();
@@ -19,10 +18,11 @@ export function ChartSurface({ symbol, exchangeHint, onSymbolChange }: {
     exchangeHint?: string | null;
     onSymbolChange: (symbol: string) => void;
 }) {
-    const stock = getStock(symbol) || (exchangeHint && ["HOSE", "HNX", "UPCOM"].includes(exchangeHint)
-        && /^[A-Z0-9]{2,16}$/.test(symbol) ? { symbol, name: symbol, exchange: exchangeHint } : undefined);
+    const stock = getStock(symbol) || (/^[A-Z0-9]{2,16}$/.test(symbol)
+        ? { symbol, name: symbol, exchange: exchangeHint && ["HOSE", "HNX", "UPCOM"].includes(exchangeHint) ? exchangeHint : "" } : undefined);
     const [timeframe, setTimeframe] = useState("1D");
     const [sidebar, setSidebar] = useState(true);
+    const chartUrl = `https://chart.vps.com.vn/tv/?${new URLSearchParams({ symbol, allowFullscreen: "true", resolution: timeframe, lang: "vi" })}`;
     if (!stock)
         return <EmptyState title="Chọn mã cổ phiếu"><Link className="text-link [.auth-stage_.account-login_&]:[font-size:12px] [.auth-stage_.account-login_&]:[color:var(--muted)]" href="/dashboard">Dashboard →</Link></EmptyState>;
     return <section className="chart-workspace [.chart-dialog_&]:[border-width:0] [border-width:1px] [border-style:solid] [border-color:var(--border)] [border-radius:4px] [background:var(--surface)] overflow-hidden">
@@ -37,9 +37,8 @@ export function ChartSurface({ symbol, exchangeHint, onSymbolChange }: {
     <div className={tw(`chart-split ${sidebar ? "with-quant" : ""}`)}>
       <div className="chart-main min-w-0">
         <div className="chart-stock-heading flex items-center justify-between [gap:14px] [padding:24px_24px_8px] [&_h2]:[font-size:26px] [&_h2]:[font-weight:600] [&_h2]:[margin:0] [&_h2]:flex [&_h2]:items-center [&_h2]:[gap:12px] [&_h2_span]:[font-size:15px] [&_h2_span]:[font-weight:400] [&_h2_span]:[color:var(--muted)] [&_p]:[font-size:14px] [&_p]:[color:var(--muted)] [&_p]:[margin:6px_0_0] [&_>_div:last-child]:flex [&_>_div:last-child]:[gap:14px] [&_>_div:last-child]:items-center [&_strong]:[font-size:28px] [&_strong]:[font-weight:500] max-[900px]:items-start max-[900px]:[&_h2]:flex-wrap max-[700px]:[padding:20px_16px_8px] max-[700px]:flex-wrap max-[700px]:[&_>_div:last-child]:[margin-top:4px] max-[700px]:[&_h2]:[gap:8px]"><div><h2>{symbol}<span>{stock.name}</span></h2></div><span className="muted [.terminal_&]:[color:var(--muted)] [.panel-heading_>_&]:[font-size:14px] [.panel-heading_>_&]:[color:var(--muted)] [.panel-heading_>_&]:whitespace-nowrap [.analysis-price_>_&]:[font-size:14px]">{stock.exchange}</span></div>
-        <p className="px-6 py-3 text-sm text-[var(--accent)]">Dữ liệu mô phỏng · Không phải giá thị trường hiện tại.</p>
-        <SampleChart symbol={symbol} interval={timeframe}/>
-        <p className="px-6 pb-5 text-sm"><a className="text-[var(--accent)] underline" href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(`${stock.exchange}:${symbol}`)}&interval=${timeframe === "1W" ? "W" : timeframe === "1M" ? "M" : "D"}`} target="_blank" rel="noopener noreferrer">Mở dữ liệu thật trên TradingView ↗</a></p>
+        <iframe key={chartUrl} title={`Biểu đồ ${symbol}`} src={chartUrl} allow="fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" className="vps-chart block w-full h-[560px] border-0 max-[700px]:h-[440px]"/>
+        <p className="px-6 py-3 text-sm"><a className="text-[var(--accent)] underline" href={chartUrl} target="_blank" rel="noopener noreferrer">Mở biểu đồ ↗</a></p>
       </div>
       {sidebar && <aside className="chart-quant [border-left-width:1px] [border-left-style:solid] [border-left-color:var(--border)] [padding:20px] min-w-0 [max-height:650px] overflow-y-auto max-[1100px]:[border-left-width:0] max-[1100px]:[border-top-width:1px] max-[1100px]:[border-top-style:solid] max-[1100px]:[border-top-color:var(--border)] max-[1100px]:[max-height:none] max-[700px]:[padding:16px]" aria-label={`Phân tích bên chart ${symbol}`}><QuantPanel key={symbol} symbol={symbol} compact/></aside>}
     </div>

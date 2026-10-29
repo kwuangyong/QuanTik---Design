@@ -6,7 +6,7 @@ import { stamp, type ConfigPage, type ConfigVersion } from "@/lib/api/contracts"
 import { PageHeading, Panel } from "../ui";
 import { Confirm, DataTable, ErrorNotice, Field, Reason, ResourceState, useResource } from "../account/common";
 const operationFields = ["enabled", "ingestion_enabled", "screening_enabled", "snapshots_enabled", "training_enabled", "auto_promote"];
-const labels: Record<string, string> = { enabled: "Vận hành tự động", ingestion_enabled: "Nạp dữ liệu", screening_enabled: "Sàng lọc", snapshots_enabled: "Tạo snapshot", training_enabled: "Huấn luyện", auto_promote: "Tự công bố mô hình đạt kiểm định", retry_seconds: "Khoảng thử lại (giây)", maximum_attempts: "Số lần thử tối đa", task_timeout_seconds: "Thời gian tối đa mỗi tác vụ (giây)", history_calendar_days: "Số ngày lịch sử" };
+const labels: Record<string, string> = { enabled: "Vận hành tự động", ingestion_enabled: "Nạp dữ liệu", screening_enabled: "Sàng lọc", snapshots_enabled: "Chuẩn bị dữ liệu phân tích", training_enabled: "Huấn luyện", auto_promote: "Tự công bố mô hình đạt kiểm định", retry_seconds: "Khoảng thử lại (giây)", maximum_attempts: "Số lần thử tối đa", task_timeout_seconds: "Thời gian tối đa mỗi tác vụ (giây)", history_calendar_days: "Số ngày lịch sử" };
 const numeric: [
     string,
     number,

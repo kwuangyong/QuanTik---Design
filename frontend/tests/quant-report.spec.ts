@@ -29,26 +29,59 @@ test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", as
   await expect(page.getByRole("heading", { name: /Đã tiếp nhận/ })).toBeVisible();
   expect(state.payloads[0]).toEqual({ symbol: "FPT", target_session: "2026-10-16", sizing: { account_size_vnd: 100000000, max_position_risk_ratio: 0.02 } });
   state.status = "SUCCEEDED";
-  await expect(page.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+  const overview = page.getByRole("region", { name:"Tổng hợp và khuyến nghị", exact:true });
+  await expect(overview.getByRole("heading", { name:"Theo dõi", exact:true })).toBeVisible({ timeout:10000 });
+  await expect(overview.getByText("Kỳ vọng sau chi phí", { exact:true })).toBeVisible();
+  await expect(page.locator(".quant-report-section")).toHaveCount(0);
+  await expect(page.getByRole("img", { name:"Lịch sử giá đóng cửa FPT", exact:true })).toBeVisible();
+  const scenario = page.getByRole("region", { name:"Kịch bản giá dễ hiểu", exact:true });
+  const scene = scenario.getByRole("img", { name:"Dải kịch bản 3D FPT", exact:true });
+  await expect(scene).toBeVisible();
+  const before = await scene.locator('[data-testid="scenario-slice"]').getAttribute("points");
+  await scene.focus(); await page.keyboard.press("ArrowRight");
+  expect(await scene.locator('[data-testid="scenario-slice"]').getAttribute("points")).not.toBe(before);
+  await scenario.getByRole("slider", { name:"Phiên mô phỏng đang xem", exact:true }).focus();
+  await page.keyboard.press("Home");
+  await expect(scenario.getByRole("slider", { name:"Phiên mô phỏng đang xem", exact:true })).toHaveValue("0");
+  await expect(scenario.getByText("99.000 ₫", { exact:true })).toBeVisible();
+  await scenario.getByRole("button", { name:"Biểu đồ 2D", exact:true }).click();
+  await expect(scenario.getByRole("img", { name:"Dải giá Monte Carlo FPT", exact:true })).toBeVisible();
+  await expect(scenario.getByText("Phiên +1", { exact:true })).toBeVisible();
+  const trend = page.getByRole("region", { name:"Xu hướng dễ hiểu", exact:true });
+  await trend.getByRole("button", { name:"Trạng thái 3D", exact:true }).click();
+  await expect(trend.getByRole("img", { name:"Trạng thái thị trường 3D FPT", exact:true })).toBeVisible();
+  await expect(trend.getByText("70%", { exact:true })).toBeVisible();
+  await trend.getByRole("button", { name:"Đường giá", exact:true }).click();
+  await scenario.getByRole("button", { name:"Mô hình 3D", exact:true }).click();
+  const risk = page.getByRole("region", { name:"Rủi ro dễ hiểu", exact:true });
+  await risk.getByRole("button", { name:"Độ dao động sắp tới", exact:true }).click();
+  await expect(risk.getByRole("img", { name:"Biến động dự báo GARCH", exact:true })).toBeVisible();
+  await risk.getByRole("button", { name:"Mức giảm đã xảy ra", exact:true }).click();
+  await page.screenshot({ path:`test-results/ui/${test.info().project.name}/analysis-simple.png`, fullPage:true, scale:"css" });
+  await overview.screenshot({ path:`test-results/ui/${test.info().project.name}/analysis-synthesis.png`, scale:"css" });
+  await scenario.screenshot({ path:`test-results/ui/${test.info().project.name}/analysis-scenarios.png`, scale:"css" });
+  await page.getByText("Đọc nhận định đầy đủ", { exact:true }).click();
+  await expect(page.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact:true }).first()).toBeVisible();
+  await page.getByText("Xem phân tích chuyên sâu", { exact:true }).click();
   await expect(page.locator(".quant-report-section")).toHaveCount(16);
-  await expect(page.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Xâu chuỗi các mô hình và khuyến nghị", exact: true })).toBeVisible();
+  await expect(page.locator(".quant-report-section[open]")).toHaveCount(0);
+  const visuals = page.getByRole("region", { name:"Visual Quant FPT", exact:true });
   for (const name of ["Dải giá Monte Carlo FPT", "Phân phối lợi suất cuối kỳ", "Lịch sử trạng thái HMM FPT", "Sụt giảm từ đỉnh FPT", "Hồ sơ nhân tố chuẩn hóa", "Biến động dự báo GARCH"]) {
-    await expect(page.getByRole("img", { name, exact: true })).toBeVisible();
+    await expect(visuals.getByRole("img", { name, exact:true })).toBeVisible();
   }
-  await page.getByText("Xem dữ liệu biểu đồ", { exact: true }).first().click();
-  await expect(page.getByRole("columnheader", { name: "P05 (VND)", exact: true })).toBeVisible();
-  await expect(page.getByText(/100\.000/).first()).toBeVisible();
-  await expect(page.getByText("nghìn ₫", { exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Xem kết quả mẫu", exact: true })).toHaveCount(0);
+  await visuals.getByText("Xem dữ liệu biểu đồ", { exact:true }).first().click();
+  await expect(page.getByRole("columnheader", { name:"P05 (VND)", exact:true })).toBeVisible();
+  await expect(page.getByText("nghìn ₫", { exact:true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name:"Xem kết quả mẫu", exact:true })).toHaveCount(0);
   await page.reload();
-  await expect(page.getByRole("heading", { name: /Đã hoàn tất/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name:/Đã hoàn tất/ })).toBeVisible();
+  await expect(page.locator(".quant-report-section")).toHaveCount(0);
   expect(state.created).toBe(1); expect(state.unknown).toEqual([]); expect(errors).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();
-  await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
-  await page.screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-live.png`, scale: "css" });
-  await page.getByRole("region", { name: "Tổng hợp và khuyến nghị", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-synthesis.png`, scale: "css" });
-  await page.getByRole("region", { name: "Visual Quant FPT", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-visuals.png`, scale: "css" });
+  await page.getByRole("button", { name:"Chuyển chế độ sáng", exact:true }).click();
+  await expect(page.locator(".terminal")).toHaveAttribute("data-theme", "light");
+  await page.getByRole("region", { name:"Kịch bản giá dễ hiểu", exact:true }).screenshot({ path:`test-results/ui/${test.info().project.name}/analysis-scenarios-light.png`, scale:"css" });
+
  });
 
 test("Quant: không dùng mẫu để lấp biểu đồ mô hình còn thiếu", async ({ page }) => {
@@ -60,7 +93,29 @@ test("Quant: không dùng mẫu để lấp biểu đồ mô hình còn thiếu"
   await expect(page.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Sụt giảm từ đỉnh FPT", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Dải giá Monte Carlo FPT", exact: true })).toHaveCount(0);
-  await expect(page.getByText(/Báo cáo này chưa có dữ liệu cho biểu đồ/).first()).toBeVisible();
+  await expect(page.getByRole("img", { name:"Dải kịch bản 3D FPT", exact:true })).toHaveCount(0);
+  await expect(page.getByText("Báo cáo chưa có dữ liệu mô phỏng hợp lệ để vẽ kịch bản 2D hoặc 3D.")).toBeVisible();
+});
+
+test("Quant: không biến fallback hay chỉ tiêu lỗi thành kết luận mua", async ({ page }) => {
+  const state = await analysisFixture(page); state.status = "SUCCEEDED";
+  state.report.decision = { action:"BUY_NOW", executable:false, reason_codes:["TIMING_NOT_READY"] };
+  state.report.sections.costs.status = "UNAVAILABLE";
+  state.report.sections.hmm.metrics = { hmm:{ current:"BULL", method:"fallback", state_probs:{ BULL:70, SIDEWAY:20, BEAR:10 } } };
+  state.report.sections.garch.metrics = { garch:{ garch:{ available:false, forecast_vol:[1,2,3] } } };
+  state.report.research!.cone[1].p50 = -1;
+  await page.goto("/analysis?symbol=FPT");
+  await page.getByRole("button", { name:"Gửi yêu cầu Quant FPT", exact:true }).click();
+  await page.getByRole("button", { name:"Xác nhận", exact:true }).click();
+  const overview=page.getByRole("region", { name:"Tổng hợp và khuyến nghị", exact:true });
+  await expect(overview.getByRole("heading", { name:"Chờ hoàn tất điều kiện", exact:true })).toBeVisible();
+  await expect(overview.getByText("2,5%", { exact:true })).toHaveCount(0);
+  await page.getByRole("button", { name:"Trạng thái 3D", exact:true }).click();
+  await expect(page.getByRole("img", { name:"Trạng thái thị trường 3D FPT", exact:true })).toHaveCount(0);
+  await expect(page.getByText(/Báo cáo chưa có tỷ lệ trạng thái từ mô hình chính/)).toBeVisible();
+  await expect(page.getByRole("img", { name:"Dải kịch bản 3D FPT", exact:true })).toHaveCount(0);
+  await page.getByRole("button", { name:"Độ dao động sắp tới", exact:true }).click();
+  await expect(page.getByRole("img", { name:"Biến động dự báo GARCH", exact:true })).toHaveCount(0);
 });
 
 test("Quant: mất phản hồi sau tiếp nhận vẫn retry cùng key khi hết hạn mức", async ({ page }) => {
