@@ -106,6 +106,7 @@ test('Readable report: one module, numbered blocks, 13px minimum and actual inte
     await nav.getByRole('button',{name:label,exact:true}).click();
     const section=page.locator(`[data-quant-module="${name}"]`);
     await section.locator('details > summary').evaluateAll(items=>items.forEach(item=>{(item.parentElement as HTMLDetailsElement).open=true;}));
+    await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
     const audit=await page.evaluate(auditQuantTypography);
     expect(audit.checked).toBeGreaterThan(0);expect(audit.fontLoaded).toBeTruthy();expect(audit.violations,name).toEqual([]);
   }

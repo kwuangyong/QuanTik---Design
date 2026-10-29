@@ -15,13 +15,12 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
     const element = root.current;
     if (!element) return;
     const seen = new Set<SVGSVGElement>();
-    const resize = new ResizeObserver(entries => {
-      for (const entry of entries) {
-        const svg = entry.target as SVGSVGElement, width = entry.contentRect.width;
+    const fitText = (svg: SVGSVGElement) => {
+        const width = svg.getBoundingClientRect().width;
         if (width > 0 && svg.viewBox.baseVal.width > 0) {
           const matrix = svg.getScreenCTM();
           const renderedScale = matrix ? Math.hypot(matrix.c, matrix.d) : width / svg.viewBox.baseVal.width;
-          if (!(renderedScale > 0)) continue;
+          if (!(renderedScale > 0)) return;
           const scale = 1 / renderedScale;
           // Keep computed AND screen font sizes >= the minimum. Cancel only the
           // outer viewBox scaling around each text anchor, preserving chart geometry.
@@ -30,17 +29,20 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
             text.setAttribute("transform",`translate(${x} ${y}) scale(${scale}) translate(${-x} ${-y})`);
           });
         }
-      }
-    });
+    };
+    const resize = new ResizeObserver(entries => entries.forEach(entry => fitText(entry.target as SVGSVGElement)));
     const scan = () => {
       seen.forEach(svg => { if (!element.contains(svg)) { resize.unobserve(svg); seen.delete(svg); } });
       element.querySelectorAll<SVGSVGElement>("svg").forEach(svg => {
-        if (!seen.has(svg) && svg.querySelector("text")) { seen.add(svg); resize.observe(svg); }
+        if (svg.querySelector("text")) {
+          if (!seen.has(svg)) { seen.add(svg); resize.observe(svg); }
+          fitText(svg);
+        }
       });
     };
     scan();
     const mutations = new MutationObserver(scan);
-    mutations.observe(element, { childList: true, subtree: true });
+    mutations.observe(element, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "hidden", "viewBox"] });
     return () => { resize.disconnect(); mutations.disconnect(); };
   }, []);
   const [selectedModule, setSelectedModule] = useState(compact ? "" : "statistics");
