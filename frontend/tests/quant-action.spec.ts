@@ -62,7 +62,7 @@ test("Quant action: mọi chỉ số có popup, công thức và thao tác đón
   const loss = card.getByRole("button", { name: "P(lỗ trên 3% trong T+2)", exact: true });
   await loss.click();
   await expect(page.getByRole("tooltip")).toContainText("không tự động là lỗ 3% NAV");
-  await page.mouse.click(2, 2);
+  await page.getByRole("tooltip").getByRole("button", {name:"Đóng giải thích thuật ngữ", exact:true}).click();
   await expect(page.getByRole("tooltip")).toHaveCount(0);
   const kelly = card.getByRole("button", { name: "Kelly Criterion", exact: true });
   await kelly.focus();

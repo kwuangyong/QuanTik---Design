@@ -10,6 +10,7 @@ export function reportFixture(): AnalysisReport {
     sections: Object.fromEntries(names.map(name => [name, { status: "AVAILABLE", reason_codes: [], units: { price: "VND" }, metrics: { status: "PASS" } }])) };
   report.sections.statistics.metrics = { stats: { sharpe: 1.2, max_dd_pct: -12, ann_vol_pct: 25 }, _price_close: [100000, 101000, 102000], _price_dates: ["2026-10-14", "2026-10-15", "2026-10-16"] };
   report.sections.costs.metrics = { costs: { net_forecast_pct: 2.5 } };
+  report.sections.hmm.metrics = { hmm: { current: "BULL", method: "hmm", state_probs: { BULL: 70, SIDEWAY: 20, BEAR: 10 } } };
   report.sections.trade_plan.metrics = { sl: { entry: 100000, sl_swing: 97000, tp1: 105000, tp2: 110000 }, sizing_mode: "REFERENCE" };
   report.sections.simulation_risk.metrics = { simulation_risk: { mc_path: { median: [102000, 103000, 104000], lower: [101000, 99000, 97000], upper: [103000, 107000, 111000] } } };
   report.sections.garch.metrics = { garch: { garch: { forecast_vol: [1.2, 1.3, 1.4] } } };

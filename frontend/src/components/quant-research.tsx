@@ -16,7 +16,7 @@ const accent = "var(--accent)", positive = "var(--positive)", negative = "var(--
 type Point = { x: number; value: number; low?: number; high?: number; innerLow?: number; innerHigh?: number; state?: string; label?: string };
 const stateColor = (state = "") => state.toUpperCase() === "BULL" ? positive : state.toUpperCase() === "BEAR" ? negative : "var(--neutral)";
 const finiteArray = (value: unknown): value is number[] => Array.isArray(value) && value.every(v => typeof v === "number" && Number.isFinite(v));
-function Empty() { return <p className="flex min-h-48 items-center justify-center px-4 text-center text-sm text-[var(--muted)]">Báo cáo này chưa có dữ liệu cho biểu đồ. Dữ liệu mẫu không được dùng để thay thế.</p>; }
+function Empty() { return <p className="flex min-h-48 items-center justify-center px-4 text-center text-sm text-[var(--muted)]">Báo cáo này chưa có dữ liệu cho biểu đồ.</p>; }
 function useChartWidth() {
   const ref = useRef<HTMLDivElement>(null), [width, setWidth] = useState(560);
   useEffect(() => {
@@ -37,7 +37,7 @@ function Panel({ title, term, children, note, table }: { title: string; term?: s
   </article>;
 }
 
-export function LinePlot({ title, rows, unit, band = false, regime = false, drawdown = false }: { title: string; rows: Point[]; unit: string; band?: boolean; regime?: boolean; drawdown?: boolean }) {
+export function LinePlot({ title, rows, unit, band = false, regime = false, drawdown = false, plain = false, selectedIndex }: { title: string; rows: Point[]; unit: string; band?: boolean; regime?: boolean; drawdown?: boolean; plain?: boolean; selectedIndex?: number }) {
   const [hover, setHover] = useState<number | null>(null);
   const { ref, width: W } = useChartWidth(), R = W - 20;
   if (rows.length < 2) return <div ref={ref}><Empty/></div>;
@@ -46,9 +46,9 @@ export function LinePlot({ title, rows, unit, band = false, regime = false, draw
   const x = (i: number) => L + i / (rows.length - 1) * (R - L), y = (v: number) => B - (v - min + pad) / (max - min + 2 * pad) * (B - T);
   const line = (key: "value" | "low" | "high" | "innerLow" | "innerHigh") => rows.map((p, i) => `${x(i)},${y(p[key] ?? p.value)}`).join(" ");
   const area = (lo: "low" | "innerLow", hi: "high" | "innerHigh") => `${line(hi)} ${rows.map((p, i) => `${x(i)},${y(p[lo] ?? p.value)}`).reverse().join(" ")}`;
-  const index = Math.min(hover ?? rows.length - 1, rows.length - 1), current = rows[index];
+  const index = Math.max(0, Math.min(hover ?? selectedIndex ?? rows.length - 1, rows.length - 1)), current = rows[index];
   return <div ref={ref}>
-    <div aria-live="polite" className="mb-2 flex min-h-10 flex-wrap gap-x-3 text-[13px] text-[var(--muted)]"><span>{current.label || `Phiên +${current.x}`}</span><strong className="text-[var(--text)]">{number(current.value)} {unit}</strong>{regime && <span>{current.state}</span>}{band && <span>P05–P95: {number(current.low)}–{number(current.high)}</span>}</div>
+    <div aria-live="polite" className="mb-2 flex min-h-10 flex-wrap gap-x-3 text-[13px] text-[var(--muted)]"><span>{current.label || `Phiên +${current.x}`}</span><strong className="text-[var(--text)]">{number(current.value)} {unit}</strong>{regime && <span>{current.state}</span>}{band && <span>{plain ? "Dải mô phỏng 90%" : "P05–P95"}: {number(current.low)}–{number(current.high)}</span>}</div>
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={title} className="block h-auto w-full" onPointerMove={event => { const box = event.currentTarget.getBoundingClientRect(); setHover(Math.max(0, Math.min(rows.length - 1, Math.round(((event.clientX - box.left) / box.width * W - L) / (R - L) * (rows.length - 1))))); }} onPointerLeave={() => setHover(null)}>
       <title>{`${title} · ${unit}`}</title><text x={L} y="15" fill={muted} fontSize="13">{unit}</text>
       {[0, 1, 2, 3].map(i => { const v = min + (max - min) * i / 3; return <g key={i}><line x1={L} x2={R} y1={y(v)} y2={y(v)} stroke="var(--border)"/><text x={L - 8} y={y(v) + 4} fill={muted} fontSize="13" textAnchor="end">{unit === "VND" ? number(Math.round(v)) : number(Math.round(v * 100) / 100)}</text></g>; })}
@@ -56,10 +56,10 @@ export function LinePlot({ title, rows, unit, band = false, regime = false, draw
       {band && <><polygon points={area("low", "high")} fill={positive} opacity=".12"/><polygon points={area("innerLow", "innerHigh")} fill={positive} opacity=".25"/></>}
       {drawdown && <polygon points={`${L},${y(0)} ${line("value")} ${R},${y(0)}`} fill={negative} opacity=".15"/>}
       <polyline points={line("value")} fill="none" stroke={drawdown ? negative : regime ? "var(--text)" : accent} strokeWidth="2"/>
-      {hover !== null && <><line x1={x(index)} x2={x(index)} y1={T} y2={B} stroke={muted} strokeDasharray="3 3"/><circle cx={x(index)} cy={y(current.value)} r="4" fill={accent}/></>}
+      {(hover !== null || selectedIndex !== undefined) && <><line x1={x(index)} x2={x(index)} y1={T} y2={B} stroke={muted} strokeDasharray="3 3"/><circle cx={x(index)} cy={y(current.value)} r="4" fill={accent}/></>}
       <text x={L} y="237" fill={muted} fontSize="13">{rows[0].label || `+${rows[0].x} phiên`}</text><text x={R} y="237" textAnchor="end" fill={muted} fontSize="13">{rows.at(-1)?.label || `+${rows.at(-1)?.x} phiên`}</text>
     </svg>
-    {band && <div className="flex gap-4 text-[13px] text-[var(--muted)]"><span>P05–P95</span><span>P25–P75</span><span className="text-[var(--accent)]">Trung vị P50</span></div>}
+    {band && <div className="flex flex-wrap gap-4 text-[13px] text-[var(--muted)]"><span>{plain ? "Vùng rộng: 90% kịch bản" : "P05–P95"}</span><span>{plain ? "Vùng trong: 50% kịch bản" : "P25–P75"}</span><span className="text-[var(--accent)]">{plain ? "Mốc giữa" : "Trung vị P50"}</span></div>}
     {regime && <div className="flex gap-4 text-[13px]"><span style={{ color: positive }}>BULL</span><span className="text-[var(--neutral)]">SIDEWAY</span><span style={{ color: negative }}>BEAR</span></div>}
   </div>;
 }

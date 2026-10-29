@@ -52,3 +52,9 @@ Preview có liên kết riêng cho 5 tình huống. Bộ mẫu dùng chung cho N
 - Trình duyệt local không khởi động: `bwrap: Can't create file at /home/agent/.codex/sessions: Read-only file system`. Không tuyên bố đã xác minh screenshot/computed style bằng local browser. Kết quả browser của GitHub Actions được ghi trên PR.
 - Chưa lấy báo cáo thật của API/VPS; đây là kiểm tra hợp đồng render bằng dữ liệu tổng hợp, không chứng nhận pipeline production tính đủ mô hình.
 - PR gồm toàn bộ thay đổi giao diện reader và hồ sơ 9 nhân tố đã duyệt trong phiên, cộng phần audit này. Không gồm PR quét sàn/Watchlist #12.
+
+## Kết hợp main thay đổi trong phiên
+
+Main cập nhật tới f06165b (merge PR #11, có các thay đổi bảng điện/launch và các component reader đơn giản). Giữ toàn bộ nội dung upstream không thuộc PR này. LinePlot giữ tùy chọn `plain` / `selectedIndex` mới. Route `QuantReport` trên chính main vẫn gọi `LiveQuantReport`; vì vậy test route giữ giao diện 16 module thực tế. Component `SimpleQuantReport` mới được giữ nguyên và có test render riêng; không tự chuyển luồng mặc định sang component chưa được nối vào route.
+
+Browser CI lần đầu xác nhận 10 bài kiểm tra theo 5 tình huống module đều qua. Đồng thời phát hiện và đã sửa: tooltip nhân tố đóng khi scroll, mất nhãn Kelly disabled khi lọc, race reduced-motion HMM, font 11px còn ở chú thích tooltip. Query font bỏ qua nội dung trong details đang đóng (không được vẽ lên màn hình). Ảnh ARIMA và Phân phối desktop/mobile được sinh trong artifact GitHub Actions.

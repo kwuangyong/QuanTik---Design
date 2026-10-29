@@ -10,6 +10,7 @@ function load(file) {
 }
 const {completeQuantReport,quantReportSample,quantSampleCases}=load('frontend/tests/fixtures/quant-report-sample.ts');
 const {QuantModelSection}=load('frontend/src/components/quant-model-section.tsx');
+const {SimpleQuantReport}=load('frontend/src/components/quant-simple-report.tsx');
 const {QuantResearchVisuals}=load('frontend/src/components/quant-research.tsx');
 const {QuantActionSummary}=load('frontend/src/components/quant-action-summary.tsx');
 const {quantModuleItems}=load('frontend/src/components/quant-module-navigation.tsx');
@@ -83,4 +84,13 @@ test('Missing section stays visible and factual zero/false remain usable',()=>{
  report.sections.arima={status:'AVAILABLE',reason_codes:[],units:{},metrics:{arima:{best:{order:[0,0,0],aic:0,bic:0},stationarity:{adf_p:0,stationary:false}}}};
  assert.equal(moduleAvailability('arima',report.sections.arima),'Có dữ liệu');
  const html=text(render(report,'arima'));assert.match(html,/\(0, 0, 0\)/);assert.match(html,/Không/);
+});
+
+// Upstream main introduced this alternate reader without wiring it into QuantReport.
+// Preserve and exercise it directly, while route tests cover the actual LiveQuantReport.
+test('Upstream alternate reader still renders its overview and four evidence cards',()=>{
+ const report=completeQuantReport(),before=JSON.stringify(report);
+ const html=renderToStaticMarkup(React.createElement(SimpleQuantReport,{report,showAction:true}));
+ for(const label of ['Tổng hợp và khuyến nghị','Xu hướng dễ hiểu','Kịch bản giá dễ hiểu','Rủi ro dễ hiểu','Kế hoạch giao dịch']) assert.ok(html.includes(`aria-label="${label}"`),label);
+ assert.doesNotMatch(text(html),/undefined|NaN|Infinity/);assert.equal(JSON.stringify(report),before);
 });

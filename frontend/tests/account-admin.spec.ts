@@ -27,6 +27,27 @@ const planId = "22222222-2222-4222-8222-222222222222";
 const orderId = "33333333-3333-4333-8333-333333333333";
 const plan = { id: planId, name: "Gói kiểm thử", price_vnd: 150000, duration_days: 30, analysis_quota: 25, daily_request_limit: 25, replaces_plan_id: null, active_limit: 2, available: true, currency: "VND", features: { screening: true, analysis: true } };
 const token = { access_token: "fixture-access-only", expires_in: 900 };
+test("Ưu đãi: giá 149k từ API, niêm yết 229k và Free tháng đầu", async ({ page }) => {
+  await fixture(page);
+  let currentPrice = 149000;
+  await page.route("**/api/v1/plans", route => route.fulfill({ contentType: "application/json", body: JSON.stringify({
+    payments_enabled: false,
+    items: [
+      { ...plan, id: "free", name: "Free", price_vnd: 0, daily_request_limit: 5, active_limit: 1 },
+      { ...plan, name: "QuanTik Pro", price_vnd: currentPrice, daily_request_limit: 20, active_limit: 1 },
+    ],
+  }) }));
+  await page.goto("/plans");
+  const paid = page.locator("article").filter({ has: page.getByRole("heading", { name: "QuanTik Pro", exact: true }) });
+  await expect(paid.locator("del")).toContainText("229.000");
+  await expect(paid.locator(".account-price")).toContainText("149.000");
+  await expect(page.getByText("Miễn phí tháng đầu (30 ngày)", { exact: false })).toBeVisible();
+  await expect(page.getByText("Thanh toán hiện đang tạm đóng.", { exact: false })).toBeVisible();
+  currentPrice = 229000;
+  await page.reload();
+  await expect(paid.locator(".account-price")).toContainText("229.000");
+  await expect(paid.locator("del")).toHaveCount(0);
+});
 async function fixture(page: Page, options: { user?: boolean; admin?: boolean } = {}) {
   const origin = String(test.info().project.use.baseURL || "http://127.0.0.1:3107");
   if (options.admin) await page.context().addCookies([{ name: "quantik_admin_gate", value: "fixture-access-only", domain: new URL(origin).hostname, path: "/admin", httpOnly: true, sameSite: "Strict" }]);

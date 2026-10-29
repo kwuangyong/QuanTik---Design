@@ -25,8 +25,8 @@ export type Stock = {
   foreignSell: Quote;
   foreignRoom: Quote;
   quantScore: Quote;
-  bid: { price: Quote; volume: Quote }[];
-  ask: { price: Quote; volume: Quote }[];
+  bid: { price: Quote; volume: Quote; priceLabel?: string }[];
+  ask: { price: Quote; volume: Quote; priceLabel?: string }[];
 };
 
 export const demoEnabled = demo.enabled;
