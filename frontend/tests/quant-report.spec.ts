@@ -31,8 +31,9 @@ test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", as
   state.status = "SUCCEEDED";
   await expect(page.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact: true }).first()).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".quant-report-section")).toHaveCount(16);
+  await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo", { exact: true }).click();
   await expect(page.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Xâu chuỗi các mô hình và khuyến nghị", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Xâu chuỗi các mô hình và khuyến nghị", exact: true })).toHaveCount(0);
   for (const name of ["Dải giá Monte Carlo FPT", "Phân phối lợi suất cuối kỳ", "Lịch sử trạng thái HMM FPT", "Sụt giảm từ đỉnh FPT", "Hồ sơ nhân tố chuẩn hóa", "Biến động dự báo GARCH"]) {
     await expect(page.getByRole("img", { name, exact: true })).toBeVisible();
   }
@@ -47,7 +48,7 @@ test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", as
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth+1)).toBeTruthy();
   await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
   await page.screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-live.png`, scale: "css" });
-  await page.getByRole("region", { name: "Tổng hợp và khuyến nghị", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-synthesis.png`, scale: "css" });
+  await page.getByRole("region", { name: "Phân tích từng module", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-synthesis.png`, scale: "css" });
   await page.getByRole("region", { name: "Visual Quant FPT", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-visuals.png`, scale: "css" });
  });
 
@@ -57,6 +58,7 @@ test("Quant: không dùng mẫu để lấp biểu đồ mô hình còn thiếu"
   await page.goto("/analysis?symbol=FPT");
   await page.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
   await page.getByRole("button", { name: "Xác nhận", exact: true }).click();
+  await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo", { exact: true }).click();
   await expect(page.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Sụt giảm từ đỉnh FPT", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Dải giá Monte Carlo FPT", exact: true })).toHaveCount(0);

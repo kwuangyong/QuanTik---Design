@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import katex from 'katex';
 import { getTerm, glossary, type TermDefinition } from '@/content/legacy/glossary';
 import { usePreferences } from './preferences';
+import quantStyles from './quant-reader.module.css';
 export function Formula({ latex }: {
     latex: string;
 }) {
@@ -13,11 +14,12 @@ export function Formula({ latex }: {
     return <div className="term-formula overflow-x-auto [padding:9px_2px] [font-size:14px] [max-width:100%]" dangerouslySetInnerHTML={{ __html: html }}/>;
 }
 // The five sections and every content field retain the old TermHint text.
-export function TermContent({ term }: {
+export function TermContent({ term, vietnamese = false }: {
     term: TermDefinition;
+    vietnamese?: boolean;
 }) {
     return <>
-    <div className="term-title [&_strong]:[font-size:15px] [&_strong]:[color:var(--term-accent)]"><strong>{term.en}</strong></div><small>{term.vi}</small>
+    <div className="term-title [&_strong]:[font-size:15px] [&_strong]:[color:var(--term-accent)]"><strong>{vietnamese ? term.vi : term.en}</strong></div><small>{vietnamese ? "Định nghĩa và cách đọc" : term.vi}</small>
     <h4>01 · Lý thuyết</h4><p>{term.short}</p>
     <h4>02 · Công thức</h4><Formula latex={term.formulaLatex}/><p className="term-note preserve-lines [color:var(--term-dim)] [font-size:11px]! [white-space:pre-wrap]">{term.variables}</p>
     <p className="term-note preserve-lines [color:var(--term-dim)] [font-size:11px]! [white-space:pre-wrap]"><b>Tham số:</b> {term.parameters}</p>
@@ -90,8 +92,8 @@ export default function TermHint({ id, children, definition }: {
     if (!term)
         return <>{children || id}</>;
     return <><button ref={anchor} type="button" className="term-trigger inline [border-width:0] [padding:0] [background:none] [color:inherit] [font:inherit] [line-height:inherit] [text-align:inherit] [text-decoration:underline_dotted] [text-underline-offset:4px] [cursor:help] [.stock-table_&]:inline [.stock-table_&]:[border-width:0] [.stock-table_&]:[padding:0] [.stock-table_&]:[background:none] [.stock-table_&]:[color:inherit] [.stock-table_&]:[font:inherit] [.stock-table_&]:[line-height:inherit] [.stock-table_&]:[text-align:inherit] [.stock-table_&]:[text-decoration:underline_dotted] [.stock-table_&]:[text-underline-offset:4px] [.stock-table_&]:[cursor:help] [&:hover]:[color:var(--accent,_#ff914d)] [&:hover]:[text-decoration-style:solid] [&:focus-visible]:[color:var(--accent,_#ff914d)] [&:focus-visible]:[text-decoration-style:solid]" aria-describedby={mode ? uid : undefined} onPointerEnter={show} onPointerLeave={hide} onFocus={show} onBlur={hide} onClick={e => { e.preventDefault(); e.stopPropagation(); cancel(); setMode(m => m === 'pinned' ? null : 'pinned'); }}>{children || term.en}</button>
-    {mode && host && createPortal(<div ref={popup} id={uid} className="term-popover [color:var(--term-text)] [font:12px/1.6_var(--font-mono),_ui-monospace,_Consolas,_monospace] text-left [white-space:normal] fixed [z-index:300] box-border [background:var(--term-panel)] [border-width:1px] [border-style:solid] [border-color:var(--term-accent)] [border-radius:4px] [box-shadow:0_15px_50px_#0007] [padding:18px] overflow-auto [overscroll-behavior:contain] [&_small]:[color:var(--term-dim)] [&_small]:[font-size:10px] [&_p]:[margin:10px_0] [&_p]:[font-size:12px] [.info-dialog_&_p]:[margin:10px_0] [.info-dialog_&_p]:[font-size:12px] [.info-dialog_&_p]:[line-height:1.6] [.info-dialog_&_p]:[color:var(--term-text)] [&_h4]:[font-size:12px] [&_h4]:[color:var(--term-accent)] [&_h4]:[margin:15px_0_5px]" data-theme={theme} style={position} role="tooltip" onPointerEnter={cancel} onPointerLeave={hide} onClick={e => e.stopPropagation()}>
-      <TermContent term={term}/>
+    {mode && host && createPortal(<div ref={popup} id={uid} className={`term-popover ${anchor.current?.closest(".quant-report") ? quantStyles.popover : ""} [color:var(--term-text)] [font:12px/1.6_var(--font-mono),_ui-monospace,_Consolas,_monospace] text-left [white-space:normal] fixed [z-index:300] box-border [background:var(--term-panel)] [border-width:1px] [border-style:solid] [border-color:var(--term-accent)] [border-radius:4px] [box-shadow:0_15px_50px_#0007] [padding:18px] overflow-auto [overscroll-behavior:contain] [&_small]:[color:var(--term-dim)] [&_small]:[font-size:10px] [&_p]:[margin:10px_0] [&_p]:[font-size:12px] [.info-dialog_&_p]:[margin:10px_0] [.info-dialog_&_p]:[font-size:12px] [.info-dialog_&_p]:[line-height:1.6] [.info-dialog_&_p]:[color:var(--term-text)] [&_h4]:[font-size:12px] [&_h4]:[color:var(--term-accent)] [&_h4]:[margin:15px_0_5px]`} data-theme={theme} data-quant-report={Boolean(anchor.current?.closest(".quant-report"))} style={position} role="tooltip" onPointerEnter={cancel} onPointerLeave={hide} onClick={e => e.stopPropagation()}>
+      <TermContent term={term} vietnamese={Boolean(anchor.current?.closest(".quant-report"))}/>
     </div>, host)}
   </>;
 }

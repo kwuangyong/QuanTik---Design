@@ -1,0 +1,137 @@
+[
+  {
+    "name": "Đủ dữ liệu",
+    "available": 9,
+    "below50": 1,
+    "conflict": true,
+    "scores": [
+      {
+        "name": "Sharpe",
+        "score": 80
+      },
+      {
+        "name": "Dòng tiền",
+        "score": 65
+      },
+      {
+        "name": "Alpha tổng hợp",
+        "score": 63
+      },
+      {
+        "name": "Dự báo sau phí",
+        "score": 78
+      },
+      {
+        "name": "Độ tin cậy dự báo",
+        "score": 65
+      },
+      {
+        "name": "Chất lượng xu hướng",
+        "score": 71
+      },
+      {
+        "name": "Trạng thái HMM",
+        "score": 84
+      },
+      {
+        "name": "Trạng thái biến động",
+        "score": 40
+      },
+      {
+        "name": "Thanh khoản",
+        "score": 90
+      }
+    ],
+    "summary": "Thanh khoản đạt 90/100 và Trạng thái HMM đạt 84/100 là hai nhân tố cao nhất, nằm trong nhóm Mạnh từ mốc 70, cho thấy khả năng giao dịch và bối cảnh trạng thái thị trường là phần hỗ trợ tương đối của hồ sơ; tuy nhiên Trạng thái biến động chỉ 40/100, thuộc nhóm dưới mốc trung tính 50, cho thấy điều kiện biến động còn là điểm hạn chế. Dự báo sau phí đạt 78/100 nhưng độ tin cậy chỉ 65/100, chưa đạt mốc Mạnh 70 nên hai góc nhìn chưa hỗ trợ tương xứng. Cần kiểm tra độ phủ và các nguồn dự báo, rồi đối chiếu rủi ro với kế hoạch dừng lỗ."
+  },
+  {
+    "name": "Thiếu 3 nhân tố",
+    "available": 6,
+    "below50": 1,
+    "conflict": false,
+    "scores": [
+      {
+        "name": "Sharpe",
+        "score": null
+      },
+      {
+        "name": "Dòng tiền",
+        "score": 65
+      },
+      {
+        "name": "Alpha tổng hợp",
+        "score": 63
+      },
+      {
+        "name": "Dự báo sau phí",
+        "score": 78
+      },
+      {
+        "name": "Độ tin cậy dự báo",
+        "score": null
+      },
+      {
+        "name": "Chất lượng xu hướng",
+        "score": 71
+      },
+      {
+        "name": "Trạng thái HMM",
+        "score": 84
+      },
+      {
+        "name": "Trạng thái biến động",
+        "score": 40
+      },
+      {
+        "name": "Thanh khoản",
+        "score": null
+      }
+    ],
+    "summary": "Trạng thái HMM đạt 84/100 và Dự báo sau phí đạt 78/100 là hai nhân tố cao nhất, nằm trong nhóm Mạnh từ mốc 70, cho thấy bối cảnh trạng thái thị trường và triển vọng sau chi phí là phần hỗ trợ tương đối của hồ sơ; tuy nhiên Trạng thái biến động chỉ 40/100, thuộc nhóm dưới mốc trung tính 50, cho thấy điều kiện biến động còn là điểm hạn chế. Còn 3 nhân tố chưa có dữ liệu, vì vậy chưa thể đối chiếu toàn bộ hồ sơ. Cần bổ sung các nhân tố còn thiếu và đọc cùng quyết định gốc của báo cáo."
+  },
+  {
+    "name": "Nhiều nhân tố yếu",
+    "available": 9,
+    "below50": 8,
+    "conflict": true,
+    "scores": [
+      {
+        "name": "Sharpe",
+        "score": 40
+      },
+      {
+        "name": "Dòng tiền",
+        "score": 38
+      },
+      {
+        "name": "Alpha tổng hợp",
+        "score": 35
+      },
+      {
+        "name": "Dự báo sau phí",
+        "score": 75
+      },
+      {
+        "name": "Độ tin cậy dự báo",
+        "score": 30
+      },
+      {
+        "name": "Chất lượng xu hướng",
+        "score": 28
+      },
+      {
+        "name": "Trạng thái HMM",
+        "score": 25
+      },
+      {
+        "name": "Trạng thái biến động",
+        "score": 22
+      },
+      {
+        "name": "Thanh khoản",
+        "score": 20
+      }
+    ],
+    "summary": "Dự báo sau phí đạt 75/100 là nhân tố cao nhất, nằm trong nhóm Mạnh từ mốc 70, cho thấy triển vọng sau chi phí là phần hỗ trợ tương đối của hồ sơ; tuy nhiên Thanh khoản chỉ 20/100, và tổng cộng 8/9 nhân tố dưới mốc trung tính 50, cho thấy khả năng giao dịch còn là điểm hạn chế. Dự báo sau phí đạt 75/100 nhưng độ tin cậy chỉ 30/100, chưa đạt mốc Mạnh 70 nên hai góc nhìn chưa hỗ trợ tương xứng. Cần kiểm tra độ phủ và các nguồn dự báo, rồi đối chiếu rủi ro với kế hoạch dừng lỗ."
+  }
+]
