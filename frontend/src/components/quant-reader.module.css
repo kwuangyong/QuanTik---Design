@@ -29,5 +29,5 @@
 .report [data-quant-module] > summary { list-style: none; }
 .report [data-quant-module] > summary::-webkit-details-marker { display: none; }
 
-.popover .katex * { font-size: max(var(--fs-min,13px),1em) !important; }
+.popover :global(.katex *) { font-size: 13px !important; math-depth: 0; }
 :global([data-theme="light"]) .report { --quant-blue: #355bb9; }

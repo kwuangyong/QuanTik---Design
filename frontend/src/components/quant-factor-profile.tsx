@@ -8,17 +8,17 @@ import {FactorRadar} from './quant-factor-radar';
 import {FactorThreeD} from './quant-factor-3d';
 import styles from './quant-factor-profile.module.css';
 
-type Hint={factor:PresentedFactor;left:number;top:number;pinned:boolean};
+type Hint={factor:PresentedFactor;left:number;top:number;pinned:boolean;anchor:Element};
 export function QuantFactorProfile({data}:{data:QuantResearch['factors']}) {
   const factors=useMemo(()=>presentFactors(data),[data]),reading=useMemo(()=>factorQuickRead(factors),[factors]);
   const [view,setView]=useState<'radar'|'3d'>('radar'),[active,setActive]=useState<string|null>(null),[hint,setHint]=useState<Hint|null>(null),hintId=useId();
   const highlight=active||hint?.factor.id;
   const showHint=(factor:PresentedFactor,anchor:Element,pin=false)=>{
     const rect=anchor.getBoundingClientRect(),width=Math.min(320,innerWidth-24),left=Math.max(12,Math.min(rect.left,innerWidth-width-12)),top=rect.bottom+290<innerHeight?rect.bottom+10:Math.max(12,rect.top-290);
-    setHint(current=>pin&&current?.pinned&&current.factor.id===factor.id?null:!pin&&current?.pinned?current:{factor,left,top,pinned:pin});
+    setHint(current=>pin&&current?.pinned&&current.factor.id===factor.id?null:!pin&&current?.pinned?current:{factor,left,top,pinned:pin,anchor});
   };
   const hideHint=()=>setHint(current=>current?.pinned?current:null);
-  useEffect(()=>{if(!hint)return;const dismiss=(event:KeyboardEvent)=>{if(event.key==='Escape')setHint(null);};const outside=(event:PointerEvent)=>{if(!(event.target instanceof Element)||!event.target.closest('[data-factor-card],[data-factor-point],[data-factor-column],[data-factor-tooltip]'))setHint(null);};const reposition=()=>setHint(null);document.addEventListener('keydown',dismiss);document.addEventListener('pointerdown',outside);document.addEventListener('scroll',reposition,true);window.addEventListener('resize',reposition);return()=>{document.removeEventListener('keydown',dismiss);document.removeEventListener('pointerdown',outside);document.removeEventListener('scroll',reposition,true);window.removeEventListener('resize',reposition);};},[hint]);
+  useEffect(()=>{if(!hint)return;const dismiss=(event:KeyboardEvent)=>{if(event.key==='Escape')setHint(null);};const outside=(event:PointerEvent)=>{if(!(event.target instanceof Element)||!event.target.closest('[data-factor-card],[data-factor-point],[data-factor-column],[data-factor-tooltip]'))setHint(null);};const reposition=()=>setHint(current=>{if(!current?.pinned)return null;const rect=current.anchor.getBoundingClientRect(),width=Math.min(320,innerWidth-24);return {...current,left:Math.max(12,Math.min(rect.left,innerWidth-width-12)),top:rect.bottom+290<innerHeight?rect.bottom+10:Math.max(12,rect.top-290)};});document.addEventListener('keydown',dismiss);document.addEventListener('pointerdown',outside);document.addEventListener('scroll',reposition,true);window.addEventListener('resize',reposition);return()=>{document.removeEventListener('keydown',dismiss);document.removeEventListener('pointerdown',outside);document.removeEventListener('scroll',reposition,true);window.removeEventListener('resize',reposition);};},[hint]);
   return <section className={styles.profile} aria-label="Hồ sơ nhân tố" data-factor-profile="true">
     <div className={styles.heading}><h3>Hồ sơ nhân tố</h3><span className={styles.scale}>{factors.filter(p=>p.score!=null).length}/9 nhân tố có dữ liệu</span></div>
     <p className={styles.scale} data-factor-scale="true">{factorScaleNote}</p>
@@ -32,6 +32,6 @@ export function QuantFactorProfile({data}:{data:QuantResearch['factors']}) {
       <p><strong>Đo điều gì: </strong>{factorReadingRules[p.id].measure}</p><p><strong>Đang nói gì: </strong>{factorReading(p.id,p.score)}</p>
     </article>;})}</div></section>)}
     <p className={styles.footer}>Đọc từng nhân tố, không tự tổng hợp thành điểm mua. Các điểm phản ánh nhân tố chuẩn hóa của báo cáo, không phải xác suất có lãi.</p>
-    {hint&&<div role="tooltip" id={hintId} className={styles.tooltip} data-factor-tooltip="true" data-quant-report="true" style={{left:hint.left,top:hint.top}}><strong>{hint.factor.label}</strong><p>Giá trị nguồn: {number(hint.factor.value)}.</p><p>{hint.factor.score==null?`Không quy đổi: ${hint.factor.status.replace("miền","phạm vi").toLowerCase()}. Phạm vi nguồn: [${number(hint.factor.min)}; ${number(hint.factor.max)}].`:`Quy đổi hiển thị: (${number(hint.factor.value)} − (${number(hint.factor.min)})) / (${number(hint.factor.max)} − (${number(hint.factor.min)})) × 100 ≈ ${hint.factor.score}.`}</p><p>{factorReadingRules[hint.factor.id].directionNote}</p><button type="button" onClick={()=>setHint(null)}>Đóng giải thích</button></div>}
+    {hint&&<div role="tooltip" id={hintId} className={styles.tooltip} data-factor-tooltip="true" data-quant-report="true" style={{left:hint.left,top:hint.top,pointerEvents:hint.pinned?"auto":"none"}}><strong>{hint.factor.label}</strong><p>Giá trị nguồn: {number(hint.factor.value)}.</p><p>{hint.factor.score==null?`Không quy đổi: ${hint.factor.status.replace("miền","phạm vi").toLowerCase()}. Phạm vi nguồn: [${number(hint.factor.min)}; ${number(hint.factor.max)}].`:`Quy đổi hiển thị: (${number(hint.factor.value)} − (${number(hint.factor.min)})) / (${number(hint.factor.max)} − (${number(hint.factor.min)})) × 100 ≈ ${hint.factor.score}.`}</p><p>{factorReadingRules[hint.factor.id].directionNote}</p><button type="button" onClick={()=>setHint(null)}>Đóng giải thích</button></div>}
   </section>;
 }

@@ -16,7 +16,7 @@ export function HmmPhaseTriangle({report}: {report:AnalysisReport}) {
   const data=useMemo(()=>hmmPhaseData(report),[report]),[mode,setMode]=useState<"history"|"current">("history"),[frame,setFrame]=useState(0),[playing,setPlaying]=useState(true),[reduced,setReduced]=useState(false),[animating,setAnimating]=useState(false),wrapper=useRef<HTMLDivElement>(null),frameRef=useRef(frame);
   const index=Math.min(frame,Math.max(0,data.history.length-1)),current=data.history[index],probabilities=data.probabilities;
   frameRef.current=index;
-  useEffect(()=>{setFrame(0);setPlaying(data.history.length>=2);},[data]);
+  useEffect(()=>{setFrame(0);setPlaying(data.history.length>=2&&!matchMedia("(prefers-reduced-motion: reduce)").matches);},[data]);
   useEffect(()=>{const media=matchMedia("(prefers-reduced-motion: reduce)"),sync=()=>{setReduced(media.matches);if(media.matches)setPlaying(false);};sync();media.addEventListener("change",sync);return()=>media.removeEventListener("change",sync);},[]);
   useEffect(()=>{
     if(!playing||reduced||mode!=="history"||data.history.length<2){setAnimating(false);return;}

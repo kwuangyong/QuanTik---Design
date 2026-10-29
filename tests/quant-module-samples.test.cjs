@@ -47,6 +47,7 @@ test('All five sample scenarios render 16 modules without changing their report 
   const report=quantReportSample(scenario),before=JSON.stringify(report);
   for(const [name] of quantModuleItems) {
    const html=render(report,name);assert.match(html,new RegExp(`data-quant-module="${name}"`));assert.doesNotMatch(text(html),/undefined|NaN|Infinity/,`${scenario}/${name}`);
+   if(scenario==='failed'&&!['commentary','decision','trade_plan'].includes(name)) assert.match(html.split('</summary>')[0],/Thiếu dữ liệu/,name);
    if(['disabled','unavailable'].includes(scenario)&&!['commentary','decision'].includes(name)) {
     assert.match(text(html),/Chưa đủ dữ liệu để diễn giải/,`${scenario}/${name}`);
     assert.doesNotMatch(html,/<dd[^>]*>[^<]*(?:100\.000|412,6|24,5)/,`${scenario}/${name}`);

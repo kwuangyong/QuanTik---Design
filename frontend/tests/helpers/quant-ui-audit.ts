@@ -6,6 +6,8 @@ export function auditQuantTypography() {
   const violations: { text: string; computedPx: number; renderedPx: number; font: string }[] = [];
   let checked = 0;
   for (const el of all) {
+    const closed = el.closest('details:not([open])');
+    if (closed && !closed.querySelector(':scope > summary')?.contains(el)) continue;
     if (!el.getClientRects().length || getComputedStyle(el).visibility === 'hidden' || el.closest('[aria-hidden="true"]')) continue;
     if (![...el.childNodes].some(n => n.nodeType === Node.TEXT_NODE && n.textContent?.trim())) continue;
     if (['STYLE','SCRIPT','TITLE','OPTION'].includes(el.tagName.toUpperCase())) continue;

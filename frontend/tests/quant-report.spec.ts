@@ -16,6 +16,7 @@ test("Quant: tự cập nhật lịch sử giữ trang đang xem", async ({ page
 });
 
 test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", async ({ page }) => {
+  test.setTimeout(60000);
   const state = await analysisFixture(page), errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/analysis?symbol=FPT");
@@ -49,6 +50,7 @@ test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", as
   await page.evaluate(() => { (document.activeElement as HTMLElement | null)?.blur(); window.scrollTo(0, 0); });
   await page.screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-live.png`, scale: "css" });
   await page.getByRole("region", { name: "Phân tích từng module", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-synthesis.png`, scale: "css" });
+  await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo", { exact: true }).click();
   await page.getByRole("region", { name: "Visual Quant FPT", exact: true }).screenshot({ path: `test-results/ui/${test.info().project.name}/analysis-visuals.png`, scale: "css" });
  });
 

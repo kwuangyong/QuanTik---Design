@@ -31,7 +31,7 @@ export function QuantActionSummary({ report, compact, showAction }: { report: An
   const simulation = output(metrics(report, "simulation_risk").simulation_risk), lock = output(simulation.lock_risk);
   const quality = output(metrics(report, "data_quality").data_quality), liquidity = output(metrics(report, "liquidity").liquidity);
   const kelly = record(trade.kelly);
-  const kellyDisabled = report.sections.trade_plan?.status === "DISABLED" || kelly.disabled === true || at(report.commentary, "compatibility.kelly") === "DISABLED" || at(report.sections.commentary?.metrics, "compatibility.kelly") === "DISABLED";
+  const kellyDisabled = report.sections.trade_plan?.status === "DISABLED" || at(report.sections.trade_plan?.metrics, "kelly.disabled") === true || at(report.commentary, "compatibility.kelly") === "DISABLED" || at(report.sections.commentary?.metrics, "compatibility.kelly") === "DISABLED";
   const kellyAvailable = !kellyDisabled && !kelly.error && kelly.available !== false && (numeric(kelly.full_pct) != null || numeric(kelly.half_pct) != null);
   const action = typeof report.decision.action === "string" ? report.decision.action : "";
   const executable = report.decision.executable;

@@ -18,14 +18,15 @@ export function TermContent({ term, vietnamese = false }: {
     term: TermDefinition;
     vietnamese?: boolean;
 }) {
+    const noteSize = vietnamese ? "[font-size:13px]!" : "[font-size:11px]!";
     return <>
     <div className="term-title [&_strong]:[font-size:15px] [&_strong]:[color:var(--term-accent)]"><strong>{vietnamese ? term.vi : term.en}</strong></div><small>{vietnamese ? "Định nghĩa và cách đọc" : term.vi}</small>
     <h4>01 · Lý thuyết</h4><p>{term.short}</p>
-    <h4>02 · Công thức</h4><Formula latex={term.formulaLatex}/><p className="term-note preserve-lines [color:var(--term-dim)] [font-size:11px]! [white-space:pre-wrap]">{term.variables}</p>
-    <p className="term-note preserve-lines [color:var(--term-dim)] [font-size:11px]! [white-space:pre-wrap]"><b>Tham số:</b> {term.parameters}</p>
+    <h4>02 · Công thức</h4><Formula latex={term.formulaLatex}/><p className={`term-note preserve-lines [color:var(--term-dim)] ${noteSize} [white-space:pre-wrap]`}>{term.variables}</p>
+    <p className={`term-note preserve-lines [color:var(--term-dim)] ${noteSize} [white-space:pre-wrap]`}><b>Tham số:</b> {term.parameters}</p>
     <h4>03 · Ví dụ minh họa</h4><p>{term.example}</p>
-    <h4>04 · Ngưỡng và điều kiện</h4><p className="term-note preserve-lines [color:var(--term-dim)] [font-size:11px]! [white-space:pre-wrap]">{term.conditions || term.interpretation || 'Không có ngưỡng chung. Đối chiếu cửa sổ, đơn vị và cấu hình của mô hình đang dùng.'}</p><small>Ngưỡng tài liệu là tham khảo; cấu hình pipeline và mục tiêu kiểm định quyết định ngưỡng thực.</small>
-    <h4>05 · Cách sử dụng</h4><p className="term-note [color:var(--term-dim)] [font-size:11px]!">{term.usage}</p><p className="term-note [color:var(--term-dim)] [font-size:11px]!">{term.limitations}</p>
+    <h4>04 · Ngưỡng và điều kiện</h4><p className={`term-note preserve-lines [color:var(--term-dim)] ${noteSize} [white-space:pre-wrap]`}>{term.conditions || term.interpretation || 'Không có ngưỡng chung. Đối chiếu cửa sổ, đơn vị và cấu hình của mô hình đang dùng.'}</p><small>Ngưỡng tài liệu là tham khảo; cấu hình pipeline và mục tiêu kiểm định quyết định ngưỡng thực.</small>
+    <h4>05 · Cách sử dụng</h4><p className={`term-note [color:var(--term-dim)] ${noteSize}`}>{term.usage}</p><p className={`term-note [color:var(--term-dim)] ${noteSize}`}>{term.limitations}</p>
   </>;
 }
 export default function TermHint({ id, children, definition }: {
