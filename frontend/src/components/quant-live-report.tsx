@@ -19,7 +19,10 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
       for (const entry of entries) {
         const svg = entry.target as SVGSVGElement, width = entry.contentRect.width;
         if (width > 0 && svg.viewBox.baseVal.width > 0) {
-          const scale = svg.viewBox.baseVal.width / width;
+          const matrix = svg.getScreenCTM();
+          const renderedScale = matrix ? Math.hypot(matrix.c, matrix.d) : width / svg.viewBox.baseVal.width;
+          if (!(renderedScale > 0)) continue;
+          const scale = 1 / renderedScale;
           // Keep computed AND screen font sizes >= the minimum. Cancel only the
           // outer viewBox scaling around each text anchor, preserving chart geometry.
           svg.querySelectorAll("text").forEach(text => {
