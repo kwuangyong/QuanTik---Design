@@ -119,7 +119,7 @@ export function createPreviewApi() {
         // these states are intentionally missing/disabled, not UI failures.
         report.sections.trade_plan.metrics.kelly = { disabled: true, note: "Không tính Kelly từ tỷ lệ ngày tăng/giảm." };
         report.sections.context.metrics.cross_corr = { error: "Chỉ có 1 mã trong ngành — không tính được tương quan", avg_pairwise_corr: null };
-        report.sections.directional_alpha.metrics.lightgbm_cross_sectional = { available: false, active: false, reason: "requires_batch_cross_section" };
+        report.sections.directional_alpha.metrics.lightgbm_cross_sectional = { available: false, active: false, reason: "insufficient_symbol_universe" };
         (report.sections.arima.metrics.arima as { best: { order: unknown } }).best.order = "ARIMA(1, 0, 1)";
       }
       report.job_id = job.id; report.report_id = job.report_id!;
