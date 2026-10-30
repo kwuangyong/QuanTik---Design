@@ -12,7 +12,7 @@ export function scenarioScenes(report: AnalysisReport, kind: ScenarioKind): { hi
   const section = report.sections[kind === "monte" ? "simulation_risk" : "hmm"];
   const source = record(section?.metrics[kind === "monte" ? "simulation_risk" : "hmm"]);
   const empty = { history: null, probabilities: null, fallback: source.method === "fallback" };
-  if (!section || section.status === "DISABLED" || source.error || source.disabled === true || source.available === false) return empty;
+  if (!section || section.status !== "AVAILABLE" || source.error || source.disabled === true || source.available === false) return empty;
   const research = researchFor(report);
   if (kind === "monte") {
     const rows = research.cone;
@@ -28,7 +28,7 @@ export type HmmState = "BULL" | "SIDEWAY" | "BEAR";
 export function hmmPhaseData(report: AnalysisReport) {
   const section = report.sections.hmm, source = record(section?.metrics.hmm);
   const empty = { history: [] as {date:string;price:number;state:HmmState}[], probabilities: null as Record<HmmState,number> | null, fallback: source.method === "fallback" };
-  if (!section || section.status === "DISABLED" || source.error || source.disabled === true || source.available === false) return empty;
+  if (!section || section.status !== "AVAILABLE" || source.error || source.disabled === true || source.available === false) return empty;
   const rows = researchFor(report).regime;
   const states: HmmState[] = ["BULL","SIDEWAY","BEAR"];
   const validHistory = rows.length >= 2 && rows.every((p,i) => finite(p.price) && p.price > 0 && typeof p.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && states.includes(p.state as HmmState) && (i === 0 || p.date > rows[i-1].date));

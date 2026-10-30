@@ -4,7 +4,7 @@ const path = require('node:path');
 const katex = require('katex');
 const {buildSync} = require('esbuild');
 function load(file) {
-  const output = buildSync({entryPoints:[path.join(__dirname,'..',file)],tsconfig:path.join(__dirname,'../frontend/tsconfig.json'),bundle:true,platform:'node',format:'cjs',write:false,external:['react','react-dom','katex']});
+  const output = buildSync({entryPoints:[path.join(__dirname,'..',file)],tsconfig:path.join(__dirname,'../frontend/tsconfig.json'),bundle:true,platform:'node',format:'cjs',write:false,loader:{".css":"empty",".module.css":"empty"},external:['react','react-dom','katex']});
   const module = {exports:{}};
   new Function('require','module','exports',output.outputFiles[0].text)(require,module,module.exports);
   return module.exports;

@@ -62,7 +62,7 @@ test("Quant action: mọi chỉ số có popup, công thức và thao tác đón
   const loss = card.getByRole("button", { name: "P(lỗ trên 3% trong T+2)", exact: true });
   await loss.click();
   await expect(page.getByRole("tooltip")).toContainText("không tự động là lỗ 3% NAV");
-  await card.getByRole("heading", { name: "Hành động thực thi", exact: true }).click();
+  await page.getByRole("tooltip").getByRole("button", {name:"Đóng giải thích thuật ngữ", exact:true}).click();
   await expect(page.getByRole("tooltip")).toHaveCount(0);
   const kelly = card.getByRole("button", { name: "Kelly Criterion", exact: true });
   await kelly.focus();
@@ -73,7 +73,7 @@ test("Quant action: mọi chỉ số có popup, công thức và thao tác đón
 
 test("Quant action: thiếu một phần không lấp mẫu, số 0 khác dữ liệu thiếu", async ({ page }) => {
   const { state, open, card, value } = await actionReport(page);
-  state.report.sections.trade_plan.status = "UNAVAILABLE";
+  state.report.sections.trade_plan.status = "AVAILABLE";
   state.report.sections.trade_plan.metrics = { sl: { entry: 100000, sl_swing: 97000, tp1: 105000, tp2: 110000 }, pos: { shares: 0, pct_acct: 0, risk_pct_nav: 0 }, sizing_mode: "REFERENCE" };
   state.report.sections.agreement.status = "DISABLED";
   state.report.sections.simulation_risk.metrics = { simulation_risk: { error: "not available", lock_risk: { prob_loss_gt_3pct: 80 } } };

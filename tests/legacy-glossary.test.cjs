@@ -27,7 +27,7 @@ test('The migrated UI renders all five original sections and the original copy f
   const {build} = require('esbuild');
   const React = require('react');
   const {renderToStaticMarkup} = require('react-dom/server');
-  const result = await build({entryPoints:[path.join(__dirname, '../frontend/src/components/term-hint.tsx')], tsconfig:path.join(__dirname, '../frontend/tsconfig.json'), bundle:true, platform:'node', format:'cjs', write:false, jsx:'automatic', external:['react','react-dom','katex']});
+  const result = await build({entryPoints:[path.join(__dirname, '../frontend/src/components/term-hint.tsx')], tsconfig:path.join(__dirname, '../frontend/tsconfig.json'), bundle:true, platform:'node', format:'cjs', write:false,loader:{".css":"empty",".module.css":"empty"}, jsx:'automatic', external:['react','react-dom','katex']});
   const compiled = {exports:{}};
   new Function('require','module','exports',result.outputFiles[0].text)(require,compiled,compiled.exports);
   const escaped = value => renderToStaticMarkup(React.createElement('span',null,value)).slice(6,-7);
