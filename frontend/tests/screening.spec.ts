@@ -121,7 +121,7 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   const state = await fixture(page);
   await page.route("**/api/v1/screenings/*/results?*", async route => {
     const group = new URL(route.request().url()).searchParams.get("group");
-    const enriched = { ...item("FPT"), name: "Công ty Cổ phần FPT", action: "WATCH", gate_pass: false,
+    const enriched = { ...item("FPT"), name: "FPT", company_name: "Công ty Cổ phần FPT", action: "WATCH", gate_pass: false,
       gate_reasons: ["TIMING_NOT_READY"], score: 72, rating: "THEO DÕI", holding_sessions: 10,
       index_trend: "NEUTRAL", sector: "Công nghệ", sector_trend: "Tăng", sector_return_20d_pct: 5.1,
       sector_correlation: 0.75, sector_lead_lag: "FPT dẫn trước 1 phiên", sharpe: 1.23,
@@ -140,6 +140,7 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
   const row = best.locator("tbody tr").first();
   expect((await row.boundingBox())!.height).toBeLessThan(100);
+  await expect(row.locator("th")).toContainText("Công ty Cổ phần FPT");
   const key = (name: string) => row.locator(`[data-sheet-key="${name}"]`);
   await expect(key("gate_pass")).toHaveText("Chưa đạt");
   await expect(key("gate_reasons")).toContainText("Chưa đủ điều kiện thời điểm vào lệnh.");
@@ -162,9 +163,14 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   await expect(tooltip.locator(".katex-error")).toHaveCount(0);
   await page.keyboard.press("Escape");
   await expect(tooltip).toHaveCount(0);
-  await best.getByRole("button", { name: "07 Kế hoạch giao dịch" }).click();
+  await page.mouse.move(0, 0);
+  await best.getByRole("region").evaluate(el => {
+    const target=el.querySelector('[data-sheet-column="entry_vnd"]') as HTMLElement;
+    const identity=el.querySelector('tbody th') as HTMLElement;
+    el.scrollLeft += target.getBoundingClientRect().left-el.getBoundingClientRect().left-identity.offsetWidth-4;
+  });
   await expect.poll(async () => best.getByRole("region").evaluate(el => el.scrollLeft)).toBeGreaterThan(4000);
-  // Wait for the horizontal smooth scroll before asking the page to scroll vertically.
+  // Native horizontal scrolling keeps the ticker frozen without group buttons.
   await expect.poll(async () => {
     const frame = (await best.getByRole("region").boundingBox())!;
     const value = (await key("entry_vnd").boundingBox())!;
@@ -173,11 +179,11 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   await row.locator("th").scrollIntoViewIfNeeded();
   await expect(key("entry_vnd")).toBeInViewport();
   expect(Math.abs((await row.locator("th").boundingBox())!.x - identityX)).toBeLessThan(2);
-  await best.getByRole("button", { name: "08 Nhận xét" }).click();
+  await best.getByRole("region").evaluate(el => { el.scrollLeft=el.scrollWidth; });
   await row.getByText("Đọc nhận xét", { exact: false }).click();
   await expect(row.locator("details[open]")).toContainText("Theo dõi vùng hỗ trợ.");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
-  await best.getByRole("button", { name: "01 Tổng quan" }).click();
+  await best.getByRole("region").evaluate(el => { el.scrollLeft=0; });
   await expect.poll(async () => best.getByRole("region").evaluate(el => el.scrollLeft)).toBe(0);
   await page.screenshot({ path: testInfo.outputPath("screening-sheet.png"), fullPage: true });
   expect(state.mutations).toEqual([]);
@@ -209,35 +215,29 @@ test("Screening: giữ ngày dữ liệu và bản cũ khi cập nhật lỗi", 
 });
 
 
-test("Screening: bảng dữ liệu hiện có giữ giá và điểm nguồn khi chưa có Quant", async ({ page }) => {
+test("Screening: giữ 42 cột và giá trị thiếu thật, không còn lựa chọn bảng hoặc nhóm cột", async ({ page }) => {
   const state = await fixture(page);
   await page.goto("/screener");
   await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
-  await expect(best.getByRole("status")).toContainText("chưa có các chỉ số Quant");
-  await best.getByRole("button", { name: "Dữ liệu quét hiện có", exact: true }).click();
-  const row = best.locator("tbody tr").first();
-  await expect(row.locator("td").nth(1)).toHaveText("58.000");
-  await expect(row.locator("td").nth(2)).toHaveText("2%");
-  await expect(row.locator("td").nth(5)).toHaveText("71,4");
-  await best.getByRole("button", { name: "Theo mẫu Google Sheet · 42 cột", exact: true }).click();
+  await expect(best.getByRole("button", { name: "Dữ liệu quét hiện có", exact: true })).toHaveCount(0);
+  await expect(best.getByRole("button", { name: "Theo mẫu Google Sheet · 42 cột", exact: true })).toHaveCount(0);
+  await expect(best.getByRole("navigation")).toHaveCount(0);
   await expect(best.locator("thead th")).toHaveCount(42);
   await expect(best.locator('[data-sheet-column="score"]').first()).toHaveText("—");
   expect(state.calls.some(path => path.startsWith("analyses"))).toBeFalsy();
   expect(state.mutations).toEqual([]);
 });
 
-test("Watchlist: giữ đúng các nhóm và vị trí mã của file tham chiếu", async ({ page }, testInfo) => {
+test("Screening: bỏ Watchlist và các tab thừa, giữ banner và hai bảng kết quả", async ({ page }) => {
   const state = await fixture(page);
   await page.goto("/screener");
-  await page.getByRole("button", { name: "Watchlist theo ngành", exact: true }).click();
-  const table = page.getByRole("region", { name: "Watchlist theo ngành", exact: true });
-  await expect(table.locator("thead th")).toHaveCount(24); // 23 source groups + row number.
-  await expect(table.locator("thead th").nth(1)).toHaveText("Ngân hàng (BANK)");
-  await expect(table.locator("tbody tr").first().locator("td").nth(0)).toHaveText("LPB");
-  await expect(table.locator("tbody tr").first().locator("td").nth(1)).toHaveText("DPG");
-  await expect(table.getByRole("link", { name: "LPB", exact: true })).toHaveAttribute("href", "/analysis?symbol=LPB");
+  await expect(page.getByRole("button", { name: "Watchlist theo ngành", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Kết quả quét", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Kích hoạt kết quả", exact: true })).toBeVisible();
   expect(state.calls.filter(path => path.startsWith("screenings/") || path.startsWith("analyses"))).toEqual([]);
+  await page.getByRole("button", { name: "Kích hoạt kết quả", exact: true }).click();
+  for(const title of ["5 mã tốt nhất","5 mã nên tránh nhất"])await expect(page.getByRole("region",{name:title,exact:true}).locator("tbody tr")).toHaveCount(5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
-  await page.screenshot({ path: testInfo.outputPath("industry-watchlist.png"), fullPage: true });
+  expect(state.mutations).toEqual([]);
 });
