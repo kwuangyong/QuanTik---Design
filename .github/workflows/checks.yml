@@ -19,6 +19,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npm run preview:export
+      - run: npm run preview:flow
       - run: npm exec --workspace frontend -- playwright install --with-deps chromium
       - run: npm run test:e2e
       - uses: actions/upload-artifact@v4
@@ -26,3 +27,7 @@ jobs:
         with:
           name: browser-test-results
           path: frontend/test-results/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: scan-quant-preview
+          path: preview/QuanTik_Scan_Quant_Test.html

@@ -12,7 +12,8 @@
     "typecheck": "npm run typecheck --workspace frontend",
     "test": "node --test tests/*.test.cjs",
     "test:e2e": "npm run test:e2e --workspace frontend",
-    "preview:export": "node tools/export-preview.mjs"
+    "preview:export": "node tools/export-preview.mjs",
+    "preview:flow": "node tools/export-scan-quant-preview.mjs"
   },
   "engines": {
     "node": ">=20.9.0"
