@@ -7,6 +7,7 @@ import { analysisMessages } from "@/lib/api/analysis";
 import type { ScreeningItem } from "@/lib/api/screening";
 import TermHint from "./term-hint";
 import styles from "./screener.module.css";
+import { screeningCompanyName } from "@/lib/screening-reference";
 
 const nf = (value: number, digits = 2) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value);
 const actionLabels: Record<string, string> = { BUY_NOW: "Mua ngay", BUY_SETUP: "Canh mua", WATCH: "Theo dõi", AVOID: "Tránh", SELL: "Bán" };
@@ -47,6 +48,11 @@ function Value({ item, column }: { item: ScreeningItem; column: SheetColumn }) {
   return <div data-sheet-key={column.key}><Cell item={item} column={column}/></div>;
 }
 
+export function ScreeningCompanyName({ item, fallback }: { item: ScreeningItem; fallback?: ScreeningItem }) {
+  const name = screeningCompanyName(item) || screeningCompanyName(fallback);
+  return <span className={styles.companyName} data-company-name={item.symbol} title={name}>{name || "Tên chưa được cung cấp"}</span>;
+}
+
 export function ScreeningSheet({ kind, title, description, items, loading, onSelect }: {
   kind: "opportunity" | "caution"; title: string; description: string; items: ScreeningItem[];
   loading: boolean; onSelect: (item: ScreeningItem) => void;
@@ -83,7 +89,7 @@ export function ScreeningSheet({ kind, title, description, items, loading, onSel
             <tr className={styles.columnRow}>{sheetColumns.map(column => <th key={column.key} scope="col" data-sheet-group={sheetColumns.find(c => c.group === column.group)?.key === column.key ? column.group : undefined}><TermHint id={column.definition.id} definition={column.definition}>{column.label} <CircleHelp size={11}/></TermHint>{column.format === "price" && <span className={styles.unitNote}>VND</span>}</th>)}</tr>
           </thead>
           <tbody>{items.map((item, index) => <tr key={item.symbol}>
-            <th scope="row"><div className={styles.symbolLine}><small>{String(index + 1).padStart(2, "0")}</small><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><Link className={styles.quantAction} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`} aria-label={`Kích hoạt phân tích quant chi tiết ${item.symbol}`} title="Phân tích Quant chi tiết"><ArrowUpRight size={13}/></Link></div></th>
+            <th scope="row"><div className={styles.symbolLine}><small>{String(index + 1).padStart(2, "0")}</small><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><Link className={styles.quantAction} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`} aria-label={`Kích hoạt phân tích quant chi tiết ${item.symbol}`} title="Phân tích Quant chi tiết"><ArrowUpRight size={13}/></Link></div><ScreeningCompanyName item={item}/></th>
             {sheetColumns.slice(1).map(column => <td key={column.key} data-sheet-column={column.key} className={textKeys.has(column.key) || column.format === "text" ? styles.textCell : undefined}><Value item={item} column={column}/></td>)}
           </tr>)}</tbody>
         </table>
@@ -100,6 +106,6 @@ function ScreeningValues({ items, onSelect }: { items: ScreeningItem[]; onSelect
   return <div className={styles.tableFrame}><div className={styles.scroll} tabIndex={0} role="region" aria-label="Giá, khối lượng và điểm screening"><table className={styles.table}>
     <caption className={styles.srOnly}>Dữ liệu screening được công bố; điểm nhóm không phải điểm Quant.</caption>
     <thead><tr>{["Mã", "Sàn", "Giá (VND)", "Thay đổi (%)", "Khối lượng (cp)", "KL TB20 (cp)", "Mạnh (%)", "Tích lũy (%)", "Phân phối (%)"].map(label => <th key={label} scope="col">{label}</th>)}</tr></thead>
-    <tbody>{items.map(item => <tr key={item.symbol}><th scope="row"><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button></th><td>{item.exchange || "—"}</td><td>{numeric(item.price_vnd)}</td><td>{numeric(item.change_ratio, true)}</td><td>{numeric(item.volume_shares)}</td><td>{numeric(item.average_volume_20_shares)}</td>{(["STRONG", "ACCUMULATION", "DISTRIBUTION"] as const).map(group => <td key={group}>{numeric(item.groups[group]?.score ?? null)}</td>)}</tr>)}</tbody>
+    <tbody>{items.map(item => <tr key={item.symbol}><th scope="row"><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><ScreeningCompanyName item={item}/></th><td>{item.exchange || "—"}</td><td>{numeric(item.price_vnd)}</td><td>{numeric(item.change_ratio, true)}</td><td>{numeric(item.volume_shares)}</td><td>{numeric(item.average_volume_20_shares)}</td>{(["STRONG", "ACCUMULATION", "DISTRIBUTION"] as const).map(group => <td key={group}>{numeric(item.groups[group]?.score ?? null)}</td>)}</tr>)}</tbody>
   </table></div></div>;
 }

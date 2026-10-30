@@ -20,7 +20,7 @@ offline. Font Latin/tiếng Việt và KaTeX được đóng gói trong cùng fi
 2. Bấm mã: popup screening; nút Quant mở đúng mã được chọn.
 3. Gửi/xác nhận yêu cầu mẫu: trạng thái chạy rồi nhận báo cáo sau lần poll kế
    tiếp (khoảng 5 giây). Xem 16 module, tooltip và biểu đồ tương tác.
-4. Chọn tình huống trên đầu trang: đủ dữ liệu; chỉ screening; Quant thiếu một
+4. Chọn tình huống trên đầu trang: trạng thái theo logic core; đủ dữ liệu để thử KPI; chỉ screening; Quant thiếu một
    phần/chưa khả dụng/đã tắt/tính lỗi; quét chưa công bố/lỗi kết nối.
 
 Các mã thật chỉ là nhãn để thử điều hướng. Tất cả cùng dùng một bộ số tổng hợp
@@ -28,6 +28,13 @@ theo ngày mẫu 16/10/2026; không thể so sánh hay dùng làm tín hiệu c�
 nghiệp. Số vốn nhập vào chỉ thử thao tác gửi; kết quả cố định ở quy mô tham chiếu.
 Nhóm screening có điểm phân phối khác nhau để thử bảng 5+5 nhưng cùng kết luận
 Quant WATCH, minh họa rằng thứ hạng screening không thay thế Action Gate.
+
+Sau rà soát repo Quant và Watchlist, mặc định dùng tình huống `core`: Kelly
+đã tắt, correlation/lead-lag thiếu khi chỉ có một mã trong ngành và LightGBM
+chưa có batch đủ điều kiện. ARIMA order là chuỗi như engine xuất. Đây vẫn là
+fixture tổng hợp mô phỏng các trạng thái, không phải kết quả đã fit model thật.
+Tên doanh nghiệp từ payload được hiển thị; popup giữ đầy đủ membership của
+Watchlist. Xem `docs/scan-quant-flow-audit.md` cho bản đồ luồng và các giới hạn.
 
 ## Kết luận từ mã nguồn
 

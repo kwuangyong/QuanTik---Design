@@ -4,13 +4,13 @@ import type { ScreeningItem } from "../src/lib/api/screening";
 import { quantReportSample, type QuantSampleCase } from "../tests/fixtures/quant-report-sample";
 
 export const sampleStocks = [
-  ["FPT", "FPT", "Công nghệ"], ["HPG", "Hòa Phát", "Thép"],
+  ["FPT", "Công ty Cổ phần FPT", "Công nghệ"], ["HPG", "Hòa Phát", "Thép"],
   ["MBB", "MB", "Ngân hàng"], ["SSI", "Chứng khoán SSI", "Chứng khoán"],
   ["VNM", "Vinamilk", "Thực phẩm"], ["NVL", "Novaland", "Bất động sản"],
   ["PDR", "Phát Đạt", "Bất động sản"], ["DIG", "DIC Corp", "Bất động sản"],
   ["VIX", "Chứng khoán VIX", "Chứng khoán"], ["DXG", "Đất Xanh", "Bất động sản"],
 ] as const;
-export type PreviewCase = QuantSampleCase | "basic" | "waiting" | "network";
+export type PreviewCase = QuantSampleCase | "core" | "basic" | "waiting" | "network";
 
 export function sampleReport(symbol: string, scenario: QuantSampleCase = "complete"): AnalysisReport {
   const report = quantReportSample(scenario);
@@ -53,10 +53,15 @@ export function sampleScreeningItem(symbol: string, index: number, enriched: boo
 }
 
 export function createPreviewApi() {
-  let scenario: PreviewCase = "complete";
+  let scenario: PreviewCase = "core";
   const jobs: AnalysisJob[] = [], keys = new Map<string, AnalysisJob>();
   const calls: { path: string; method: string }[] = [];
   const json = (data: unknown, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+  const itemFor = (symbol: string, index: number) => {
+    const item = sampleScreeningItem(symbol, index, scenario === "complete" || scenario === "core");
+    if (scenario === "core") { item.sector_correlation = null; item.sector_lead_lag = null; }
+    return item;
+  };
   const fetcher: typeof fetch = async (input, init) => {
     const request = input instanceof Request ? input : undefined;
     const url = new URL(request?.url || String(input), "https://preview.invalid");
@@ -73,7 +78,7 @@ export function createPreviewApi() {
     }
     if (path === "screenings/sample-run/results") {
       const group = url.searchParams.get("group");
-      const items = sampleStocks.map(([symbol], index) => sampleScreeningItem(symbol, index, scenario === "complete"));
+      const items = sampleStocks.map(([symbol], index) => itemFor(symbol, index));
       return json({ run_id: "sample-run", group, items: group === "OVERALL" ? items.slice(0,5) : items.slice(5) });
     }
     if (path.startsWith("screenings/sample-run/symbols/")) {
@@ -81,7 +86,7 @@ export function createPreviewApi() {
       const index = sampleStocks.findIndex(stock => stock[0] === symbol);
       if (index < 0) return json({ code: "NOT_FOUND" }, 404);
       return json({ run_id: "sample-run", target_session: "2026-10-16", published_at: 1792123200,
-        input_mode: "COMPLETED_DAILY", observed_at: "2026-10-16T09:00:00Z", item: sampleScreeningItem(symbol, index, scenario === "complete"),
+        input_mode: "COMPLETED_DAILY", observed_at: "2026-10-16T09:00:00Z", item: itemFor(symbol, index),
         assessment: { overall_signal: "Theo dõi", adjusted_signal: "Chọn lọc", money_flow: "Tích cực", trend: "Tăng", strength: "Mạnh", investor_note: "Ghi chú mẫu: theo dõi vùng hỗ trợ.", broker_note: "Dữ liệu tổng hợp để thử popup." },
         market: { last_close: 1600, regime_label: "SIDEWAY", combined_score: 55, risk_label: "Trung bình", change_5d_ratio: .01, change_20d_ratio: -.02, above_ma20: true, atr_pct: 1.4, investor_strategy: "Ví dụ: chọn lọc cơ hội.", broker_strategy: "Ví dụ: theo dõi thanh khoản." } });
     }
@@ -108,7 +113,15 @@ export function createPreviewApi() {
     if (path.startsWith("reports/")) {
       const job = jobs.find(job => `sample-report-${job.id}` === path.split("/")[1]);
       if (!job || job.status !== "SUCCEEDED") return json({ code: "NOT_FOUND" }, 404);
-      const report = sampleReport(job.symbol, ["basic", "waiting", "network"].includes(scenario) ? "complete" : scenario as QuantSampleCase);
+      const report = sampleReport(job.symbol, ["core", "basic", "waiting", "network"].includes(scenario) ? "complete" : scenario as QuantSampleCase);
+      if (scenario === "core") {
+        // Engine-shaped example after auditing quant.py. Values stay synthetic;
+        // these states are intentionally missing/disabled, not UI failures.
+        report.sections.trade_plan.metrics.kelly = { disabled: true, note: "Không tính Kelly từ tỷ lệ ngày tăng/giảm." };
+        report.sections.context.metrics.cross_corr = { error: "Chỉ có 1 mã trong ngành — không tính được tương quan", avg_pairwise_corr: null };
+        report.sections.directional_alpha.metrics.lightgbm_cross_sectional = { available: false, active: false, reason: "requires_batch_cross_section" };
+        (report.sections.arima.metrics.arima as { best: { order: unknown } }).best.order = "ARIMA(1, 0, 1)";
+      }
       report.job_id = job.id; report.report_id = job.report_id!;
       return json(report);
     }

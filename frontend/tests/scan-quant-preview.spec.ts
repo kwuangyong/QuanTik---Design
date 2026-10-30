@@ -17,6 +17,8 @@ test("Standalone preview: quét 5+5 → popup → Quant HPG → 16 module, khôn
   }
   await expect(best.locator('[data-sheet-column="net_forecast_pct"]').first()).toHaveText("3,5%");
   await expect(best.locator('[data-sheet-column="gate_pass"]').first()).toHaveText("Chưa đạt");
+  await expect(best.locator('[data-company-name="FPT"]')).toHaveText("Công ty Cổ phần FPT");
+  await expect(best.locator('[data-sheet-column="sector_correlation"]').first()).toHaveText("—");
   await page.screenshot({path:info.outputPath("preview-screening.png"),fullPage:true});
   await best.getByRole("button",{name:"HPG",exact:true}).click();
   await expect(page.getByRole("dialog")).toContainText("Ghi chú mẫu");
@@ -27,7 +29,13 @@ test("Standalone preview: quét 5+5 → popup → Quant HPG → 16 module, khôn
   await expect(page.getByRole("heading",{name:/HPG.*Đã hoàn tất/})).toBeVisible({timeout:15000});
   await expect(page.locator(".quant-report-section")).toHaveCount(16);
   await expect(page.locator('.quant-report')).toContainText("HPG · Ví dụ số liệu tổng hợp");
+  await expect(page.getByText("Kelly đang tắt",{exact:true})).toBeVisible();
+  await expect(page.locator('[data-action-metric="kelly-full"] dd')).toHaveText("—");
   const nav=page.getByRole("navigation",{name:"Điều hướng module",exact:true});
+  await nav.getByRole("button",{name:"Alpha",exact:true}).click();
+  await expect(page.locator('[data-quant-module="directional_alpha"]')).toContainText("LightGBM chưa có dự báo khả dụng");
+  await nav.getByRole("button",{name:"Thị trường & ngành",exact:true}).click();
+  await expect(page.locator('[data-quant-module="context"] dd').last()).toHaveText("—");
   await nav.getByRole("button",{name:"ARIMA",exact:true}).click();
   await expect(page.locator('[data-quant-module="arima"]')).toContainText("412,6");
   await expect(page.locator('[data-quant-module="arima"]').getByRole("img")).toHaveCount(1);

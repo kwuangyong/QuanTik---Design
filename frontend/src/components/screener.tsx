@@ -8,8 +8,9 @@ import { Guard } from "./account/session";
 import { ErrorNotice } from "./account/common";
 import { Modal, PageHeading } from "./ui";
 import styles from "./screener.module.css";
-import { ScreeningSheet } from "./screening-sheet";
+import { ScreeningSheet, ScreeningCompanyName } from "./screening-sheet";
 import { IndustryWatchlist } from "./industry-watchlist";
+import { watchlistMemberships } from "@/lib/screening-reference";
 
 const number = (value: number | null | undefined, digits = 1) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value) : "—";
 const percent = (value: number | null | undefined) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(value) : "—";
@@ -118,6 +119,7 @@ function Metric({ label, children }: { label: string; children: ReactNode }) {
   return <div className={styles.metric}><dt>{label}</dt><dd>{children ?? "Chưa đủ dữ liệu"}</dd></div>;
 }
 function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; item: ScreeningItem; onClose: () => void; onDenied: (error: Error) => void }) {
+  const memberships = watchlistMemberships(item.symbol);
   const [data, setData] = useState<ScreeningDetail>(), [error, setError] = useState<Error>(), [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true; setError(undefined);
@@ -131,7 +133,11 @@ function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; i
   const assessment = data?.assessment, market = data?.market;
   return <Modal title={`${item.symbol} · Chi tiết screening`} onClose={onClose} className={styles.dialog}>
     <div className={styles.detailBody}>
-      <div className={styles.heading}><div><p>{item.exchange} · Dữ liệu ngày {date(run.target_session)}</p><h3>{item.price_vnd == null ? "—" : money(item.price_vnd)} <Change value={item.change_ratio}/></h3></div><span className={styles.status}>{statusLabels[item.status]}</span></div>
+      <div className={styles.heading}><div><p>{item.exchange} · Dữ liệu ngày {date(run.target_session)}</p><ScreeningCompanyName item={data?.item || item} fallback={item}/><h3>{item.price_vnd == null ? "—" : money(item.price_vnd)} <Change value={item.change_ratio}/></h3></div><span className={styles.status}>{statusLabels[item.status]}</span></div>
+      <section className={styles.detailSection} aria-label="Nhóm theo Watchlist"><h3>Nhóm trong Watchlist</h3>
+        {memberships.length ? <ul className={styles.watchlistGroups}>{memberships.map(group => <li key={group.column}>{group.name}<small>{group.kind === "thematic" ? "Rổ theo dõi / chuyên đề" : "Nhóm ngành trong Watchlist"}</small></li>)}</ul> : <p className={styles.hint}>Mã này chưa nằm trong Watchlist đã cung cấp.</p>}
+        <p className={styles.hint}>Một mã có thể thuộc nhiều nhóm. Phân ngành dùng trong kết quả Quant được giữ theo báo cáo của phiên.</p>
+      </section>
       {error ? <><ErrorNotice error={error}/><button className={styles.button} onClick={() => setRetry(v => v+1)}>Thử lại</button></> : !data ? <p role="status">Đang tải đánh giá chi tiết…</p> : <>
         <p className={styles.hint}>{data.input_mode === "PROVISIONAL_DAILY" ? "Dữ liệu tạm tính trong phiên; khối lượng chưa phải cả ngày." : "Dữ liệu phiên đã hoàn tất."}{data.observed_at && ` Cập nhật lúc ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(data.observed_at))} (giờ Việt Nam).`}</p>
         <section className={styles.detailSection}><h3>Đánh giá tổng quan</h3><dl className={styles.metrics}>

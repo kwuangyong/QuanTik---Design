@@ -234,10 +234,41 @@ test("Watchlist: giữ đúng các nhóm và vị trí mã của file tham chi�
   const table = page.getByRole("region", { name: "Watchlist theo ngành", exact: true });
   await expect(table.locator("thead th")).toHaveCount(24); // 23 source groups + row number.
   await expect(table.locator("thead th").nth(1)).toHaveText("Ngân hàng (BANK)");
+  await expect(table).toContainText("17 nhóm ngành · 6 rổ theo dõi");
   await expect(table.locator("tbody tr").first().locator("td").nth(0)).toHaveText("LPB");
   await expect(table.locator("tbody tr").first().locator("td").nth(1)).toHaveText("DPG");
   await expect(table.getByRole("link", { name: "LPB", exact: true })).toHaveAttribute("href", "/analysis?symbol=LPB");
   expect(state.calls.filter(path => path.startsWith("screenings/") || path.startsWith("analyses"))).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
   await page.screenshot({ path: testInfo.outputPath("industry-watchlist.png"), fullPage: true });
+});
+
+test("Screening identity: tên công ty ở hai bảng và popup, nhóm Watchlist không ghi đè ngành báo cáo", async ({ page }, testInfo) => {
+  const state=await fixture(page);
+  await page.route("**/api/v1/screenings/*/results?*",async route=>{
+    const group=new URL(route.request().url()).searchParams.get("group");
+    await route.fulfill({contentType:"application/json",body:JSON.stringify({run_id:"ready-run",group,items:[{...item("FPT"),name:"FPT",company_name:"Công ty Cổ phần FPT",sector:"Ngành ICB từ báo cáo"},item("HPG")]})});
+  });
+  await page.goto("/screener");await page.getByRole("button",{name:"Kích hoạt kết quả",exact:true}).click();
+  for(const title of ["5 mã tốt nhất","5 mã nên tránh nhất"]) {
+    const table=page.getByRole("region",{name:title,exact:true});
+    await expect(table.locator('[data-company-name="FPT"]')).toHaveText("Công ty Cổ phần FPT");
+    await expect(table.locator('[data-company-name="HPG"]')).toHaveText("Tên chưa được cung cấp");
+    await expect(table.locator('[data-sheet-column="sector"]').first()).toHaveText("Ngành ICB từ báo cáo");
+    await table.getByRole("button",{name:"Dữ liệu quét hiện có",exact:true}).click();
+    await expect(table.locator('[data-company-name="FPT"]')).toHaveAttribute("title","Công ty Cổ phần FPT");
+  }
+  const best=page.getByRole("region",{name:"5 mã tốt nhất",exact:true});
+  await best.getByRole("button",{name:"FPT",exact:true}).click();
+  const popup=page.getByRole("dialog");
+  await expect(popup.locator('[data-company-name="FPT"]')).toHaveText("Công ty Cổ phần FPT"); // sparse detail keeps the published row name
+  const memberships=popup.getByRole("region",{name:"Nhóm theo Watchlist",exact:true});
+  await expect(memberships.getByRole("listitem")).toHaveCount(4);
+  for(const name of ["Công nghệ","FPT nhóm","Bán lẻ","List CMSC"])await expect(memberships).toContainText(name);
+  await expect(popup.getByRole("link",{name:/Phân tích Quant/})).toHaveAttribute("href","/analysis?symbol=FPT");
+  expect(await popup.evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBeTruthy();
+  await page.screenshot({path:testInfo.outputPath("screening-company-watchlist.png")});
+  await page.keyboard.press("Escape");
+  expect(state.mutations).toEqual([]);
+  expect(state.calls.some(path=>path.startsWith("analyses"))).toBeFalsy();
 });

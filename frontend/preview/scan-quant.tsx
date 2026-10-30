@@ -9,10 +9,10 @@ import { createPreviewApi, type PreviewCase } from "./scan-quant-api";
 const api = createPreviewApi();
 window.fetch = api.fetch;
 Object.assign(window, { __quantikPreview: api });
-const cases: [PreviewCase,string][] = [["complete","Đủ dữ liệu"],["basic","Chỉ dữ liệu screening"],["partial","Quant thiếu một phần"],["unavailable","Quant chưa khả dụng"],["disabled","Module Quant đã tắt"],["failed","Module Quant tính lỗi"],["waiting","Chưa công bố quét"],["network","Quét lỗi kết nối"]];
+const cases: [PreviewCase,string][] = [["core","Trạng thái theo logic core"],["complete","Đủ dữ liệu để thử KPI"],["basic","Chỉ dữ liệu screening"],["partial","Quant thiếu một phần"],["unavailable","Quant chưa khả dụng"],["disabled","Module Quant đã tắt"],["failed","Module Quant tính lỗi"],["waiting","Chưa công bố quét"],["network","Quét lỗi kết nối"]];
 function Preview() {
   const pathname = usePathname(), router = useRouter(), { theme, toggleTheme } = usePreferences();
-  const [scenario, setScenario] = useState<PreviewCase>("complete");
+  const [scenario, setScenario] = useState<PreviewCase>("core");
   const [revision, setRevision] = useState(0);
   const [routeRevision, setRouteRevision] = useState(0);
   const navigate = (route: string) => { router.push(route); setRouteRevision(value => value+1); };
