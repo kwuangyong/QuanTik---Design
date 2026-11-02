@@ -23,7 +23,7 @@ const messages: Record<string, string> = {
   WEBHOOK_KEY_IN_USE: "Chưa thể xóa khóa khi còn đơn chờ hoặc giao dịch cần đối soát.", PAYMENT_REVIEW_REQUIRED: "Đơn đã có giao dịch cần xử lý. Không tạo thanh toán mới cho cùng lần mua.",
   PLAN_REPLACEMENT_CONFIRMATION_REQUIRED: "Cần xác nhận thay thế phiên bản gói đang bán.", PLAN_REPLACEMENT_CONFLICT: "Đã có phiên bản khác thay thế gói cũ. Tải lại danh mục để kiểm tra.",
   INVALID_CURSOR: "Trang dữ liệu đã không còn hợp lệ. Vui lòng quay lại đầu danh sách.", REQUEST_FAILED: "Không thể hoàn tất yêu cầu. Vui lòng thử lại hoặc cung cấp mã hỗ trợ.",
-  NOT_FOUND: "Không tìm thấy dữ liệu hoặc bạn không có quyền truy cập.", PAYMENT_DOES_NOT_MATCH: "Giao dịch không khớp với đơn đã chọn.",
+  NOT_FOUND: "Không tìm thấy dữ liệu hoặc bạn không có quyền truy cập.", PAYMENT_DOES_NOT_MATCH: "Giao dịch không khớp với đơn đã chọn.", DEMO_ORDER_NOT_ALLOWED: "Tài khoản demo không tạo đơn thanh toán thật.",
   SCREENING_SUBSCRIPTION_REQUIRED: "Bạn cần gói phân tích còn hiệu lực để xem kết quả quét.",
   SCREENING_NOT_READY: "Chưa có kết quả quét được công bố cho ca này.",
   SCREENING_LIVE_DATA_REQUIRED: "Kết quả chưa đủ điều kiện dữ liệu để công bố.",

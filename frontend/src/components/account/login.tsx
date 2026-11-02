@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ApiError, raw } from "@/lib/api/client";
-import { adminLogin, useSession } from "./session";
+import { adminLogin, demoLogin, useSession } from "./session";
 import { ErrorNotice, Field } from "./common";
 export function Login({ admin = false }: {
     admin?: boolean;
@@ -13,6 +13,7 @@ export function Login({ admin = false }: {
     const session = useSession(admin ? "admin" : "user");
     const [busy, setBusy] = useState(false), [error, setError] = useState<Error | null>(null);
     const [username, setUsername] = useState(""), [password, setPassword] = useState("");
+    const [demoCode, setDemoCode] = useState("");
     const [retryUntil, setRetryUntil] = useState(0), [clock, setClock] = useState(0);
     const remaining = Math.max(0, Math.ceil((retryUntil-clock)/1000));
     useEffect(() => {
@@ -67,6 +68,6 @@ export function Login({ admin = false }: {
       {admin && <><Field label="Tên đăng nhập"><input autoComplete="username" maxLength={255} required value={username} onChange={e => setUsername(e.target.value)}/></Field><Field label="Mật khẩu"><input type="password" autoComplete="current-password" required maxLength={1024} value={password} onChange={e => setPassword(e.target.value)}/></Field></>}
       <button className={accountStyles.buttonPrimary} disabled={busy || remaining > 0}>{busy ? "Đang kết nối…" : remaining > 0 ? `Thử lại sau ${remaining} giây` : admin ? "Đăng nhập" : "Tiếp tục với Google"}</button>
     </form>
-    {!admin && <Link className="text-link [.auth-stage_.account-login_&]:[font-size:12px] [.auth-stage_.account-login_&]:[color:var(--muted)]" href="/">← Về trang chủ</Link>}
+    {!admin && <><details className="mt-4"><summary className="cursor-pointer text-sm text-[var(--muted)]">Dùng mã demo cho máy trải nghiệm</summary><form className="account-form grid [gap:18px] [margin:22px_0]" onSubmit={e => { e.preventDefault(); if (busy || remaining > 0 || !demoCode.trim()) return; setBusy(true); setError(null); demoLogin(demoCode.trim()).then(() => router.replace("/dashboard")).catch(err => setError(err as Error)).finally(() => setBusy(false)); }}><Field label="Mã demo do quản trị cấp"><input autoComplete="off" maxLength={128} required value={demoCode} onChange={e => setDemoCode(e.target.value)}/></Field><button className={accountStyles.buttonSecondary} disabled={busy || remaining > 0}>Vào tài khoản demo</button><p className="text-sm text-[var(--muted)]">Tài khoản demo dùng chung cho khách tham quan, không giới hạn tính năng client và không tạo đơn thanh toán thật.</p></form></details><Link className="text-link [.auth-stage_.account-login_&]:[font-size:12px] [.auth-stage_.account-login_&]:[color:var(--muted)]" href="/">← Về trang chủ</Link></>}
   </section>;
 }

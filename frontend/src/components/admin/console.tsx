@@ -7,6 +7,7 @@ import { IntegrationsPage } from "./integrations";
 import { ConfigurationPage } from "./configuration";
 import { AdminPaymentsPage, AuditPage, JobsPage, ReconciliationPage, TasksPage, UsersPage } from "./management";
 import { AdminPlansPage, AdminOrdersPage } from "./billing";
+import { DemoPage } from "./demo";
 const pages = [
     ["orders", "Đơn hàng", "Tra cứu đơn, khách hàng, giao dịch và kỳ gói."],
     ["users", "Người dùng", "Khóa, mở và tra cứu tài khoản."],
@@ -17,6 +18,7 @@ const pages = [
     ["config/operations", "Vận hành", "Quản lý phiên bản policy tự động."],
     ["config/calendar", "Lịch giao dịch", "Phiên giao dịch và nguồn tham chiếu."],
     ["audit", "Nhật ký", "Lịch sử thao tác quản trị."],
+    ["demo", "Tài khoản demo", "Cấp mã, đăng nhập và reset tài khoản demo cho máy booth triển lãm."],
 ];
 function Overview() {
     const session = useSession("admin");
@@ -29,7 +31,7 @@ export function AdminConsole({ section }: {
         "": <Overview />, users: <UsersPage />, plans: <AdminPlansPage />, orders: <AdminOrdersPage />, payments: <AdminPaymentsPage />,
         subscriptions: <AdminPaymentsPage subscription/>, reconciliation: <ReconciliationPage />,
         "config/integrations": <IntegrationsPage />, "config/operations": <ConfigurationPage key="operations"/>,
-        "config/calendar": <ConfigurationPage key="calendar" calendar/>, audit: <AuditPage />, "scheduled-tasks": <TasksPage />, jobs: <JobsPage />,
+        "config/calendar": <ConfigurationPage key="calendar" calendar/>, audit: <AuditPage />, "scheduled-tasks": <TasksPage />, jobs: <JobsPage />, demo: <DemoPage />,
     };
     return <Guard role="admin">{views[section] || <><h1>Không tìm thấy màn quản trị</h1><Link href="/admin">Về quản trị</Link></>}</Guard>;
 }

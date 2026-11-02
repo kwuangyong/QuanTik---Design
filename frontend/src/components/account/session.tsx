@@ -89,6 +89,19 @@ export async function adminLogin(username: string, password: string) {
     if (sessions.admin.state !== "ready")
         throw sessions.admin.error || new Error("Không xác nhận được phiên quản trị.");
 }
+export async function demoLogin(code: string) {
+    const result = await raw<{
+        access_token: string;
+        expires_in: number;
+    }>("auth/demo/exchange", mutation("POST", { code }));
+    accept("user", result);
+    epochs.user++;
+    set("user", { state: "idle" });
+    await loadSession("user");
+    broadcast()?.postMessage({ role: "user", action: "login" });
+    if (sessions.user.state !== "ready")
+        throw sessions.user.error || new Error("Không xác nhận được phiên demo.");
+}
 export async function logout(role: Role) {
     await raw(`${authPath(role)}/logout`, mutation("POST"));
     forget(role);
