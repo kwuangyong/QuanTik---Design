@@ -73,3 +73,11 @@ export const sheetColumns = [
 export type SheetColumn = typeof sheetColumns[number];
 export type SheetKey = SheetColumn["key"];
 export type SheetValues = Partial<Record<SheetKey, string | number | boolean | string[] | null>>;
+
+// Visible columns for both screening tables; source definitions and values stay intact.
+const hiddenSheetKeys = new Set<SheetKey>([
+  "data_quality_status", "data_quality_score", "data_quality_flags",
+  "mc_volatility_source", "gross_forecast_pct", "agreement_pct",
+  "gate_pass", "risk_pct_nav",
+]);
+export const visibleSheetColumns = sheetColumns.filter(column => !hiddenSheetKeys.has(column.key));
