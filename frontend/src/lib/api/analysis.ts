@@ -5,6 +5,12 @@ export type AnalysisJob = {
 };
 export type AnalysisOptions = { sessions: string[]; selected_session: string | null; symbols: string[]; ready: boolean; reason: string | null };
 export type ReportSection = { status: "AVAILABLE" | "UNAVAILABLE" | "DISABLED"; reason_codes: string[]; metrics: Record<string, unknown>; units: Record<string, string> };
+// Optional, report-bound inputs for display scoring; never used by trade/action gates.
+export type RadarScoringInputs = {
+  schema_version: 1; as_of: string;
+  module_scores?: { id: string; score: number | null; method: string }[];
+  liquidity_universe?: { universe_id: string; members: { symbol: string; adv20_value_vnd: number; amihud20: number }[] };
+};
 export type QuantResearch = {
   schema_version: 1; symbol: string; units: { price: "VND"; return: "pct" };
   observations?: number; start?: string | null; end?: string | null; horizon_sessions?: number; simulation_count?: number;
@@ -14,6 +20,7 @@ export type QuantResearch = {
   drawdown: { date: string; valuePct: number }[];
   factors: { id: string; label: string; value: number; min: number; max: number }[];
   risk_metrics: { id: string; label: string; value: number; unit: string }[];
+  radar_scoring?: RadarScoringInputs;
 };
 export type AnalysisReport = {
   report_id: string; schema_version: "1.0"; job_id: string; symbol: string; target_session?: string | null;

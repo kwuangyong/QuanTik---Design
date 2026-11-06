@@ -77,3 +77,7 @@ Phân tích Quant ưu tiên cách đọc đơn giản: kết luận → xu hư�
 `backend/mock/analysis-visuals.json` chứa 25 báo cáo minh họa, xác suất trạng thái, đường biến động, các đường giá và phân vị đã lưu. Đây là fixture trình bày, không phải kết quả mô hình của các mã và không phải trọng số mới. Không khớp GARCH/HMM hoặc chạy Monte Carlo trong trình duyệt.
 
 3D trong báo cáo thật dùng SVG với phép chiếu 3D, hỗ trợ kéo, phím mũi tên, thanh xoay và đổi theme; không tự chạy chuyển động. Home và các fixture minh họa giữ renderer riêng.
+
+### Điểm radar theo chỉ số gốc
+
+Radar dùng ngưỡng Sharpe/CMF/ER đã thống nhất và công thức xác suất filtered HMM. Thanh khoản dùng ADV20 + Amihud20 cùng rổ; Alpha tổng hợp điểm module trọng số bằng nhau và hiển thị độ phủ. Hợp đồng API bổ sung, công thức nội suy và giới hạn tích hợp: [Radar scoring v2](docs/RADAR-SCORING-V2.md).

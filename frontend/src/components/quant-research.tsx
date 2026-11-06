@@ -116,7 +116,7 @@ export function QuantResearchVisuals({ report }: { report: AnalysisReport }) {
         <HmmPhaseTriangle report={report}/>
       </Panel>
       <Panel title="Sụt giảm từ đỉnh" term="max_drawdown" note="Drawdown được tính từ chuỗi giá đóng cửa của đúng cửa sổ phân tích. Số âm phản ánh mức giảm so với đỉnh trước đó." table={!!research.drawdown.length && <DataTable columns={["Phiên", "Drawdown (%)"]} rows={research.drawdown.map(p => [p.date, p.valuePct])}/> }><LinePlot title={`Sụt giảm từ đỉnh ${report.symbol}`} unit="%" drawdown rows={history(research.drawdown).map((p, i) => ({ x: i, value: p.valuePct, label: p.date }))}/></Panel>
-      <QuantFactorProfile data={research.factors}/>
+      <QuantFactorProfile data={research.factors} report={report}/>
       <Panel title="Rủi ro và phương án" term="risk_reward" note="R:R gộp chỉ tính khi SL < Entry < TP2; không thay thế dự báo ròng hay quyết định từ BE.">
         <dl className="grid grid-cols-2 gap-5 py-3">{research.risk_metrics.map(p => <div key={p.id}><dt className="text-[13px] text-[var(--muted)]">{p.label}</dt><dd className="mt-2 font-mono text-lg">{number(p.value, p.unit)}</dd></div>)}
           {[["Upside TP2", validTrade ? (tp / entry - 1) * 100 : undefined, "%"], ["Downside SL", validTrade ? (sl / entry - 1) * 100 : undefined, "%"], ["R:R gộp TP2", validTrade ? (tp - entry) / (entry - sl) : undefined, "x"]].map(([label, value, unit]) => <div key={String(label)}><dt className="text-[13px] text-[var(--muted)]">{label}</dt><dd className="mt-2 font-mono text-lg">{number(value, String(unit))}</dd></div>)}
