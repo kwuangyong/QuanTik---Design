@@ -59,6 +59,11 @@ report.sections.decision.metrics = { rec: { score: 72 }, action: { action: "WATC
   // Forecast paths and all published horizon labels describe the same three sessions.
   (report.sections.agreement.metrics.fcast as Record<string, unknown>).horizon = 3;
   (report.sections.simulation_risk.metrics.simulation_risk as Record<string, unknown>).horizon = 3;
+  report.research!.radar_scoring = {schema_version:1,as_of:'2026-10-16',liquidity_universe:{universe_id:'fixture-only',members:[
+    {symbol:'HPG',adv20_value_vnd:60000000000,amihud20:3e-12},
+    {symbol:'FPT',adv20_value_vnd:120000000000,amihud20:2e-12},
+    {symbol:'VNM',adv20_value_vnd:240000000000,amihud20:1e-12},
+  ]}};
   report.sections.commentary.metrics = {};
   return report;
 }
