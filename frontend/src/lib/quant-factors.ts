@@ -1,8 +1,10 @@
-import type { QuantResearch } from './api/analysis';
+import type { AnalysisReport, QuantResearch } from './api/analysis';
+import {radarScores} from './quant-radar-scoring';
 import {factorReadingRules, type FactorGroup} from './quant-factor-readings';
 
 // Labels follow the existing pipeline's AdaptiveScorer factor IDs.
-// This is a presentation catalog, never a new score or a source of factor values.
+// Display catalog; approved raw-to-display mappings live in quant-radar-scoring.
+// This does not modify the engine score, forecast or trading gates.
 export const factorLabels: Record<string, string> = {
   sharpe: 'Sharpe',
   forecast_ret: 'Dự báo sau phí',
@@ -27,20 +29,15 @@ const axisLabels: Record<string,string[]> = {
 const shortLabels: Record<string,string> = {sharpe:'Sharpe',forecast_ret:'Dự báo',forecast_conf:'Tin cậy',cmf:'Dòng tiền',trend_quality:'Xu hướng',alpha_composite:'Alpha',hmm_regime:'HMM',vol_regime:'Biến động',liquidity:'Thanh khoản'};
 export type PresentedFactor = {
   id: string; label: string; axisLabels: string[]; shortLabel: string; value: number | null; min: number | null; max: number | null;
-  fraction: number | null; score: number | null; group: FactorGroup; status: string;
+  fraction: number | null; score: number | null; group: FactorGroup; status: string; formula: string; coverage?: {available:number;total:number};
 };
-const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-export function presentFactors(data: QuantResearch['factors']): PresentedFactor[] {
-  const source = new Map(data.map(f => [f.id, f]));
+export function presentFactors(data: QuantResearch['factors'], report?: AnalysisReport): PresentedFactor[] {
+  const {scores,coverage} = radarScores(data,report);
   return profileFactorIds.map(id => {
-    const input = source.get(id);
-    const value = finite(input?.value) ? input.value : null;
-    const min = finite(input?.min) ? input.min : null, max = finite(input?.max) ? input.max : null;
-    const validDomain = min != null && max != null && max > min;
-    const inDomain = value != null && validDomain && value >= min! && value <= max!;
-    return { id, label: factorLabels[id], axisLabels: axisLabels[id], shortLabel: shortLabels[id], value, min, max,
-      fraction: inDomain ? (value! - min!) / (max! - min!) : null,
-      score: inDomain ? Math.round((value! - min!) / (max! - min!) * 100) : null, group: factorReadingRules[id].group,
-      status: value == null ? 'Thiếu dữ liệu' : !validDomain ? 'Thiếu miền hợp lệ' : !inDomain ? 'Giá trị ngoài miền' : 'Có dữ liệu' };
+    const item = scores[id];
+    return { id, label: factorLabels[id], axisLabels: axisLabels[id], shortLabel: shortLabels[id],
+      value:item.value, min:null, max:null, score:item.score, fraction:item.score==null?null:item.score/100,
+      group:factorReadingRules[id].group, status:item.status, formula:item.formula,
+      ...(id==='alpha_composite'?{coverage}:{}) };
   });
 }

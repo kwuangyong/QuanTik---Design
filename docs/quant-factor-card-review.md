@@ -1,3 +1,5 @@
+> Quy tắc chấm điểm trong tài liệu này đã được thay bằng [Radar scoring v2](RADAR-SCORING-V2.md). Phần dưới lưu lịch sử thiết kế và nghiệm thu cũ.
+
 # Rà soát card Hồ sơ nhân tố
 
 Phạm vi: giao diện React/SVG/CSS và diễn giải từ số liệu đã có. Không sửa backend, mô hình, cách tính nhân tố, backtest, chi phí, quyết định hoặc nguồn dữ liệu.

@@ -77,7 +77,7 @@ test('GARCH surface and factor 3D preserve their source values and return to ori
   await factors.getByRole('slider',{name:'Xoay góc nhân tố',exact:true}).press('End');
   await expect(factors.locator('[data-factor-column]')).toHaveCount(9);
   await factors.getByRole('button',{name:'Xem giá trị nguồn Dòng tiền',exact:true}).click();
-  await expect(factors.getByRole('tooltip')).toContainText('Giá trị nguồn: 0,3');
+  await expect(factors.getByRole('tooltip')).toContainText('Giá trị nguồn: 0,21');
   await page.keyboard.press('Escape');
   await factors.getByRole('button',{name:'Radar',exact:true}).click();
   await expect(factors.getByRole('img',{name:'Hồ sơ nhân tố chuẩn hóa',exact:true})).toBeVisible();
@@ -129,7 +129,7 @@ test('Factor card links radar hover, raw-value tooltips, 9 explanations and redu
  await profile.locator('[data-factor-point="hmm_regime"]').focus();
  await expect(profile.locator('[data-factor-card="hmm_regime"]')).toHaveAttribute('data-active','true');
  await profile.getByRole('button',{name:'Xem giá trị nguồn Dòng tiền',exact:true}).click();
- await expect(profile.getByRole('tooltip')).toContainText('Giá trị nguồn: 0,3');
+ await expect(profile.getByRole('tooltip')).toContainText('Giá trị nguồn: 0,21');
  await page.keyboard.press('Escape');await expect(profile.getByRole('tooltip')).toHaveCount(0);
  await page.evaluate(()=>document.fonts.ready);
  await page.evaluate(()=>new Promise<void>(resolve=>requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
@@ -171,3 +171,28 @@ for(const scenario of ['complete','partial','unavailable','disabled','failed'] a
   expect(errors).toEqual([]);expect(state.created).toBe(0);expect(state.unknown).toEqual([]);
  });
 }
+
+test('Radar uses raw negative Sharpe, filtered HMM and honest liquidity/module coverage',async({page})=>{
+ const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+ const state=await openReport(page);
+ (state.report.sections.statistics.metrics.stats as Record<string,unknown>).sharpe=-.134;
+ (state.report.sections.hmm.metrics.hmm as Record<string,unknown>).state_probs={BULL:0,SIDEWAY:0,BEAR:100};
+ state.report.research!.factors.find(p=>p.id==='sharpe')!.value=.466;
+ delete state.report.research!.radar_scoring;
+ await page.reload();
+ await page.getByText('Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo',{exact:true}).click();
+ const profile=page.locator('[data-factor-profile="true"]');
+ await expect(profile.locator('[data-factor-point="sharpe"]')).toHaveAttribute('aria-label',/47\/100, Yếu/);
+ await expect(profile.locator('[data-factor-point="hmm_regime"]')).toHaveAttribute('aria-label',/0\/100, Yếu/);
+ await expect(profile.locator('[data-factor-point="liquidity"]')).toHaveCount(0);
+ await expect(profile.locator('[data-factor-card="liquidity"]')).toHaveAttribute('data-missing','true');
+ await expect(profile.locator('[data-factor-card="alpha_composite"]')).toContainText('6/14');
+ await profile.getByText('Điểm từng module · trọng số bằng nhau',{exact:true}).click();
+ await expect(profile.locator('[data-factor-card="alpha_composite"] li')).toHaveCount(14);
+ await profile.getByRole('button',{name:'Xem giá trị nguồn Sharpe',exact:true}).click();
+ await expect(profile.getByRole('tooltip')).toContainText('Giá trị nguồn: -0,134');
+ await expect(profile.getByRole('tooltip')).toContainText('không dùng z-score');
+ await page.keyboard.press('Escape');
+ await profile.screenshot({path:`test-results/ui/${test.info().project.name}/radar-raw-thresholds.png`,scale:'css'});
+ expect(errors).toEqual([]);
+});
