@@ -9,6 +9,7 @@ import { ErrorNotice } from "./account/common";
 import { Modal, PageHeading } from "./ui";
 import styles from "./screener.module.css";
 import { ScreeningSheet } from "./screening-sheet";
+import { visibleSheetColumns } from "@/content/screening-sheet";
 
 const number = (value: number | null | undefined, digits = 1) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value) : "—";
 const percent = (value: number | null | undefined) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(value) : "—";
@@ -18,7 +19,7 @@ const groupLabels: Record<ScreeningGroup, string> = { STRONG: "MẠNH", ACCUMULA
 const groupNames = Object.keys(groupLabels) as ScreeningGroup[];
 
 export function Screener() {
-  return <><PageHeading title="Quét toàn sàn" description="5 mã tốt nhất và 5 mã nên tránh của phiên, đối chiếu đầy đủ theo sheet lọc cổ phiếu."/><Guard><ScreeningExperience/></Guard></>;
+  return <><PageHeading title="Quét toàn sàn" description={`5 mã tốt nhất và 5 mã nên tránh của phiên, ${visibleSheetColumns.length} cột theo sheet lọc cổ phiếu.`}/><Guard><ScreeningExperience/></Guard></>;
 }
 function ScreeningExperience() {
   const [activated, setActivated] = useState(false);

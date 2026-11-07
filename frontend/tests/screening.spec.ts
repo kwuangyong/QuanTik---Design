@@ -69,12 +69,15 @@ test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ p
   await expect(page.getByLabel("Tìm mã", { exact:true })).toHaveCount(0);
   await expect(page.getByLabel("Số mã / trang")).toHaveCount(0);
   for (const table of [best, worst]) {
-    await expect(table.locator("tbody tr").first().locator("th, td")).toHaveCount(42);
+    await expect(table.locator("tbody tr").first().locator("th, td")).toHaveCount(34);
     // Independent header order read from the supplied Google Sheet, not the component schema.
-    await expect(table.locator("thead button")).toHaveText(["Mã", "Khuyến nghị", "Đạt bộ lọc", "Giải thích điều kiện", "Điểm", "Đánh giá", "Thời gian nắm giữ", "Xu hướng VN-Index", "Nhóm ngành", "Xu hướng ngành", "Lợi nhuận ngành 20 phiên (%)", "Tương quan ngành", "Mã dẫn dắt ngành", "Sharpe", "Win Rate (%)", "Max DD (%)", "Annual Return (%)", "HMM", "Volatility Regime", "Dự báo", "Lợi nhuận dự báo (%)", "Đồng thuận (%)", "Lợi nhuận gộp (%)", "Chi phí (%)", "Lợi nhuận ròng (%)", "Biến động mô phỏng", "Sụt giảm khi chờ T+2 (%)", "Xác suất lỗ trên 3% (%)", "Chất lượng dữ liệu", "Điểm dữ liệu", "Cảnh báo dữ liệu", "Thanh khoản", "GTGD TB 20 phiên (tỷ)", "Sức chứa tối đa (cổ phiếu)", "Khoảng trống giá 95% (%)", "Entry", "SL", "TP1", "TP2", "Model Agreement (%)", "RiskPctNAV", "Nhận xét chi tiết"]);
-    await expect(table.locator("tbody tr").first().locator("[data-sheet-key]")).toHaveCount(41);
+    await expect(table.locator("thead button")).toHaveText(["Mã", "Khuyến nghị", "Giải thích điều kiện", "Điểm", "Đánh giá", "Thời gian nắm giữ", "Xu hướng VN-Index", "Nhóm ngành", "Xu hướng ngành", "Lợi nhuận ngành 20 phiên (%)", "Tương quan ngành", "Mã dẫn dắt ngành", "Sharpe", "Win Rate (%)", "Max DD (%)", "Annual Return (%)", "HMM", "Volatility Regime", "Dự báo", "Lợi nhuận dự báo (%)", "Chi phí (%)", "Lợi nhuận ròng (%)", "Sụt giảm khi chờ T+2 (%)", "Xác suất lỗ trên 3% (%)", "Thanh khoản", "GTGD TB 20 phiên (tỷ)", "Sức chứa tối đa (cổ phiếu)", "Khoảng trống giá 95% (%)", "Entry", "SL", "TP1", "TP2", "Model Agreement (%)", "Nhận xét chi tiết"]);
+    await expect(table.locator("tbody tr").first().locator("[data-sheet-key]")).toHaveCount(33);
+    for (const label of ["Chất lượng dữ liệu", "Điểm dữ liệu", "Cảnh báo dữ liệu", "Biến động mô phỏng", "Lợi nhuận gộp (%)", "Đồng thuận (%)", "Đạt bộ lọc", "RiskPctNAV"]) {
+      await expect(table.getByRole("columnheader", { name: label, exact: true })).toHaveCount(0);
+    }
     await expect(table.getByRole("link", { name: /Kích hoạt phân tích quant chi tiết/ })).toHaveCount(5);
-    for (const label of ["Khuyến nghị", "Đạt bộ lọc", "Giải thích điều kiện", "Điểm", "Sharpe", "RiskPctNAV"]) {
+    for (const label of ["Khuyến nghị", "Giải thích điều kiện", "Điểm", "Sharpe", "Model Agreement (%)"]) {
       await expect(table.getByRole("columnheader", { name:label, exact:true })).toHaveCount(1);
     }
   }
@@ -117,7 +120,7 @@ test("Screening: cập nhật bảng giữ modal đúng bản công bố", async
   expect(state.details).toContain("screenings/new-run/symbols/VCB");
 });
 
-test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã khi cuộn", async ({ page }, testInfo) => {
+test("Screening sheet: giữ đúng đơn vị, điều kiện, chú giải và cột mã khi cuộn", async ({ page }, testInfo) => {
   const state = await fixture(page);
   await page.route("**/api/v1/screenings/*/results?*", async route => {
     const group = new URL(route.request().url()).searchParams.get("group");
@@ -125,7 +128,7 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
       gate_reasons: ["TIMING_NOT_READY"], score: 72, rating: "THEO DÕI", holding_sessions: 10,
       index_trend: "NEUTRAL", sector: "Công nghệ", sector_trend: "Tăng", sector_return_20d_pct: 5.1,
       sector_correlation: 0.75, sector_lead_lag: "FPT dẫn trước 1 phiên", sharpe: 1.23,
-      up_day_ratio_pct: 60, max_drawdown_pct: -12, annual_return_pct: 18, hmm_regime: "BULL",
+      up_day_ratio_pct: 0, max_drawdown_pct: -12, annual_return_pct: 18, hmm_regime: "BULL",
       volatility_regime: "NORMAL", forecast_direction: "TĂNG", ensemble_return_pct: 6,
       agreement_pct: 75, gross_forecast_pct: 6, roundtrip_cost_pct: 0.6, net_forecast_pct: 5.4,
       mc_volatility_source: "recursive GARCH-t", lock_drawdown_pct: -4, probability_loss_gt_3pct: 8,
@@ -142,17 +145,14 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
   expect((await row.boundingBox())!.height).toBeLessThan(100);
   await expect(row.locator("th")).toContainText("Công ty Cổ phần FPT");
   const key = (name: string) => row.locator(`[data-sheet-key="${name}"]`);
-  await expect(key("gate_pass")).toHaveText("Chưa đạt");
   await expect(key("gate_reasons")).toContainText("Chưa đủ điều kiện thời điểm vào lệnh.");
   await expect(key("sector_correlation")).toHaveText("0,75");
-  await expect(key("up_day_ratio_pct")).toHaveText("60%");
+  await expect(key("up_day_ratio_pct")).toHaveText("0%");
   await expect(key("net_forecast_pct")).toHaveText("5,4%");
+  await expect(key("trade_model_agreement_pct")).toHaveText("75%");
   await expect(key("adv20_value_vnd")).toHaveText("10");
   await expect(key("entry_vnd")).toHaveText("58.000");
-  await expect(key("mc_volatility_source")).toHaveText("recursive GARCH-t");
-  await expect(key("risk_pct_nav")).toHaveText("—");
   // Basic screening eligibility/scores must never be reinterpreted as Quant data.
-  await expect(best.locator("tbody tr").nth(1).locator('[data-sheet-key="gate_pass"]')).toHaveText("—");
   await expect(best.locator("tbody tr").nth(1).locator('[data-sheet-key="score"]')).toHaveText("—");
   await row.getByRole("link", { name: "Kích hoạt phân tích quant chi tiết FPT" }).focus();
   await expect(row.getByRole("link")).toHaveAttribute("href", "/analysis?symbol=FPT");
@@ -169,7 +169,7 @@ test("Screening sheet: giữ đúng đơn vị, gate, chú giải và cột mã 
     const identity=el.querySelector('tbody th') as HTMLElement;
     el.scrollLeft += target.getBoundingClientRect().left-el.getBoundingClientRect().left-identity.offsetWidth-4;
   });
-  await expect.poll(async () => best.getByRole("region").evaluate(el => el.scrollLeft)).toBeGreaterThan(4000);
+  await expect.poll(async () => best.getByRole("region").evaluate(el => el.scrollLeft)).toBeGreaterThan(3000);
   // Native horizontal scrolling keeps the ticker frozen without group buttons.
   await expect.poll(async () => {
     const frame = (await best.getByRole("region").boundingBox())!;
@@ -215,15 +215,15 @@ test("Screening: giữ ngày dữ liệu và bản cũ khi cập nhật lỗi", 
 });
 
 
-test("Screening: giữ 42 cột và giá trị thiếu thật, không còn lựa chọn bảng hoặc nhóm cột", async ({ page }) => {
+test("Screening: giữ 34 cột và giá trị thiếu thật, không còn lựa chọn bảng hoặc nhóm cột", async ({ page }) => {
   const state = await fixture(page);
   await page.goto("/screener");
   await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
   await expect(best.getByRole("button", { name: "Dữ liệu quét hiện có", exact: true })).toHaveCount(0);
-  await expect(best.getByRole("button", { name: "Theo mẫu Google Sheet · 42 cột", exact: true })).toHaveCount(0);
+  await expect(best.getByRole("button", { name: "Theo mẫu Google Sheet · 34 cột", exact: true })).toHaveCount(0);
   await expect(best.getByRole("navigation")).toHaveCount(0);
-  await expect(best.locator("thead th")).toHaveCount(42);
+  await expect(best.locator("thead th")).toHaveCount(34);
   await expect(best.locator('[data-sheet-column="score"]').first()).toHaveText("—");
   expect(state.calls.some(path => path.startsWith("analyses"))).toBeFalsy();
   expect(state.mutations).toEqual([]);
