@@ -27,7 +27,9 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "qa"))
 
 from core import DEFAULT_OUT, KNOWLEDGE, STYLES, disclaimer, fill_tree, load_json, load_model_kb, save_json  # noqa: E402
-from models import Model, load_returns  # noqa: E402
+from models import TOPICS, Model, load_returns  # noqa: E402
+import catalog as C  # noqa: E402
+import term_topic as TT  # noqa: E402
 import render as R  # noqa: E402
 import voiceover as V  # noqa: E402
 from assemble import assemble  # noqa: E402
@@ -120,16 +122,34 @@ def log_episode(ep, out_dir, status, duration):
                     f"{duration:.0f}", status, str(out_dir), "", "", "", ""])
 
 
+def prepare(topic, style, override=None, returns=None):
+    """(episode, style module, model) for a hand-written topic or any catalog topic."""
+    if topic in TOPICS:
+        ep, mod = build_episode(topic, style, override)
+        return ep, mod, Model(topic, ep.get("seed"), returns)
+    entry = C.get(topic)
+    if entry is None:
+        raise SystemExit(f"unknown topic {topic!r}. Hand-written: {TOPICS}. Catalog: python catalog.py --list")
+    mod = load_style(style)
+    model = TT.TermModel(entry, (override or {}).get("seed"), returns)
+    why = TT.supports(model, style)
+    if why:
+        raise SystemExit(f"{topic} × {style}: {why}")
+    ep = merge(getattr(mod, "DEFAULTS", {}), TT.episode(entry, model), override or {})
+    ep["topic"], ep["style"] = topic, style
+    ep.setdefault("id", f"{topic}-{style}")
+    return ep, mod, model
+
+
 def make(topic, style, override=None, out_root=DEFAULT_OUT, engine="auto", voice="female", music=None,
          scale=1.0, fps=30, returns=None, data_label=None, force=False, log=True):
     t_start = time.time()
-    ep, mod = build_episode(topic, style, override)
+    ep, mod, model = prepare(topic, style, override, returns)
     out = Path(out_root) / ep["id"]
     work = out / "_work"
     work.mkdir(parents=True, exist_ok=True)
     print(f"\n=== {ep['id']}  ({topic} × {style}) → {out}")
 
-    model = Model(topic, ep.get("seed"), returns)
     save_json(out / "values.json", {"topic": topic, "seed": model.seed, "real_data": model.real_data,
                                     "values": model.values, "formats": model.formats, "code": model.code})
     rendered = set()
@@ -224,7 +244,10 @@ def main():
     for p in a.episode:
         e = load_json(p)
         jobs.append((e["topic"], e["style"], e))
-    for t in filter(None, a.topics.split(",")):
+    topics = [t.strip() for t in a.topics.split(",") if t.strip()]
+    if a.topics.strip() in ("all", "catalog"):
+        topics = [t["id"] for t in C.load()["topics"] if t["kind"] != "field"]
+    for t in topics:
         for s in filter(None, a.styles.split(",")):
             jobs.append((t.strip(), s.strip(), None))
     if not jobs:
@@ -233,9 +256,13 @@ def main():
     for topic, style, override in jobs:
         if a.data_source and override is not None:
             override.setdefault("data_source", a.data_source)
-        results.append(make(topic, style, override, a.out, a.voice_engine, a.voice, a.music, a.scale, a.fps,
-                            returns, ("Dữ liệu thật: " + a.data_source) if a.data_source else None, a.force,
-                            not a.no_log))
+        try:
+            results.append(make(topic, style, override, a.out, a.voice_engine, a.voice, a.music, a.scale, a.fps,
+                                returns, ("Dữ liệu thật: " + a.data_source) if a.data_source else None, a.force,
+                                not a.no_log))
+        except SystemExit as ex:  # unsupported topic × style: report and keep going with the batch
+            print(f"  ✗ {ex}")
+            results.append({"id": f"{topic}-{style}", "ok": False, "error": str(ex)})
     print("\n" + json.dumps(results, ensure_ascii=False, indent=2))
     sys.exit(0 if all(r["ok"] for r in results) else 1)
 

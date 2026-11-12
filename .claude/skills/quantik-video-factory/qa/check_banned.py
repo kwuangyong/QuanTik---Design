@@ -18,6 +18,16 @@ def norm(s):
     return unicodedata.normalize("NFC", s or "").lower()
 
 
+NEGATIONS = ("không", "chưa", "chẳng", "đừng", "không phải", "không có nghĩa", "không tự")
+
+
+def negated(t, start, window=12):
+    """True if one of the few words before the hit negates it ("không phải điểm mua", "không có nghĩa cổ phiếu sẽ tăng").
+    Definitions explain what a number is NOT; those sentences are the opposite of a call to action."""
+    before = re.split(r"[.!?;:,\n]|\bnhưng\b", t[:start])[-1].split()[-window:]
+    return any(w.strip(",“”\"'()") in ("không", "chưa", "chẳng", "đừng") for w in before)
+
+
 def check(texts):
     banned = load_banned()
     disc = norm(disclaimer())
@@ -26,8 +36,10 @@ def check(texts):
         # the mandatory disclaimer itself says "không phải khuyến nghị mua bán" — do not flag it
         t = " ".join(norm(text).split()).replace(disc, " ")
         for phrase in banned:
-            if re.search(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", t):
-                hits.append({"phrase": phrase, "in": text[:100]})
+            for m in re.finditer(r"(?<!\w)" + re.escape(phrase) + r"(?!\w)", t):
+                if phrase.startswith("không") or not negated(t, m.start()):
+                    hits.append({"phrase": phrase, "in": text[:100]})
+                    break
     return {"fail": bool(hits), "checked_phrases": len(banned), "hits": hits}
 
 

@@ -253,7 +253,8 @@ def fig_to_img(fig, transparent=False):
 
 def chart_img(model, w=880, h=760, upto=1.0, title=None):
     fig = plt.figure(figsize=(w / 100, h / 100))
-    ax = fig.add_axes([0.15, 0.11, 0.70 if model.topic == "garch" else 0.80, 0.78 if title else 0.85])
+    garch = (getattr(model, "family", None) or model.topic) == "garch"
+    ax = fig.add_axes([0.15, 0.11, 0.70 if garch else 0.80, 0.78 if title else 0.85])
     model.plot2d(ax, upto)
     if title:
         fig.text(0.04, 0.965, title, fontsize=24, color=hex_(T["text"]), weight="bold", va="top")
@@ -313,10 +314,12 @@ def np_arange(n):
 def math_img(latex, size=64, color=None):
     color = color or hex_(T["text"])
     fig = plt.figure(figsize=(0.01, 0.01))
-    fig.text(0, 0, f"${latex}$", fontsize=size, color=color)
-    buf = io.BytesIO()
-    fig.savefig(buf, format="png", dpi=100, transparent=True, bbox_inches="tight", pad_inches=0.08)
-    plt.close(fig)
+    try:
+        fig.text(0, 0, f"${latex}$", fontsize=size, color=color)
+        buf = io.BytesIO()
+        fig.savefig(buf, format="png", dpi=100, transparent=True, bbox_inches="tight", pad_inches=0.08)
+    finally:
+        plt.close(fig)
     buf.seek(0)
     return Image.open(buf).convert("RGBA")
 
@@ -384,13 +387,16 @@ def code_panel(code, width=880, chars=None, hl_line=None, title="model.py"):
 
 def terminal_panel(lines_shown, width=880, title="kết quả"):
     size = 30
+    while size > 20 and any(font("mono", size).getlength(a) + font("mono-bold", size).getlength(b) > width - 70
+                            for a, b in lines_shown):
+        size -= 1
     f = font("mono", size)
     lh = int(size * 1.5)
     h = 70 + lh * max(1, len(lines_shown)) + 24
     im = Image.new("RGBA", (width, h), (0, 0, 0, 0))
     d = ImageDraw.Draw(im)
     d.rounded_rectangle([0, 0, width - 1, h - 1], radius=24, fill=(6, 10, 8), outline=T["border"], width=2)
-    d.text((24, 20), "$ python " + title, font=font("mono", 22), fill=T["muted"])
+    d.text((24, 20), "$ " + title, font=font("mono", 22), fill=T["muted"])
     y = 70
     for label, val in lines_shown:
         d.text((24, y), label, font=f, fill=T["muted"])

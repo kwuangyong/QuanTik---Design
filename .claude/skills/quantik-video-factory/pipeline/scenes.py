@@ -51,8 +51,11 @@ def _chart_cached(model_id, step, steps, w, h, title):
 _MODELS = {}
 
 
-def chart(model, say, title=None, name="chart", reveal=True, notes=None, min_dur=3.5, box=None):
-    """2D model chart revealed left to right; optional notes = [(progress, text)] shown below."""
+def chart(model, say, title=None, name="chart", reveal=True, notes=None, min_dur=3.5, box=None, formula_fallback=None):
+    """2D model chart revealed left to right; optional notes = [(progress, text)] shown below.
+    Catalog topics without a chart fall back to their formula card."""
+    if not getattr(model, "has_chart", True):
+        return _fallback(model, say, name, notes[-1][1] if notes else None, min_dur)
     _MODELS[id(model)] = model
     box = box or ((X0, 340, X1, 1120) if notes else (X0, 340, X1, 1300))
     w, h = box[2] - box[0], box[3] - box[1]
@@ -76,8 +79,45 @@ def _surface_cached(model_id, azim, elev, w, h):
     return F.surface_img(_MODELS[model_id], azim, elev, w, h)
 
 
+def _model_formula(model):
+    from term_topic import tex_safe
+
+    e = getattr(model, "entry", {})
+    return tex_safe(e.get("formulaLatex", "")) or r"\mathrm{" + model.topic.replace("_", r"\ ") + "}"
+
+
+def _fallback(model, say, name, caption, min_dur):
+    """Catalog topic without chart/3D: its formula if it has one, else an engine card (name, purpose, methods)."""
+    if getattr(model, "has_formula", False):
+        return formula(_model_formula(model), say, name=name, caption=caption, min_dur=min_dur)
+    e = getattr(model, "entry", {})
+    methods = [m for m in e.get("methods", []) if not m.startswith("_")][:6]
+    title = e.get("vi") or e.get("en") or model.topic
+    sub = e.get("usage") or e.get("short") or ""
+    ref = e.get("engine_ref", "")
+
+    def draw(img, t, p):
+        a = F.ease_out(F.seg(p, 0, 0.2))
+        F.panel(img, (X0, 340, X1, BOT), fill=T["surface"])
+        F.text_box(img, title, (X0 + 40, 380, X1 - 40, 520), "sans-black", 56, T["accent"], label=f"{name}-title", alpha=a)
+        F.text_box(img, sub, (X0 + 40, 540, X1 - 40, 800), "sans-bold", 40, T["text"], label=f"{name}-sub", alpha=a)
+        y = 830
+        for i, m in enumerate(methods):
+            if p < 0.15 + 0.1 * i:
+                break
+            F.text_box(img, "▸ " + m + "()", (X0 + 40, y, X1 - 40, y + 60), "mono", 34, T["neutral"], label=f"{name}-m{i}")
+            y += 62
+        if ref:
+            F.text_box(img, ref.split("/")[-1], (X0 + 40, BOT - 70, X1 - 40, BOT - 20), "mono", 22, T["muted"],
+                       label=f"{name}-ref")
+
+    return Scene(name, say, draw, min_dur, texts=[title, sub])
+
+
 def surface(model, say, caption=None, name="surface3d", min_dur=4.0, sweep=(-75, 15), elev=(32, 22)):
-    """Rotating 3D view of the model (density surface / regime trajectory)."""
+    """Rotating 3D view of the model (density surface / regime trajectory); formula card if the topic has none."""
+    if not getattr(model, "has_surface", True):
+        return _fallback(model, say, name, caption, min_dur)
     _MODELS[id(model)] = model
     w, h = CW, 860
 
@@ -115,7 +155,8 @@ def code_typing(model, say, name="code", min_dur=5.0, title=None, latex=None):
 
     def draw(img, t, p):
         n = int(total * F.ease_in_out(F.seg(p, 0, 0.85)))
-        im = F.fit_width(F.code_panel(code, CW, chars=n if n < total else None, title=title or f"{model.topic}.py"),
+        im = F.fit_width(F.code_panel(code, CW, chars=n if n < total else None,
+                                      title=title or getattr(model, "code_title", "") or f"{model.topic}.py"),
                          CW, 760)
         F.paste(img, im, (X0, 330))
         if latex:
@@ -135,10 +176,12 @@ def terminal(model, outputs, say, name="run", min_dur=4.0):
             for o in outputs]
 
     hi = next((r for o, r in zip(outputs, rows) if o.get("highlight")), rows[min(2, len(rows) - 1)])
+    if not hi[1]:  # label-only rows (engine methods): show the label itself as the big value
+        hi = ("hàm chính", hi[0])
 
     def draw(img, t, p):
         k = min(len(rows), int(len(rows) * F.seg(p, 0.05, 0.7)) + 1)
-        im = F.terminal_panel(rows[:k], CW, title=f"{model.topic}.py")
+        im = F.terminal_panel(rows[:k], CW, title=getattr(model, "run_title", "") or f"python {model.topic}.py")
         F.paste(img, im, (X0, 340))
         a = F.ease_out(F.seg(p, 0.7, 0.85))
         if a > 0:

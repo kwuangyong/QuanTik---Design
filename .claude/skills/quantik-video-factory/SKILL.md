@@ -1,6 +1,6 @@
 ---
 name: quantik-video-factory
-description: Dựng video ngắn và carousel cho mạng xã hội của QuanTik (TikTok, Reels, YouTube Shorts, Facebook) giải thích công thức, mô hình và thuật ngữ quant finance — code Python chạy thật, chart, 3D xoay, phụ đề, giọng đọc tiếng Việt, kèm caption từng nền tảng và phiếu QA. Có 8 style (code-reel, kinetic-text, chart-story, myth-buster, whiteboard-math, talking-head-script, carousel, meme-quant) và kho mô hình GARCH, Hurst, OU, HMM, Monte Carlo, Sharpe, VaR/CVaR, Kelly. Dùng skill này bất cứ khi nào người dùng muốn làm nội dung social media, video, reel, short, TikTok, carousel, kịch bản quay, caption, hook, lịch đăng hoặc nội dung quảng bá cho QuanTik — kể cả khi chỉ nói "làm video về GARCH", "giải thích Sharpe cho TikTok", "viết kịch bản về VaR", "làm loạt bài về Kelly" hay "quảng bá gói Pro" mà không nhắc tới skill.
+description: Dựng video ngắn và carousel cho mạng xã hội của QuanTik (TikTok, Reels, YouTube Shorts, Facebook) giải thích công thức, mô hình và thuật ngữ quant finance — code Python chạy thật, chart, 3D xoay, phụ đề, giọng đọc tiếng Việt, kèm caption từng nền tảng và phiếu QA. Có 8 style (code-reel, kinetic-text, chart-story, myth-buster, whiteboard-math, talking-head-script, carousel, meme-quant), 8 mô hình chạy code thật (GARCH, Hurst, OU, HMM, Monte Carlo, Sharpe, VaR/CVaR, Kelly) và catalog gần 200 chủ đề lấy từ chính QuanTik: mọi thuật ngữ glossary, chỉ số 16 module báo cáo Quant, trường hành động, cột sheet quét sàn và 27 engine trong quant.py (ARIMA, EGARCH, LightGBM, meta-label, agreement, residual reversion…). Dùng skill này bất cứ khi nào người dùng muốn làm nội dung social media, video, reel, short, TikTok, carousel, kịch bản quay, caption, hook, lịch đăng hoặc nội dung quảng bá cho QuanTik — kể cả khi chỉ nói "làm video về GARCH", "giải thích Sharpe cho TikTok", "viết kịch bản về VaR", "làm loạt bài về Kelly" hay "quảng bá gói Pro" mà không nhắc tới skill.
 ---
 
 # QuanTik Video Factory
@@ -13,7 +13,9 @@ Biến một chủ đề quant thành video dọc 9:16 (hoặc carousel) đúng 
 SKILL.md                 ← bạn đang đọc: điều phối
 brand/                   identity.md (màu, chữ, giọng văn, thông tin sản phẩm) · compliance.md (cụm cấm, miễn trừ)
                          pronunciation.json (cách TTS đọc thuật ngữ) · assets/ (logo, font, nhạc có giấy phép)
-knowledge/models/*.md    mỗi mô hình: công thức, tham số đẹp, ngưỡng, ví dụ HOSE, sai lầm hay gặp, video_defaults
+knowledge/models/*.md    8 mô hình viết tay: công thức, tham số đẹp, ngưỡng, ví dụ HOSE, sai lầm hay gặp, video_defaults
+knowledge/catalog.json   ~200 chủ đề sinh tự động từ QuanTik (định nghĩa, công thức, ngưỡng đọc, code engine trích)
+knowledge/CATALOG.md     bảng tra id → tên, nhóm, engine, mô hình demo
 knowledge/episodes.csv   tập đã dựng/đăng → tránh trùng, nối mạch, ghi view
 knowledge/hooks.md       kho hook (đã kiểm chứng bằng view thật / ứng viên)
 knowledge/stories/       chuyện lịch sử có nguồn (LTCM, Medallion)
@@ -29,7 +31,10 @@ episodes/                episode JSON đã viết (ghi đè mặc định của 
 
 Xác định từ lời người dùng (hỏi lại chỉ khi thật sự mơ hồ):
 
-- **Chủ đề → topic.** Có sẵn: `garch`, `hurst`, `ou`, `hmm`, `monte_carlo`, `sharpe`, `var_cvar`, `kelly`. Thuật ngữ khác trong `frontend/src/content/legacy/glossary.json` (57 thuật ngữ: Sortino, Calmar, CMF, Beta, PSR/DSR…) thì thêm mô hình mới (xem cuối file).
+- **Chủ đề → topic.** Có hai tầng:
+  - **Viết tay (sâu nhất):** `garch`, `hurst`, `ou`, `hmm`, `monte_carlo`, `sharpe`, `var_cvar`, `kelly`. Code mô hình chạy thật trong video, mọi số đến từ lần chạy đó.
+  - **Catalog (rộng nhất):** mọi id trong `knowledge/CATALOG.md`, gồm thuật ngữ (`sortino`, `calmar`, `cmf`, `psr`…), chỉ số module (`module_egarch_gamma`, `module_adf_p`, `module_lightgbm`…), trường hành động (`action_kelly_half`…), cột sheet (`sheet-…`), mô hình trang Home (`home_…`) và engine (`engine_garch`, `engine_meta_label`, `engine_cross_sectional_light_gbm`…). Tìm: `python pipeline/catalog.py --list | grep -i <từ khoá>`; xem chi tiết: `--show <id>`.
+  - Người dùng nói tên thường ("EGARCH", "meta-label", "độ phủ mô hình") thì tra catalog để ra id. Chủ đề trùng một mô hình viết tay thì ưu tiên bản viết tay.
 - **Style.** Người dùng không chọn thì gợi ý theo bảng:
 
 | Style | Khi nào | Độ dài |
@@ -106,9 +111,33 @@ Người dùng muốn **văn bản trong chat để copy đăng ngay**. Với m�
 
 Sau khi đăng, nhắc người dùng ghi view vào `knowledge/episodes.csv` sau 7 ngày (hoặc lấy qua công cụ vidIQ nếu có kết nối) để `hooks.md` dần có hook đã kiểm chứng.
 
+## Chủ đề catalog
+
+Mỗi chủ đề catalog dựng được ngay bằng mọi style, không cần viết gì thêm. `pipeline/term_topic.py` sinh episode từ định nghĩa đã duyệt của QuanTik:
+
+- **Lời thoại:** định nghĩa → cách đọc theo ngưỡng → biến số trong công thức → ví dụ → giới hạn. Câu được rút từ chính định nghĩa, nên mọi số trong đó là sự kiện có nguồn (`facts` trỏ về file và id gốc). QA số vẫn chạy.
+- **Code:** đoạn trích thật từ engine tương ứng trong `QuanTik-website/backend/quant_engine/quant.py`, ghi "trích, chỉ đọc". Video không chạy đoạn này, nên không gán số nào cho nó. Đừng viết lời kiểu "code này tính ra…".
+- **Chart/3D:** chủ đề thuộc họ một mô hình viết tay (cột *Mô hình demo*, ví dụ `module_egarch_gamma` → garch) thì mô hình đó chạy trên dữ liệu mô phỏng và được ghi rõ là minh hoạ. Nếu không thuộc họ nào: thang ngưỡng đọc vẽ từ định nghĩa; không có ngưỡng thì dùng thẻ công thức hoặc thẻ engine (mục đích + hàm chính).
+- **Engine (`engine_*`):** mục đích, số dòng code, hàm công khai, và các chỉ số báo cáo lấy kết quả từ engine đó (đếm từ catalog).
+
+Lời tự sinh mới đạt mức **bản nháp đúng**: chính xác nhưng khô. Trước khi đăng, nên viết episode JSON ghi đè `hook`, `beats`, `takeaway` (giữ nguyên số và ý của định nghĩa) theo giọng văn ở `brand/identity.md`. Viết đè thì vẫn phải bám định nghĩa catalog; muốn nói số không có trong định nghĩa thì đó là chủ đề cho mô hình viết tay.
+
+Một số tổ hợp bị từ chối có lý do: `chart-story` cần chart, `code-reel` cần code engine. Batch báo rõ lý do rồi chạy tiếp. Hai chủ đề bị QA chặn có chủ đích: `sheet-action` có nhãn hệ thống "BUY_NOW: mua ngay", `take_profit` có "giá mục tiêu". Muốn làm thì viết episode diễn đạt lại ("nhãn hành động", "mức chốt lời"), không dùng `--force`.
+
+`python batch.py --topics all --styles carousel --scale 0.5 --no-log` dựng toàn bộ catalog một style (mất vài giờ, chạy nền).
+
+**Làm mới catalog** khi frontend hoặc engine đổi (catalog đã commit nên skill chạy được cả khi không có hai repo nguồn):
+
+```bash
+git clone --depth 1 https://github.com/kwuangyong/QuanTik-website /tmp/QuanTik-website
+python pipeline/catalog.py --design <đường dẫn QuanTik---Design> --website /tmp/QuanTik-website
+```
+
+Cần Node 22.6+ (đọc file TypeScript trực tiếp). Script ghi `knowledge/catalog.json` và `knowledge/CATALOG.md`, kèm commit nguồn để biết catalog lấy từ phiên bản nào.
+
 ## Mở rộng
 
-**Thêm mô hình** (ví dụ `sortino`):
+**Nâng một chủ đề catalog lên viết tay** khi nó quan trọng (đăng nhiều, cần số chạy thật). Ví dụ `sortino`:
 1. `pipeline/models.py`: `sortino_demo` (≤ 16 dòng, ≤ 56 ký tự/dòng — đây là code hiện lên màn hình), `compute_sortino` → (values, formats, series), `plot2d_sortino(ax, s, upto)` (cố định ylim theo toàn chuỗi để chart không nhảy khi vẽ dần), `surface_sortino` (bề mặt `X,Y,Z` hoặc `lines`/`line`), thêm vào `TOPICS`.
 2. `knowledge/models/sortino.md`: các mục như file có sẵn + khối `## video_defaults` JSON đủ trường. Định nghĩa lấy từ `glossary.json` để thống nhất với web.
 3. `python batch.py --topics sortino --styles code-reel,carousel --scale 0.5 --no-log` và xem khung hình.
