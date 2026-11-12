@@ -14,3 +14,6 @@ playwright-report/
 *.p12
 *.pfx
 credentials*.json
+
+# Video output of .claude/skills/quantik-video-factory
+/social-output/

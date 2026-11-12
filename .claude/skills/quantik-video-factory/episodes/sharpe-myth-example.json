@@ -1,0 +1,11 @@
+{
+  "id": "sharpe-myth-tap01",
+  "topic": "sharpe",
+  "style": "myth-buster",
+  "hook": "Quỹ nào lãi nhiều nhất năm nay? Câu hỏi đó thiếu một nửa.",
+  "myth": "Chiến lược lãi {cagr_b} một năm chắc chắn tốt hơn chiến lược lãi {cagr_a}.",
+  "fact": "Chưa chắc. B lãi {cagr_b} nhưng biến động {vol_b} và từng sụt {dd_b}. Sharpe của B chỉ {sharpe_b}, của A là {sharpe_a}.",
+  "takeaway": "Trước khi so lợi nhuận, hãy hỏi: rủi ro bao nhiêu, sụt sâu nhất bao nhiêu?",
+  "cta": "Xem Sharpe, Sortino, Calmar của từng mã tại quantik.io.vn",
+  "allowed_literals": []
+}

@@ -1,0 +1,6 @@
+numpy>=1.26
+matplotlib>=3.8
+pillow>=10
+edge-tts>=6.1   # giọng đọc neural tiếng Việt (cần Internet tới speech.platform.bing.com)
+gTTS>=2.5       # dự phòng (cần Internet tới translate.google.com)
+# ngoài Python: ffmpeg + ffprobe
