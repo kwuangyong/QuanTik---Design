@@ -78,6 +78,6 @@ Lịch sử: VaR = phân vị α của chuỗi lỗ; CVaR = trung bình các m�
   ],
   "caption": "VaR là ngưỡng, không phải mức lỗ tối đa. CVaR là trung bình các phiên vượt ngưỡng. Code chạy thật trên 2.500 phiên mô phỏng đuôi dày.",
   "hashtags": ["quant", "VaR", "quanlyruiro", "chungkhoan", "dautu", "QuanTik"],
-  "allowed_literals": ["95", "99", "5 phần trăm", "1 phiên"]
+  "allowed_literals": ["95", "99", "95%", "99%", "5 phần trăm", "1 phiên"]
 }
 ```
