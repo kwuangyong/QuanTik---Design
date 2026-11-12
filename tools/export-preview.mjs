@@ -54,8 +54,21 @@ const css = (
 )
   .join("\n")
   .replace(/@font-face\s*\{[^}]*\}/g, "");
-const fontImport =
-  '@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");';
+// Nhúng font tiếng Việt để HTML bàn giao mở được khi không có mạng.
+const fontRules = [];
+for (const family of ["inter", "ibm-plex-mono"]) for (const weight of [400,500,600]) {
+  const directory = resolve(root, "node_modules/@fontsource", family);
+  const source = await readFile(resolve(directory, `${weight}.css`), "utf8");
+  for (const [rule] of source.matchAll(/@font-face\s*\{[^}]*\}/g)) {
+    const filename = rule.match(/url\(\.\/files\/([^)'";]+\.woff2)\)/)?.[1];
+    if (!filename || !["latin", "latin-ext", "vietnamese"].some(subset => filename === `${family}-${subset}-${weight}-normal.woff2`)) continue;
+    const bytes = await readFile(resolve(directory, "files", filename));
+    fontRules.push(rule.replace(/src:[^;]+;/, `src:url(data:font/woff2;base64,${bytes.toString("base64")}) format("woff2");`));
+  }
+}
+const fontImport = fontRules.join("\n");
+const previewRoute = process.env.PREVIEW_ROUTE || "/dashboard";
+if (!["/dashboard", "/portfolio", "/screener", "/analysis", "/charts", "/"].includes(previewRoute)) throw new Error("Route preview không hợp lệ.");
 // Keep the mathematical fonts in the standalone export, including offline use.
 const katexDirectory = resolve(root, "node_modules/katex/dist");
 const katexStyles = await readFile(resolve(katexDirectory, "katex.min.css"), "utf8");
@@ -66,7 +79,7 @@ const mathFonts = await Promise.all([...katexStyles.matchAll(/@font-face\s*\{[^}
   return rule.replace(/src:[^;}]+;?/, `src:url(data:font/woff2;base64,${bytes.toString("base64")}) format("woff2");`);
 }));
 const fragment =
-  '<div id="quantik-design-preview"></div>\n<style>' +
+  `<div id="quantik-design-preview" data-route="${previewRoute}"></div>\n<style>` +
   fontImport +
   mathFonts.join("\n") +
   css +
