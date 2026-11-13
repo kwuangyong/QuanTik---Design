@@ -36,6 +36,8 @@ export const sectors = market.sectors;
 export const indices = demoEnabled ? demo.indices : market.indices;
 export const chartOptions = charts;
 export const scanSnapshot = scan;
+// Metadata dùng chung để các module không tự giả định đơn vị hoặc thời điểm.
+export const marketSnapshotInfo = { asOf: market.asOf, priceUnit: market.units.price, captureLabel: market.source.captureLabel, mode: market.mode };
 export type ScanResult = {
   symbol: string; recommendation: string; filter: string; score: number; sector: string;
   conditions: string[]; explanation: string; metrics: Record<string, string | null>;

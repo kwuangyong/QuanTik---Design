@@ -6,7 +6,7 @@ export default defineConfig({
   timeout: 30000,
   retries: process.env.CI ? 1 : 0,
   reporter: "list",
-  use: { baseURL, trace: "retain-on-failure" },
+  use: { baseURL, trace: "retain-on-failure", launchOptions: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH } : {} },
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"] } },
     {
