@@ -209,7 +209,7 @@ export const uiClasses: Record<string, readonly (readonly [
     ],
     "terminal": [
         [85, "overflow-x", "[overflow-x:clip]"],
-        [85, "font-family", "[font-family:var(--font-mono),_ui-monospace,_monospace]"],
+        [85, "font-family", "[font-family:var(--font-sans),_system-ui,_sans-serif]"],
         [85, "color", "[color:var(--text)]"],
         [85, "background", "[background:var(--background)]"],
         [85, "min-height", "[min-height:100dvh]"],

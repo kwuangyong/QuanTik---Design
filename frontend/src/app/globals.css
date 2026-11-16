@@ -11,6 +11,29 @@
   --color-negative: #f08088;
   --font-sans: "Inter", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Marketing (home) tokens. Contrast checked against --color-page (AA for body text). */
+  --color-page: #080e0b;
+  --color-panel: #101a14;
+  --color-panel-raised: #152319;
+  --color-line: #263b2e;
+  --color-line-strong: #35503b;
+  --color-ink: #f0f2e9;
+  --color-ink-muted: #b4c3b6;
+  --color-ink-subtle: #93a897;
+  --color-brand: #ff914d;
+  --color-brand-hover: #ffa76e;
+  --color-brand-ink: #10170f;
+  --color-signal: #79dba4;
+  --color-caution: #e3c16c;
+
+  /* Type scale: nothing below 12px on marketing pages. */
+  --text-eyebrow: 12px;
+  --text-eyebrow--line-height: 1.5;
+  --text-eyebrow--letter-spacing: 0.12em;
+  --text-display: clamp(40px, 5.2vw, 68px);
+  --text-display--line-height: 1.08;
+  --text-display--letter-spacing: -0.035em;
 }
 
 
@@ -95,6 +118,9 @@ button:disabled {
   html {
     scroll-behavior: auto;
   }
+}
+.terminal :where(td, th, .number, dd) {
+  font-variant-numeric: tabular-nums;
 }
 .quantik-home {--h-bg:#080e0b;--h-panel:#101a14;--h-line:#263b2e;--h-text:#f0f2e9;--h-muted:#a5b5a9;--h-orange:#ff914d;--h-green:#79dba4;
 }

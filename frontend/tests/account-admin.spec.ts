@@ -41,7 +41,8 @@ test("Ưu đãi: giá 149k từ API, niêm yết 229k và Free tháng đầu", a
   const paid = page.locator("article").filter({ has: page.getByRole("heading", { name: "QuanTik Pro", exact: true }) });
   await expect(paid.locator("del")).toContainText("229.000");
   await expect(paid.locator(".account-price")).toContainText("149.000");
-  await expect(page.getByText("Miễn phí tháng đầu (30 ngày)", { exact: false })).toBeVisible();
+  await expect(page.getByText("Cấp tự động cho tài khoản mới", { exact: false })).toBeVisible();
+  await expect(page.getByText("Miễn phí tháng đầu", { exact: false })).toHaveCount(0);
   await expect(page.getByText("Thanh toán hiện đang tạm đóng.", { exact: false })).toBeVisible();
   currentPrice = 229000;
   await page.reload();
@@ -477,8 +478,8 @@ test("Admin đăng nhập ở tab khác: cập nhật phiên thay vì đẩy tab
 test("Gói tháng hiển thị giới hạn ngày và admin không có hủy/hoàn lượt", async ({ page }) => {
   await fixture(page, { admin: true, user: true });
   await page.goto("/plans");
-  await expect(page.getByText("Yêu cầu mỗi ngày", { exact: true })).toBeVisible();
-  await expect(page.getByText(/Hạn mức yêu cầu đặt lại lúc 00:00/)).toBeVisible();
+  await expect(page.getByText("Lượt phân tích mỗi ngày", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Hạn mức lượt phân tích đặt lại lúc 00:00/).first()).toBeVisible();
   await page.goto("/admin/jobs");
   await expect(page.getByRole("button", { name: /hoàn lượt|hủy yêu cầu/i })).toHaveCount(0);
   await page.locator("header details summary").click();

@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 
-test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async ({ page }) => {
+test("Home giữ nội dung, có bảng giá và dẫn đến đăng nhập hệ thống", async ({ page }) => {
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/");
@@ -17,7 +17,9 @@ test("Home giữ nội dung và dẫn đến đăng nhập hệ thống", async 
   await expect(page.getByRole("dialog")).toBeVisible();
   await page.keyboard.press("Escape");
   await page.route("**/api/v1/auth/refresh", route => route.fulfill({ status: 401, contentType: "application/json", body: '{"code":"UNAUTHENTICATED"}' }));
-  await page.getByRole("button", { name: "Đăng nhập hệ thống" }).click();
+  await expect(page.locator("#home-pricing")).toBeVisible();
+  await expect(page.locator("#home-sample figure")).toContainText("Số liệu minh họa");
+  await page.locator('footer').getByRole("link", { name: "Đăng nhập", exact: true }).click();
   await expect(page).toHaveURL(/login/);
   await expect(page.getByRole("heading", { name: "Đăng nhập hệ thống" })).toBeVisible();
   await expect(page.getByRole("navigation")).toHaveCount(0);
