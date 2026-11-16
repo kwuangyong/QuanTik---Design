@@ -1,68 +1,288 @@
 "use client";
-import { tw } from "@/lib/tailwind";
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import ModelVisual from './model-visual';
-import { homeModels, inspectionStages } from '@/content/home-models';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import ModelVisual from "./model-visual";
+import { homeModels, inspectionStages } from "@/content/home-models";
+import { track } from "@/lib/analytics";
+import { CtaLink, Kicker, Section, SectionHeader, buttonStyles } from "./ui";
+import { SampleReport } from "./sample-report";
+import { PricingTeaser } from "./pricing-teaser";
+
 type Selection = string | string[];
-export function Explanation({ selection, onClose, paused }: {
-    selection: Selection;
-    onClose: () => void;
-    paused: boolean;
-}) {
-    const dialog = useRef<HTMLDialogElement>(null);
-    useEffect(() => {
-        const el = dialog.current;
-        if (!el)
-            return;
-        if (!el.open)
-            el.showModal();
-        return () => {
-            if (el.open)
-                el.close();
-        };
-    }, []);
-    const model = typeof selection === 'string' ? homeModels.find(m => m.id === selection) : null;
-    return <dialog className="home-explanation [&_button]:[font:inherit] [&_button]:cursor-pointer [&_button:focus-visible]:[outline:2px_solid_#ff914d] [&_button:focus-visible]:[outline-offset:4px] [color:#f0f2e9] [background:#101c14] [border-width:1px] [border-style:solid] [border-color:#45684b] [border-radius:4px] [width:min(960px,calc(100vw_-_32px))] [max-height:calc(100dvh_-_48px)] [padding:26px] [font:14px/1.8_system-ui,sans-serif] [box-shadow:0_30px_140px_#0009] [&::backdrop]:[background:#020b07cc] [&::backdrop]:[backdrop-filter:blur(7px)] [&>header]:flex [&>header]:items-start [&>header]:justify-between [&>header]:[gap:20px] [&>header]:[border-bottom-width:1px] [&>header]:[border-bottom-style:solid] [&>header]:[border-bottom-color:#314936] [&>header]:[padding-bottom:18px] [&>header]:[margin-bottom:22px] [&_h2]:[font-size:25px] [&_h2]:[margin:6px_0_0] [&_h2]:[line-height:1.4] [&_h2]:[font-weight:500] max-[760px]:[padding:20px] max-[480px]:[&_h2]:[font-size:22px]" ref={dialog} aria-labelledby="home-explanation-title" onCancel={onClose} onClose={onClose} onClick={e => {
-            if (e.target === dialog.current) {
-                const r = e.currentTarget.getBoundingClientRect();
-                if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
-                    onClose();
-            }
-        }}>
-   <header><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">{model ? model.code : 'INSPECTION / ' + selection[0]}</span><h2 id="home-explanation-title">{model ? model.name : selection[1]}</h2></div><button type="button" className="home-close grid [place-items:center] [flex-shrink:0] [border-width:1px] [border-style:solid] [border-color:#426447] [background:#192a1b] [color:#ccd8c7] [width:40px] [height:40px] [border-radius:4px] [font-size:25px]!" onClick={onClose} autoFocus aria-label="Đóng giải thích">×</button></header>
-   {model ? <><div className="home-dialog-layout grid [grid-template-columns:1fr_1fr] [gap:27px] min-w-0 [&>div]:min-w-0 max-[760px]:[grid-template-columns:1fr] max-[760px]:[gap:20px]"><div><ModelVisual model={model.id} paused={paused || model.soon} large/><p className="home-dialog-caption [font-size:13px] [line-height:1.9] [color:#b9c9b7] [margin:0] [margin-top:16px]">{model.meaning}</p></div><div className="home-dialog-reading [&_h3]:[font-size:13px] [&_h3]:[color:#9cd4a7] [&_h3]:[font-weight:500] [&_h3]:[margin:16px_0_5px] [&_h3:first-child]:[margin-top:0] [&_p]:[font-size:13px] [&_p]:[line-height:1.9] [&_p]:[color:#b9c9b7] [&_p]:[margin:0] max-[760px]:[border-top-width:1px] max-[760px]:[border-top-style:solid] max-[760px]:[border-top-color:#314936] max-[760px]:[padding-top:18px]">{model.soon && <span className="home-soon [display:inline-block] [font:11px_ui-monospace,monospace] [color:#ebbb90] [margin-bottom:12px]">Coming soon · chưa khả dụng</span>}<h3>Đầu vào</h3><p>{model.input}</p><h3>Đầu ra thể hiện điều gì?</h3><p>{model.output}</p><div className="home-formula [overflow-wrap:anywhere] [background:#203023] [padding:12px_15px] [border-radius:4px] [font:12px/1.8_ui-monospace,monospace] [color:#f3bd91] [margin:18px_0]">{model.formula}</div><h3>Giới hạn áp dụng</h3><p>{model.limit}</p></div></div><div className="home-dialog-footer [border-top-width:1px] [border-top-style:solid] [border-top-color:#314936] [padding-top:15px] [margin-top:24px] [font-size:11px] [color:#a2b4a0]">Dữ liệu minh họa cố định · Không phải kết quả phân tích của một cổ phiếu.</div></> : <><p>{selection[3]}</p>{selection[0] === '02' && <p>Flag bước nhảy giá là dấu hiệu cần kiểm tra thêm; không thay thế xác minh thông báo doanh nghiệp.</p>}<div className="home-dialog-footer [border-top-width:1px] [border-top-style:solid] [border-top-color:#314936] [padding-top:15px] [margin-top:24px] [font-size:11px] [color:#a2b4a0]">Một bước trong quy trình; cần đối chiếu cùng các lớp bằng chứng còn lại.</div></>}
- </dialog>;
+
+const benefits: [string, string, string][] = [
+  ["01", "Loại sớm mã rủi ro", "Dữ liệu lỗi, thanh khoản mỏng hay biến động bất thường bị gắn cờ trước khi bạn kịp xuống tiền."],
+  ["02", "Biết khi nào nên hành động", "Mỗi kết luận đi kèm điều kiện kích hoạt cụ thể, không phải một lời hô mua."],
+  ["03", "Kiểm soát số tiền có thể mất", "Vùng giá mô phỏng, điểm dừng lỗ và ngân sách rủi ro hiển thị ngay trong báo cáo."],
+];
+const steps: [string, string][] = [
+  ["Nhập mã bạn đang quan tâm", "Mã nghe từ bạn bè, môi giới hay mạng xã hội — chỉ cần 3 ký tự."],
+  ["Hệ thống kiểm tra 9 lớp", "Dữ liệu, thanh khoản, xu hướng, trạng thái thị trường, phân phối rủi ro và vốn."],
+  ["Nhận hồ sơ bằng chứng", "Kết luận dễ hiểu, vùng giá, rủi ro và các mốc cần theo dõi. Bạn tự quyết định."],
+];
+const outcomes: [string, string, string, string][] = [
+  ["AVOID", "Loại", "Dữ liệu, thanh khoản hoặc rủi ro không đạt điều kiện.", "text-[#f08088]"],
+  ["WATCH", "Theo dõi", "Bằng chứng chưa đủ; giữ mã trong tầm quan sát.", "text-ink-muted"],
+  ["BUY_SETUP", "Chờ xác nhận", "Có cơ hội, cần chờ điều kiện kích hoạt.", "text-caution"],
+  ["BUY_NOW", "Lập kế hoạch", "Đối chiếu điều kiện, vốn và giới hạn rủi ro trước khi thực hiện.", "text-signal"],
+];
+const faqs: [string, string][] = [
+  ["QuanTik có phải khuyến nghị mua bán không?", "Không. QuanTik đưa ra hồ sơ bằng chứng, điều kiện hành động và giới hạn rủi ro. Quyết định cuối cùng và rủi ro đi kèm thuộc về bạn."],
+  ["Dữ liệu lấy từ đâu?", "Bảng điện và chỉ số cập nhật realtime từ AGR, biểu đồ từ VPS. Báo cáo Quant tính trên dữ liệu giá lịch sử theo phiên bản mô hình được công bố."],
+  ["Một lượt phân tích được tính thế nào?", "Mỗi yêu cầu phân tích được hệ thống nhận thành công tính một lượt trong hạn mức ngày. Hạn mức đặt lại lúc 00:00 giờ Việt Nam."],
+  ["Thanh toán ra sao?", "Chuyển khoản ngân hàng qua mã QR. Hệ thống tự xác nhận và kích hoạt gói khi nhận được giao dịch đúng số tiền và nội dung."],
+  ["Mua thêm khi gói còn hạn thì sao?", "Kỳ mới được nối tiếp ngay sau kỳ hiện tại, bạn không mất ngày nào còn lại."],
+  ["Mô hình có đảm bảo thắng không?", "Không mô hình nào chắc thắng. Mỗi mô hình trong QuanTik đều ghi rõ đầu vào, đầu ra và giới hạn áp dụng để bạn hiểu mức độ tin cậy."],
+];
+
+export function Explanation({ selection, onClose, paused }: { selection: Selection; onClose: () => void; paused: boolean }) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const el = dialog.current;
+    if (!el) return;
+    if (!el.open) el.showModal();
+    return () => { if (el.open) el.close(); };
+  }, []);
+  const model = typeof selection === "string" ? homeModels.find(m => m.id === selection) : null;
+  return <dialog ref={dialog} aria-labelledby="home-explanation-title" onCancel={onClose} onClose={onClose}
+    onClick={e => {
+      if (e.target !== dialog.current) return;
+      const r = e.currentTarget.getBoundingClientRect();
+      if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) onClose();
+    }}
+    className="home-explanation m-auto max-h-[calc(100dvh-48px)] w-[min(960px,calc(100vw-32px))] rounded-xl border border-line-strong bg-panel p-7 font-sans text-base leading-relaxed text-ink shadow-[0_30px_140px_#0009] backdrop:bg-[#020b07cc] backdrop:backdrop-blur-sm max-md:p-5">
+    <header className="mb-6 flex items-start justify-between gap-5 border-b border-line pb-5">
+      <div><Kicker>{model ? model.code : "Lớp kiểm tra " + selection[0]}</Kicker><h2 id="home-explanation-title" className="mt-2 text-2xl font-semibold leading-snug">{model ? model.name : selection[1]}</h2></div>
+      <button type="button" autoFocus onClick={onClose} aria-label="Đóng giải thích" className="grid size-10 shrink-0 place-items-center rounded-md border border-line-strong bg-panel-raised text-2xl text-ink-muted hover:text-ink">×</button>
+    </header>
+    {model ? <>
+      <div className="grid gap-7 md:grid-cols-2">
+        <div className="min-w-0"><ModelVisual model={model.id} paused={paused || model.soon} large /><p className="mt-4 text-sm leading-relaxed text-ink-muted">{model.meaning}</p></div>
+        <div className="min-w-0 text-sm leading-relaxed text-ink-muted [&_h3]:mb-1 [&_h3]:mt-5 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:text-ink [&_h3:first-of-type]:mt-0">
+          {model.soon && <span className="mb-3 inline-block font-mono text-xs text-caution">Sắp ra mắt · chưa khả dụng</span>}
+          <h3>Đầu vào</h3><p className="m-0">{model.input}</p>
+          <h3>Đầu ra thể hiện điều gì?</h3><p className="m-0">{model.output}</p>
+          <div className="my-5 overflow-x-auto rounded-md bg-panel-raised px-4 py-3 font-mono text-sm text-[#f3bd91] [overflow-wrap:anywhere]">{model.formula}</div>
+          <h3>Giới hạn áp dụng</h3><p className="m-0">{model.limit}</p>
+        </div>
+      </div>
+      <p className="m-0 mt-6 border-t border-line pt-4 text-xs text-ink-subtle">Dữ liệu minh họa cố định · Không phải kết quả phân tích của một cổ phiếu.</p>
+    </> : <>
+      <p className="m-0 text-ink-muted">{selection[3]}</p>
+      {selection[0] === "02" && <p className="mt-3 text-ink-muted">Cờ bước nhảy giá là dấu hiệu cần kiểm tra thêm; không thay thế xác minh thông báo doanh nghiệp.</p>}
+      <p className="m-0 mt-6 border-t border-line pt-4 text-xs text-ink-subtle">Một bước trong quy trình; cần đối chiếu cùng các lớp bằng chứng còn lại.</p>
+    </>}
+  </dialog>;
 }
-export default function HomePage({ onNavigate, onInspect }: {
-    onNavigate: (page: string) => void;
-    onInspect: (symbol: string) => void;
-}) {
-    const [selection, setSelection] = useState<Selection | null>(null), [paused, setPaused] = useState(false), [symbol, setSymbol] = useState(''), [error, setError] = useState(''), [mobile, setMobile] = useState(false);
-    const scrollTo = (id: string) => { document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' }); setMobile(false); };
-    function inspect(e: FormEvent<HTMLFormElement>) {
-        e.preventDefault();
-        const value = symbol.trim().toUpperCase();
-        if (!/^[A-Z0-9]{3,5}$/.test(value)) {
-            setError('Nhập mã cổ phiếu gồm 3–5 ký tự, ví dụ FPT hoặc HPG.');
-            return;
-        }
-        setError('');
-        onInspect(value);
-    }
-    return <div className="quantik-home [background:var(--h-bg)] [color:var(--h-text)] [font:15px/1.65_system-ui,-apple-system,Arial,sans-serif] [min-height:100vh] [&_*]:box-border [&_button]:[font:inherit] [&_button]:cursor-pointer [&_button]:[color:inherit] [&_button:focus-visible]:[outline:2px_solid_#ff914d] [&_button:focus-visible]:[outline-offset:4px] [&_input:focus-visible]:[outline:2px_solid_#ff914d] [&_input:focus-visible]:[outline-offset:4px] [&_a]:[text-decoration:none] motion-reduce:[&_button]:[transition:none]">
-  <a className="home-skip absolute [top:0] [left:16px] [transform:translateY(-200%)] [background:#ff914d] [color:#0b110c] [padding:12px] [z-index:10] [&:focus]:[transform:none]" href="#home-content">Đến nội dung</a>
-  <header className="home-nav flex items-center justify-between [gap:24px] [padding:22px_max(28px,calc((100vw_-_1280px)/2))] [background:#0a120df5] [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:var(--h-line)] [&_nav]:flex [&_nav]:items-center [&_nav]:[gap:26px] [&_nav_button]:[border-width:0] [&_nav_button]:[background:none] [&_nav_button]:[color:var(--h-muted)] [&_nav_button]:[font-size:13px] [&_nav_button]:[padding:8px_0] [&_nav_button:hover]:[color:var(--h-text)] min-[1600px]:[padding-left:max(28px,calc((100vw_-_1280px)/2))] min-[1600px]:[padding-right:max(28px,calc((100vw_-_1280px)/2))] max-[1050px]:[gap:15px] max-[1050px]:[padding:20px_25px] max-[1050px]:[&_nav]:[gap:18px] max-[1050px]:[&_nav_button]:[font-size:12px] max-[760px]:flex-wrap max-[760px]:[padding:17px_20px] max-[760px]:[&_nav]:hidden max-[760px]:[&_nav]:w-full max-[760px]:[&_nav]:[order:4] max-[760px]:[&_nav]:[align-items:stretch] max-[760px]:[&_nav]:[gap:0] max-[760px]:[&_nav]:flex-col max-[760px]:[&_nav_button]:text-left max-[760px]:[&_nav_button]:[padding:12px_0] max-[760px]:[&_nav_button]:[border-top-width:1px] max-[760px]:[&_nav_button]:[border-top-style:solid] max-[760px]:[&_nav_button]:[border-top-color:#2b4230] max-[760px]:[&_nav_button]:[font-size:14px] max-[480px]:[gap:10px] max-[480px]:[padding:14px]"><button className="home-brand flex items-center [gap:12px] [border-width:0] [background:none] text-left [padding:0] [&_img]:[object-fit:cover] [&_img]:[border-radius:4px] [&>span]:[font-size:24px] [&>span]:[font-weight:650] [&>span]:[letter-spacing:-1px] [&>span]:[line-height:1.2] [&>span>span]:[color:var(--h-orange)] [&_small]:block [&_small]:[color:#82988a] [&_small]:[letter-spacing:1.3px] [&_small]:[font:8px/1.8_ui-monospace,monospace] max-[760px]:[&>span]:[font-size:22px] max-[760px]:[&_img]:[width:34px] max-[760px]:[&_img]:[height:34px] max-[480px]:[gap:8px] max-[480px]:[&_small]:[font-size:7px] max-[480px]:[&_img]:[width:30px] max-[480px]:[&_img]:[height:30px] max-[480px]:[&>span]:[font-size:20px]" onClick={() => window.scrollTo({ top: 0 })} aria-label="QuanTik — Trang chủ"><img src="/quantik-logo.jpg" width="40" height="40" alt=""/><span>Quan<span>Tik</span><small>QUANTITATIVE INSIGHTS</small></span></button><button className="home-mobile hidden max-[760px]:block max-[760px]:[order:2] max-[760px]:[border-width:1px] max-[760px]:[border-style:solid] max-[760px]:[border-color:#344d38] max-[760px]:[border-radius:4px] max-[760px]:[background:#152319] max-[760px]:[padding:9px_11px] max-[760px]:[font-size:12px]!" onClick={() => setMobile(!mobile)} aria-expanded={mobile} aria-controls="home-navigation">Menu {mobile ? '−' : '+'}</button><nav id="home-navigation" className={tw(mobile ? 'is-open' : '')} aria-label="Điều hướng trang chủ"><button onClick={() => scrollTo('home-process')}>Quy trình kiểm định</button><button onClick={() => scrollTo('home-models')}>Khám phá mô hình</button><button onClick={() => onNavigate('market')}>Thị trường ↗</button></nav><button className="home-terminal-button inline-flex items-center justify-center [gap:22px] [border-width:1px] [border-style:solid] [border-color:#ff914d] [background:#ff914d]! [color:#0d170f]! [padding:11px_17px] [font-size:13px]! [font-weight:600] [border-radius:4px] whitespace-nowrap [transition:background_.2s,transform_.2s] [&:hover]:[background:#ffa76e]! [&:hover]:[transform:translateY(-2px)] max-[760px]:[.home-nav>&]:[margin-left:auto] max-[760px]:[.home-nav>&]:[padding:10px_12px] max-[760px]:[.home-nav>&]:[gap:10px] max-[760px]:[.home-nav>&]:[font-size:11px]! max-[480px]:[.home-nav>&]:[font-size:10px]! max-[480px]:[.home-nav>&]:[padding:10px] max-[480px]:[.home-nav>&]:[gap:7px] motion-reduce:[&:hover]:[transform:none]" onClick={() => onNavigate('login')}>Đăng nhập hệ thống <span>↗</span></button></header>
-  <main id="home-content" className="home-main [padding:0_28px] [margin:auto] [max-width:1336px] max-[760px]:[padding:0_20px]">
-   <section className="home-hero grid [grid-template-columns:1fr_1.12fr] items-center [gap:50px] [padding:76px_0_70px] [&_h1]:[font:600_clamp(40px,4.3vw,64px)/1.12_system-ui,sans-serif] [&_h1]:[letter-spacing:-2.6px] [&_h1]:[margin:24px_0] [&_em]:[font-style:normal] [&_em]:[color:var(--h-orange)] max-[1050px]:[gap:28px] max-[1050px]:[padding:55px_0] max-[1050px]:[&_h1]:[font-size:48px] max-[760px]:[grid-template-columns:1fr] max-[760px]:[padding:40px_0] max-[760px]:[gap:34px] max-[760px]:[&_h1]:[font-size:48px] max-[760px]:[&_h1]:[letter-spacing:-2px] max-[480px]:[&_h1]:[font-size:42px]">
-    <div className="home-hero-copy"><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]"><i /> VIETNAM EQUITIES / EVIDENCE FIRST</span><h1>Nghe một mã.<br />Đừng bỏ tiền<br /><em>khi chưa hiểu.</em></h1><p className="home-lead [color:var(--h-muted)]! [font-size:15px]! [line-height:1.9] [margin:0_0_25px]! [max-width:540px] [&_strong]:[font-weight:500] [&_strong]:[color:#e5ebe2] max-[760px]:[max-width:600px]"><strong>QuanTik giúp người dùng kiểm định một cổ phiếu trước khi bỏ tiền vào đó.</strong> Hệ thống đưa ra bằng chứng, điều kiện hành động và giới hạn rủi ro để người dùng tự quyết định.</p><form className="home-inspect flex items-center [gap:12px] [padding:6px_6px_6px_14px] [background:#142017] [border-width:1px] [border-style:solid] [border-color:#35503b] [border-radius:4px] [max-width:470px] [&>span]:[color:#84a48f] [&>span]:[font-size:24px] [&_input]:[background:transparent] [&_input]:[color:#f1f3ec] [&_input]:[border-width:0] [&_input]:min-w-0 [&_input]:[flex:1] [&_input]:[font:14px_system-ui] [&_input]:[padding:10px_0] [&_input::placeholder]:[color:#90a292] [&_button]:[background:#ff914d] [&_button]:[color:#102015] [&_button]:[border-width:0] [&_button]:[border-radius:3px] [&_button]:[padding:12px_17px] [&_button]:flex [&_button]:[gap:18px] [&_button]:whitespace-nowrap [&_button]:[font-size:13px] [&_button]:[font-weight:600] max-[760px]:[max-width:none] max-[480px]:[gap:8px] max-[480px]:[&_button]:[padding:12px_10px] max-[480px]:[&_button]:[gap:9px] max-[480px]:[&_input]:[font-size:13px]" onSubmit={inspect}><label className="home-sr absolute [width:1px] [height:1px] [padding:0] overflow-hidden [clip:rect(0,0,0,0)] whitespace-nowrap" htmlFor="home-symbol">Mã cổ phiếu cần kiểm định</label><span aria-hidden="true">⌕</span><input id="home-symbol" value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())} placeholder="Nhập mã cổ phiếu · FPT" maxLength={5} autoComplete="off" spellCheck="false"/><button type="submit">Kiểm định <span>↗</span></button></form>{error && <p className="home-error [color:#f9a4aa] [font-size:13px] [margin-bottom:0]" role="alert">{error}</p>}<button className="home-text-link inline-flex [gap:14px] items-center [font-size:12px]! [border-width:0] [background:none] [padding:0] [color:#bfcabc]! [.home-hero_&]:[margin-top:21px] [&:hover]:[color:#ffad76]!" onClick={() => scrollTo('home-models')}>Xem bên trong hệ thống <span>↓</span></button></div>
-    <div className="home-hero-terminal min-w-0 [background:linear-gradient(130deg,#12251a,#101b14)] [border-width:1px] [border-style:solid] [border-color:#3b5942] [border-radius:4px] [box-shadow:0_26px_100px_#0005,0_0_80px_#5fc58708] [transform:perspective(1600px)_rotateY(-3deg)] overflow-hidden max-[760px]:[transform:none]"><div className="home-window-bar flex justify-between [gap:10px] [padding:12px_17px] [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:#2c4432] [font:9px_ui-monospace,monospace] [letter-spacing:1px] [color:#809e89] [&>span:first-child]:flex [&>span:first-child]:items-center [&>span:first-child]:[gap:5px] [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[border-radius:50%] [&_i]:[background:#466652] [&_i:nth-child(3)]:[margin-right:8px] [&_i:nth-child(3)]:[background:#8eb895]"><span><i /><i /><i /> QUANTIK / MODEL EXPLORER</span><span>3D</span></div><div className="home-live-heading flex items-center justify-between [padding:22px_22px_3px] [gap:15px] [&_button]:flex [&_button]:[gap:20px] [&_button]:[border-width:0] [&_button]:[background:none] [&_button]:[padding:8px_0_0] [&_button]:[font-size:19px] [&_button]:[font-weight:500] [&_button]:text-left [&_button_span]:[color:#ff914d] max-[1050px]:[padding:19px_16px_3px] max-[1050px]:[&_button]:[font-size:16px] max-[480px]:[gap:10px] max-[480px]:[&_button]:[font-size:16px]"><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">DISTRIBUTION & RISK</span><button onClick={() => setSelection('monte')}>GARCH–t Monte Carlo <span>↗</span></button></div><span className="home-sample-badge [font:9px_ui-monospace,monospace] [color:#d1bd8b] [border-width:1px] [border-style:solid] [border-color:#605238] [padding:5px_8px] [border-radius:3px] whitespace-nowrap max-[1050px]:[font-size:8px]">MÔ PHỎNG</span></div><ModelVisual model="monte" paused={paused} large/><div className="home-terminal-footer [border-top-width:1px] [border-top-style:solid] [border-top-color:#2d4433] flex items-center justify-between [gap:15px] [padding:13px_20px] [font-size:10px] [color:#adc3af] [&_button]:[color:#a5bcaa] [&_button]:[background:none] [&_button]:[border-width:0] [&_button]:[font-size:10px] [&_button]:[padding:4px]"><span>Nhiều kịch bản. Một ngân sách rủi ro.</span><button onClick={() => setPaused(!paused)} aria-pressed={paused}>{paused ? '▶ Tiếp tục' : 'Ⅱ Tạm dừng'}</button></div><div className="home-model-tabs flex [border-top-width:1px] [border-top-style:solid] [border-top-color:#2d4433] [&_button]:[flex:1] [&_button]:[background:#122218] [&_button]:[border-width:0] [&_button]:[border-right-width:1px] [&_button]:[border-right-style:solid] [&_button]:[border-right-color:#2d4433] [&_button]:[font:9px_ui-monospace,monospace] [&_button]:[padding:13px_6px] [&_button]:[color:#9fc2aa] [&_button]:whitespace-nowrap [&_button:last-child]:[border-right-width:0] [&_button:hover]:[background:#203424] [&_span]:[color:#ff914d] max-[480px]:[&_button]:[font-size:8px]">{['hmm', 'garch', 'hurst'].map(id => { const m = homeModels.find(x => x.id === id)!; return <button key={id} onClick={() => setSelection(id)}>{m.name} <span>↗</span></button>; })}</div></div>
-   </section>
-   <section className="home-context [&_em]:[font-style:normal] [&_em]:[color:var(--h-orange)] grid [grid-template-columns:1fr_1.12fr] [gap:50px] [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--h-line)] [padding:49px_0_55px] [&_h2]:[font-size:35px] [&_h2]:[letter-spacing:-1.2px] [&_h2]:[font-weight:500] [&_h2]:[line-height:1.3] [&_h2]:[margin:18px_0] [&_p]:[font-size:14px] [&_p]:[line-height:1.9] [&_p]:[color:var(--h-muted)] [&_p]:[margin:0_0_17px] [&_p:last-child]:[margin-bottom:0] max-[1050px]:[gap:28px] max-[760px]:[grid-template-columns:1fr] max-[760px]:[gap:16px] max-[760px]:[padding:34px_0] max-[760px]:[&_h2]:[font-size:31px] max-[760px]:[&_h2]:[margin:12px_0] max-[480px]:[&_p]:[font-size:14px]"><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">TỪ MỘT CÁI TÊN ĐẾN MỘT QUYẾT ĐỊNH</span><h2>Hơn 1.600 mã.<br />Bạn cần <em>bằng chứng.</em></h2></div><div><p>Thị trường có khoảng +1.600 mã cổ phiếu. Người dùng thường nghe tên một mã từ bạn bè, môi giới, mạng xã hội hoặc một nhịp tăng giá. Họ khó biết đâu là dữ liệu thật, đâu là biến động bất thường, và cơ hội nào phù hợp với số vốn của mình.</p><p>QuanTik đóng vai trò như một quy trình kiểm định. Sản phẩm kiểm tra chất lượng dữ liệu, sự kiện doanh nghiệp, hành vi giá và dòng tiền, lợi thế thống kê, khả năng mua bán thực tế và mức rủi ro.</p><p className="home-context-emphasis [.home-context_&]:[color:#dee5d9] [.home-context_&]:[border-left-width:2px] [.home-context_&]:[border-left-style:solid] [.home-context_&]:[border-left-color:#ff914d] [.home-context_&]:[padding-left:17px]">Kết quả không phải một lời hứa chắc thắng. Đó là một hồ sơ bằng chứng giúp người dùng biết nên loại, theo dõi, chờ xác nhận hay lập kế hoạch giao dịch.</p></div></section>
-   <section id="home-process" className="home-process [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--h-line)] [padding:52px_0_58px] [scroll-margin-top:25px] max-[760px]:[padding:36px_0]"><div className="home-section-heading flex items-center justify-between [gap:25px] [margin-bottom:29px] [&_h2]:[font-size:32px] [&_h2]:[letter-spacing:-1px] [&_h2]:[font-weight:500] [&_h2]:[line-height:1.35] [&_h2]:[margin:12px_0_0] [&>span]:[color:#8fa58e] [&>span]:[font-size:12px] [&_p]:[font-size:14px] [&_p]:[color:#a5b5a9] [&_p]:[margin:12px_0_0] max-[760px]:items-start max-[760px]:flex-col max-[760px]:[gap:15px] max-[760px]:[margin-bottom:24px] max-[760px]:[&_h2]:[font-size:29px]"><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">THE INSPECTION PROCESS</span><h2>Hiểu trước. Quyết định sau.</h2></div><span>Quyết định cuối cùng thuộc về bạn.</span></div><ol className="home-journey grid [grid-template-columns:repeat(5,minmax(0,1fr))] [list-style:none] [padding:0] [margin:0_0_34px] [border-width:1px] [border-style:solid] [border-color:var(--h-line)] [border-radius:4px] [background:#101b13] overflow-hidden [&_li]:relative [&_li]:[padding:20px_23px] [&_li]:[border-right-width:1px] [&_li]:[border-right-style:solid] [&_li]:[border-right-color:var(--h-line)] [&_li:last-child]:[border-right-width:0] [&_li>span]:[font:10px_ui-monospace,monospace] [&_li>span]:[color:#83b68e] [&_li>span]:block [&_li>span]:[margin-bottom:12px] [&_b]:[font-size:14px] [&_b]:[font-weight:500] [&_li>i]:absolute [&_li>i]:[right:13px] [&_li>i]:[bottom:22px] [&_li>i]:[font-style:normal] [&_li>i]:[color:#60836a] [&_li:last-child]:[background:#ff914d09] [&_li:last-child_b]:[color:#ffab74] max-[1050px]:[&_li]:[padding:18px_14px] max-[1050px]:[&_b]:[font-size:12px] max-[1050px]:[&_li>i]:[right:8px] max-[1050px]:[&_li>i]:[bottom:19px] max-[1050px]:[&_li>i]:[font-size:11px] max-[760px]:[grid-template-columns:1fr] max-[760px]:[&_li]:flex max-[760px]:[&_li]:[gap:18px] max-[760px]:[&_li]:items-center max-[760px]:[&_li]:[padding:14px_18px] max-[760px]:[&_li]:[border-right-width:0] max-[760px]:[&_li]:[border-bottom-width:1px] max-[760px]:[&_li]:[border-bottom-style:solid] max-[760px]:[&_li]:[border-bottom-color:#263b2e] max-[760px]:[&_li:last-child]:[border-bottom-width:0] max-[760px]:[&_li>span]:[margin:0] max-[760px]:[&_b]:[font-size:14px] max-[760px]:[&_li>i]:[position:static] max-[760px]:[&_li>i]:[margin-left:auto] max-[760px]:[&_li>i]:[transform:rotate(90deg)] max-[760px]:[&_li>i]:[font-size:17px]">{['Nghe một mã', 'Kiểm định', 'Hiểu bằng chứng', 'Lập kế hoạch', 'Tự quyết định'].map((s, i) => <li key={s}><span>0{i + 1}</span><b>{s}</b>{i < 4 && <i aria-hidden="true">→</i>}</li>)}</ol><div className="home-architecture-title flex justify-between [gap:15px] [margin:0_0_14px] [font:10px_ui-monospace,monospace] [color:#8da98c] [letter-spacing:1px] [&_span:last-child]:[color:#809281] [&_span:last-child]:[letter-spacing:0] max-[480px]:flex-col max-[480px]:[gap:7px]"><span>09 LỚP KIỂM TRA TRONG KIẾN TRÚC</span><span>Bấm từng lớp để hiểu</span></div><div className="home-architecture grid [grid-template-columns:repeat(3,minmax(0,1fr))] [gap:1px] [background:var(--h-line)] [border-width:1px] [border-style:solid] [border-color:var(--h-line)] [border-radius:4px] overflow-hidden [&_button]:flex [&_button]:items-center [&_button]:[gap:16px] [&_button]:[border-width:0] [&_button]:[background:#0d1710] [&_button]:[padding:18px_20px] [&_button]:text-left [&_button]:[transition:background_.2s] [&_button:hover]:[background:#1c2c1e] [&_button>span]:[font:10px_ui-monospace,monospace] [&_button>span]:[color:#7c9c80] [&_b]:[font-size:13px] [&_b]:[font-weight:400] [&_i]:[margin-left:auto] [&_i]:[font-style:normal] [&_i]:[color:#ff914d] max-[760px]:[grid-template-columns:1fr_1fr] max-[760px]:[&_button]:[padding:15px_12px] max-[760px]:[&_button]:[gap:10px] max-[760px]:[&_b]:[font-size:12px] max-[480px]:[grid-template-columns:1fr]">{inspectionStages.map(stage => <button key={stage[0]} onClick={() => setSelection(stage)}><span>{stage[0]}</span><b>{stage[1]}</b><i>↗</i></button>)}</div></section>
-   <section id="home-models" className="home-models [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--h-line)] [padding:52px_0_58px] [scroll-margin-top:25px] max-[760px]:[padding:36px_0]"><div className="home-section-heading flex items-center justify-between [gap:25px] [margin-bottom:29px] [&_h2]:[font-size:32px] [&_h2]:[letter-spacing:-1px] [&_h2]:[font-weight:500] [&_h2]:[line-height:1.35] [&_h2]:[margin:12px_0_0] [&>span]:[color:#8fa58e] [&>span]:[font-size:12px] [&_p]:[font-size:14px] [&_p]:[color:#a5b5a9] [&_p]:[margin:12px_0_0] max-[760px]:items-start max-[760px]:flex-col max-[760px]:[gap:15px] max-[760px]:[margin-bottom:24px] max-[760px]:[&_h2]:[font-size:29px]"><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">EXPLORE THE ENGINE</span><h2>Bên trong mỗi bằng chứng.</h2><p>Nhìn thấy cơ chế. Hiểu đầu vào, đầu ra và giới hạn.</p></div><button className="home-motion-button [border-width:1px] [border-style:solid] [border-color:#344b38] [background:#152019] [color:#abc0a8]! [font:11px_ui-monospace,monospace]! [padding:10px_13px] [border-radius:4px] whitespace-nowrap" onClick={() => setPaused(!paused)} aria-pressed={paused}>{paused ? '▶ Tiếp tục mô phỏng' : 'Ⅱ Tạm dừng mô phỏng'}</button></div><div className="home-model-grid grid [grid-template-columns:repeat(3,minmax(0,1fr))] [gap:18px] max-[1050px]:[grid-template-columns:repeat(2,minmax(0,1fr))] max-[480px]:[grid-template-columns:1fr]">{homeModels.map(m => <article key={m.id} className={tw(`home-model-card ${m.soon ? 'home-future' : ''}`)}><div className="home-card-top flex justify-between [gap:10px] [padding:14px_18px] [border-bottom-width:1px] [border-bottom-style:solid] [border-bottom-color:#223c2a] [font:9px_ui-monospace,monospace] [color:#8aa790] [letter-spacing:.8px] [&_span:last-child]:[font-size:8px] [&_span:last-child]:[color:#76977e] [&_span:last-child]:[letter-spacing:0] [.home-future_&]:[grid-column:1/-1] [.home-future_&_span:last-child]:[color:#e4b889]"><span>{m.code}</span><span>{m.soon ? 'COMING SOON' : m.type + ' / MINH HỌA'}</span></div><ModelVisual model={m.id} paused={paused || m.soon}/><div className="home-card-copy [padding:20px_22px_23px] [border-top-width:1px] [border-top-style:solid] [border-top-color:#253c2b] [&>span]:[font-size:10px] [&>span]:[color:#92b99a] [&_h3]:[margin:7px_0_10px] [&_h3]:[line-height:1.4] [&_h3_button]:[font-size:19px] [&_h3_button]:[font-weight:500] [&_h3_button]:text-left [&_h3_button]:flex [&_h3_button]:justify-between [&_h3_button]:items-center [&_h3_button]:[gap:12px] [&_h3_button]:[border-width:0] [&_h3_button]:[background:none] [&_h3_button]:[padding:0] [&_h3_button]:w-full [&_h3_i]:[color:#ff914d] [&_h3_i]:[font-size:17px] [&_h3_i]:[font-style:normal] [&_p]:[font-size:13px] [&_p]:[line-height:1.8] [&_p]:[color:#a6b5a7] [&_p]:[min-height:48px] [&_p]:[margin:0_0_19px] [.home-future_&]:[border-width:0] [.home-future_&]:[border-left-width:1px] [.home-future_&]:[border-left-style:solid] [.home-future_&]:[border-left-color:#2c3a2d] [.home-future_&]:flex [.home-future_&]:flex-col [.home-future_&]:justify-center [.home-future_&>span]:[color:#e4b889] [.home-future_&_h3_button]:[font-size:25px] [.home-future_&_p]:[min-height:0] [.home-future_&_p]:[max-width:400px] max-[760px]:[.home-future_&_h3_button]:[font-size:22px] max-[480px]:[.home-future_&]:[border-left-width:0] max-[480px]:[.home-future_&]:[border-top-width:1px] max-[480px]:[.home-future_&]:[border-top-style:solid] max-[480px]:[.home-future_&]:[border-top-color:#2c3a2d]"><span>{m.tag}</span><h3><button onClick={() => setSelection(m.id)}>{m.name}<i>↗</i></button></h3><p>{m.description}</p>{m.soon ? <button className="home-text-link inline-flex [gap:14px] items-center [font-size:12px]! [border-width:0] [background:none] [padding:0] [color:#bfcabc]! [.home-hero_&]:[margin-top:21px] [&:hover]:[color:#ffad76]!" onClick={() => setSelection(m.id)}>Xem tính năng dự kiến →</button> : <button className="home-text-link inline-flex [gap:14px] items-center [font-size:12px]! [border-width:0] [background:none] [padding:0] [color:#bfcabc]! [.home-hero_&]:[margin-top:21px] [&:hover]:[color:#ffad76]!" onClick={() => setSelection(m.id)}>Hiểu mô hình →</button>}</div></article>)}</div></section>
-   <section className="home-outcomes grid [grid-template-columns:1fr_1.12fr] [gap:50px] [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--h-line)] [padding:55px_0] [&_h2]:[font-size:33px] [&_h2]:[line-height:1.3] [&_h2]:[letter-spacing:-1px] [&_h2]:[font-weight:500] [&_h2]:[margin:17px_0] [&>div>p]:[font-size:14px] [&>div>p]:[color:#a5b5a9] [&>div>p]:[max-width:410px] max-[1050px]:[gap:28px] max-[760px]:[grid-template-columns:1fr] max-[760px]:[gap:25px] max-[760px]:[padding:35px_0]"><div><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">EVIDENCE → ACTION</span><h2>Một hồ sơ.<br />Bốn hướng hành động.</h2><p>QuanTik làm rõ điều kiện để bạn cân nhắc. Việc lựa chọn và chấp nhận rủi ro thuộc về bạn.</p></div><div className="home-outcome-list [&>div]:grid [&>div]:[grid-template-columns:110px_1fr] [&>div]:[gap:5px_20px] [&>div]:[border-bottom-width:1px] [&>div]:[border-bottom-style:solid] [&>div]:[border-bottom-color:#263b2e] [&>div]:[padding:14px_0] [&>div:first-child]:[padding-top:0] [&>div>span]:[font:10px_ui-monospace,monospace] [&>div>span]:[color:#c7b89a] [&>div>span]:[padding-top:7px] [&>div>span:first-child]:whitespace-nowrap [&_b]:[font-size:17px] [&_b]:[font-weight:500] [&_p]:[grid-column:2] [&_p]:[font-size:12px] [&_p]:[color:#98ad9b] [&_p]:[margin:0] [&_p]:[line-height:1.7]">{[['AVOID', 'Loại', 'Dữ liệu, thanh khoản hoặc rủi ro không đạt điều kiện.'], ['WATCH', 'Theo dõi', 'Bằng chứng chưa đủ; giữ mã trong tầm quan sát.'], ['BUY_SETUP', 'Chờ xác nhận', 'Có cơ hội, cần chờ điều kiện kích hoạt.'], ['BUY_NOW', 'Lập kế hoạch', 'Đối chiếu điều kiện, vốn và giới hạn rủi ro trước khi thực hiện.']].map(([code, label, desc]) => <div key={code}><span>{code}</span><b>{label}</b><p>{desc}</p></div>)}</div></section>
-   <section className="home-bottom-cta text-center [border-top-width:1px] [border-top-style:solid] [border-top-color:var(--h-line)] [padding:55px_20px_65px] [background:radial-gradient(ellipse_at_center,#4e7c3420,transparent_65%)] [&_h2]:[font-size:33px] [&_h2]:[font-weight:500] [&_h2]:[letter-spacing:-1px] [&_h2]:[margin:17px_0_24px] max-[760px]:[&_h2]:[font-size:28px]"><span className="home-kicker inline-flex [gap:9px] items-center [font:10px/1.5_ui-monospace,Consolas,monospace] [letter-spacing:1.8px] [color:var(--h-green,#79dba4)] [&_i]:block [&_i]:[width:5px] [&_i]:[height:5px] [&_i]:[background:#79dba4] [&_i]:[border-radius:50%] max-[480px]:[.home-live-heading_&]:[font-size:8px] max-[480px]:[.home-live-heading_&]:[letter-spacing:1px]">YOUR CAPITAL. YOUR DECISION.</span><h2>Bắt đầu từ mã bạn đang quan tâm.</h2><button className="home-terminal-button inline-flex items-center justify-center [gap:22px] [border-width:1px] [border-style:solid] [border-color:#ff914d] [background:#ff914d]! [color:#0d170f]! [padding:11px_17px] [font-size:13px]! [font-weight:600] [border-radius:4px] whitespace-nowrap [transition:background_.2s,transform_.2s] [&:hover]:[background:#ffa76e]! [&:hover]:[transform:translateY(-2px)] max-[760px]:[.home-nav>&]:[margin-left:auto] max-[760px]:[.home-nav>&]:[padding:10px_12px] max-[760px]:[.home-nav>&]:[gap:10px] max-[760px]:[.home-nav>&]:[font-size:11px]! max-[480px]:[.home-nav>&]:[font-size:10px]! max-[480px]:[.home-nav>&]:[padding:10px] max-[480px]:[.home-nav>&]:[gap:7px] motion-reduce:[&:hover]:[transform:none]" onClick={() => document.getElementById('home-symbol')?.focus()}>Kiểm định cổ phiếu <span>↑</span></button></section>
-  </main><footer className="home-footer [max-width:1280px] [margin:auto] flex justify-between items-center [gap:15px] flex-wrap [padding:25px_28px] [border-top-width:1px] [border-top-style:solid] [border-top-color:#263b2e] [font:10px_ui-monospace,monospace] [color:#87a38a] [&_button]:[background:none] [&_button]:[border-width:0] [&_button]:[font-size:10px] [&_button]:[color:#aebcab] max-[760px]:[font-size:9px] max-[760px]:items-start max-[760px]:flex-col"><span>QuanTik / Quantitative insights</span><span>Visual minh họa cơ chế · Kết quả thực tế xem trong Terminal</span><button onClick={() => scrollTo('home-content')}>Về đầu trang ↑</button></footer>
-  {selection && <Explanation selection={selection} paused={paused} onClose={() => setSelection(null)}/>}
- </div>;
+
+function InspectForm({ id, onInspect, compact = false }: { id: string; onInspect: (symbol: string, location: string) => void; compact?: boolean }) {
+  const [symbol, setSymbol] = useState(""), [error, setError] = useState("");
+  function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const value = symbol.trim().toUpperCase();
+    if (!/^[A-Z0-9]{3,5}$/.test(value)) { setError("Nhập mã cổ phiếu gồm 3–5 ký tự, ví dụ FPT hoặc HPG."); return; }
+    setError("");
+    onInspect(value, id);
+  }
+  return <div className={compact ? "mx-auto w-full max-w-lg" : "w-full max-w-xl"}>
+    <form onSubmit={submit} className="flex items-center gap-2 rounded-lg border border-line-strong bg-panel-raised p-1.5 pl-4 focus-within:border-brand">
+      <label htmlFor={id} className="sr-only">Mã cổ phiếu cần kiểm định</label>
+      <span aria-hidden="true" className="text-xl text-ink-subtle">⌕</span>
+      <input id={id} value={symbol} onChange={e => setSymbol(e.target.value.toUpperCase())} placeholder="Nhập mã cổ phiếu, ví dụ FPT" maxLength={5} autoComplete="off" spellCheck="false"
+        className="min-w-0 flex-1 bg-transparent py-3 font-sans text-base text-ink outline-none placeholder:text-ink-subtle" aria-describedby={error ? `${id}-error` : undefined} />
+      <button type="submit" className={`${buttonStyles.primary} min-h-11 px-4 max-sm:px-3`}>Kiểm định <span aria-hidden="true">→</span></button>
+    </form>
+    {error && <p id={`${id}-error`} role="alert" className="m-0 mt-2 text-sm text-[#f9a4aa]">{error}</p>}
+  </div>;
+}
+
+export default function HomePage() {
+  const router = useRouter();
+  const [selection, setSelection] = useState<Selection | null>(null), [paused, setPaused] = useState(false);
+  const [menu, setMenu] = useState(false), [allModels, setAllModels] = useState(false);
+  const scrollTo = (id: string) => {
+    document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
+    setMenu(false);
+  };
+  const inspect = (symbol: string, location: string) => {
+    track("inspect_submit", { symbol, location });
+    router.push(`/analysis?symbol=${encodeURIComponent(symbol)}`);
+  };
+  const models = allModels ? homeModels : homeModels.slice(0, 3);
+  const nav: [string, () => void][] = [
+    ["Cách hoạt động", () => scrollTo("home-process")],
+    ["Báo cáo mẫu", () => scrollTo("home-sample")],
+    ["Bảng giá", () => scrollTo("home-pricing")],
+  ];
+
+  return <div className="quantik-home min-h-screen bg-page font-sans text-base leading-relaxed text-ink antialiased">
+    <a href="#home-content" className="absolute left-4 top-0 z-50 -translate-y-[200%] bg-brand p-3 text-brand-ink focus:translate-y-0">Đến nội dung</a>
+
+    <header className="home-nav sticky top-0 z-40 border-b border-line bg-page/90 backdrop-blur-md">
+      <div className="mx-auto flex max-w-[1280px] flex-wrap items-center gap-6 px-7 py-4 max-lg:gap-4 max-md:px-5 max-md:py-3">
+        <button onClick={() => window.scrollTo({ top: 0 })} aria-label="QuanTik — Trang chủ" className="flex items-center gap-3 text-left">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/quantik-logo.jpg" width={36} height={36} alt="" className="rounded-md max-sm:size-8" />
+          <span className="text-2xl font-semibold leading-none tracking-tight max-sm:text-xl">Quan<span className="text-brand">Tik</span></span>
+        </button>
+        <nav id="home-navigation" aria-label="Điều hướng trang chủ" className={`${menu ? "flex" : "hidden"} order-last w-full flex-col md:order-none md:ml-6 md:flex md:w-auto md:flex-row md:items-center md:gap-7`}>
+          {nav.map(([label, go]) => <button key={label} onClick={go} className="border-t border-line py-3 text-left text-base text-ink-muted hover:text-ink md:border-0 md:py-2 md:text-sm">{label}</button>)}
+          <Link href="/dashboard" className="border-t border-line py-3 text-base text-ink-muted hover:text-ink md:border-0 md:py-2 md:text-sm">Thị trường ↗</Link>
+        </nav>
+        <div className="ml-auto flex items-center gap-2">
+          <CtaLink href="/login" variant="ghost" location="nav_login" className="min-h-10 text-sm max-sm:hidden" onClickCapture={() => track("login_start", { location: "nav" })}>Đăng nhập</CtaLink>
+          <button onClick={() => scrollTo("home-pricing")} className={`${buttonStyles.primary} min-h-10 px-4 text-sm max-sm:px-3`}><span className="max-sm:hidden">Xem bảng giá</span><span className="sm:hidden">Bảng giá</span></button>
+          <button onClick={() => setMenu(!menu)} aria-expanded={menu} aria-controls="home-navigation" className="rounded-md border border-line-strong bg-panel-raised px-3 py-2 text-sm md:hidden">{menu ? "Đóng" : "Menu"}</button>
+        </div>
+      </div>
+    </header>
+
+    <main id="home-content" className="mx-auto max-w-[1336px] px-7 max-md:px-5">
+      {/* Hero */}
+      <section className="grid grid-cols-1 items-center gap-14 py-20 lg:grid-cols-[1fr_1.05fr] [&>*]:min-w-0 max-lg:gap-10 max-md:py-12">
+        <div>
+          <Kicker>Kiểm định cổ phiếu Việt Nam</Kicker>
+          <h1 className="my-6 text-display font-semibold [&_em]:not-italic [&_em]:text-brand">Nghe một mã.<br />Đừng bỏ tiền<br /><em>khi chưa hiểu.</em></h1>
+          <p className="m-0 mb-8 max-w-xl text-lg leading-relaxed text-ink-muted max-md:text-base">
+            <strong className="font-semibold text-ink">Nhập một mã, nhận hồ sơ bằng chứng trong một báo cáo:</strong> nên loại, theo dõi, chờ xác nhận hay lập kế hoạch — kèm vùng giá và giới hạn rủi ro để bạn tự quyết định.
+          </p>
+          <InspectForm id="home-symbol" onInspect={inspect} />
+          <ul className="m-0 mt-7 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 text-sm text-ink-muted">
+            <li><b className="font-semibold text-ink">1.600+</b> mã HOSE · HNX · UPCOM</li>
+            <li><b className="font-semibold text-ink">9</b> lớp kiểm tra</li>
+            <li><b className="font-semibold text-ink">4</b> kết luận rõ ràng</li>
+          </ul>
+        </div>
+
+        <div className="home-hero-terminal min-w-0 overflow-hidden rounded-xl border border-line-strong bg-[linear-gradient(130deg,#12251a,#101b14)] shadow-[0_26px_100px_#0005]">
+          <div className="flex justify-between gap-3 border-b border-line px-5 py-3 font-mono text-xs text-ink-subtle"><span>QUANTIK / MODEL EXPLORER</span><span>3D</span></div>
+          <div className="home-live-heading flex items-center justify-between gap-4 px-6 pb-1 pt-5 max-md:px-4">
+            <div><Kicker>Phân phối & rủi ro</Kicker><button onClick={() => setSelection("monte")} className="mt-1 flex items-center gap-3 text-left text-xl font-semibold">GARCH–t Monte Carlo <span className="text-brand">↗</span></button></div>
+            <span className="whitespace-nowrap rounded border border-caution/40 px-2 py-1 font-mono text-xs text-caution">MÔ PHỎNG</span>
+          </div>
+          <ModelVisual model="monte" paused={paused} large />
+          <div className="flex items-center justify-between gap-4 border-t border-line px-5 py-3 text-sm text-ink-muted">
+            <span>Nhiều kịch bản. Một ngân sách rủi ro.</span>
+            <button onClick={() => setPaused(!paused)} aria-pressed={paused} className="px-1 text-sm text-ink-muted hover:text-ink">{paused ? "▶ Tiếp tục" : "Ⅱ Tạm dừng"}</button>
+          </div>
+          <div className="flex border-t border-line">
+            {["hmm", "garch", "hurst"].map(id => { const m = homeModels.find(x => x.id === id)!; return <button key={id} onClick={() => setSelection(id)} className="flex-1 border-r border-line bg-panel px-2 py-3.5 text-sm text-ink-muted last:border-r-0 hover:bg-panel-raised hover:text-ink">{m.name} <span className="text-brand">↗</span></button>; })}
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <Section>
+        <SectionHeader kicker="Vì sao cần kiểm định" title={<>Hơn 1.600 mã. Bạn cần <em>bằng chứng</em>, không cần thêm lời đồn.</>}
+          lead="Phần lớn quyết định mua đến từ một cái tên nghe được và một nhịp tăng giá. QuanTik đặt mã đó qua cùng một quy trình kiểm tra, mỗi lần như nhau." />
+        <div className="grid gap-5 md:grid-cols-3 max-sm:-mx-5 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-5 max-sm:pb-2 max-sm:[scrollbar-width:none] max-sm:[&>*]:w-[84%] max-sm:[&>*]:shrink-0 max-sm:[&>*]:snap-start">
+          {benefits.map(([n, title, body]) => <article key={n} className="rounded-xl border border-line bg-panel p-7 max-md:p-5">
+            <span className="font-mono text-sm text-signal">{n}</span>
+            <h3 className="mb-2 mt-3 text-xl font-semibold text-ink">{title}</h3>
+            <p className="m-0 text-base leading-relaxed text-ink-muted">{body}</p>
+          </article>)}
+        </div>
+      </Section>
+
+      {/* Process */}
+      <Section id="home-process">
+        <SectionHeader kicker="Cách hoạt động" title="Hiểu trước. Quyết định sau." lead="Ba bước, một báo cáo. Quyết định cuối cùng luôn thuộc về bạn." />
+        <ol className="m-0 mb-12 grid list-none gap-5 p-0 md:grid-cols-3 max-sm:-mx-5 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-5 max-sm:pb-2 max-sm:[scrollbar-width:none] max-sm:[&>*]:w-[84%] max-sm:[&>*]:shrink-0 max-sm:[&>*]:snap-start">
+          {steps.map(([title, body], i) => <li key={title} className="relative rounded-xl border border-line bg-panel p-7 max-md:p-5">
+            <span className="grid size-10 place-items-center rounded-full bg-brand font-semibold text-brand-ink">{i + 1}</span>
+            <h3 className="mb-2 mt-4 text-xl font-semibold text-ink">{title}</h3>
+            <p className="m-0 text-base leading-relaxed text-ink-muted">{body}</p>
+          </li>)}
+        </ol>
+        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="m-0 text-lg font-semibold text-ink">9 lớp kiểm tra bên trong</h3>
+          <span className="text-sm text-ink-subtle">Bấm từng lớp để xem cách kiểm tra</span>
+        </div>
+        <div className="home-architecture grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-line bg-line lg:grid-cols-3">
+          {inspectionStages.map(stage => <button key={stage[0]} onClick={() => setSelection(stage)} className="flex items-center gap-4 bg-panel px-5 py-4 text-left transition-colors hover:bg-panel-raised max-sm:gap-2 max-sm:px-3 max-sm:py-3">
+            <span className="font-mono text-sm text-ink-subtle max-sm:text-xs">{stage[0]}</span><b className="text-base font-medium text-ink max-sm:text-sm">{stage[1]}</b><i aria-hidden="true" className="ml-auto not-italic text-brand max-sm:hidden">↗</i>
+          </button>)}
+        </div>
+      </Section>
+
+      {/* Sample report */}
+      <Section id="home-sample">
+        <div className="grid items-center gap-12 lg:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <SectionHeader kicker="Báo cáo mẫu" title={<>Một báo cáo. <em>Bốn hướng hành động.</em></>} lead="Mỗi báo cáo kết thúc bằng một trong bốn kết luận, kèm lý do và điều kiện cụ thể." />
+            <ul className="m-0 grid list-none gap-0 p-0">
+              {outcomes.map(([code, label, desc, tone]) => <li key={code} className="grid grid-cols-[120px_1fr] gap-x-5 border-b border-line py-4 first:pt-0 max-sm:grid-cols-1 max-sm:gap-y-1">
+                <span className="pt-1 font-mono text-xs text-ink-subtle">{code}</span>
+                <div><b className={`text-lg font-semibold ${tone}`}>{label}</b><p className="m-0 mt-1 text-sm leading-relaxed text-ink-muted">{desc}</p></div>
+              </li>)}
+            </ul>
+          </div>
+          <SampleReport />
+        </div>
+      </Section>
+
+      {/* Models */}
+      <Section id="home-models">
+        <SectionHeader kicker="Bên trong hệ thống" title="Nhìn thấy cơ chế, không phải hộp đen." lead="Mỗi mô hình ghi rõ đầu vào, đầu ra và giới hạn áp dụng."
+          aside={<button onClick={() => setPaused(!paused)} aria-pressed={paused} className={`${buttonStyles.secondary} min-h-10 text-sm`}>{paused ? "▶ Tiếp tục mô phỏng" : "Ⅱ Tạm dừng mô phỏng"}</button>} />
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 max-sm:-mx-5 max-sm:flex max-sm:snap-x max-sm:snap-mandatory max-sm:overflow-x-auto max-sm:px-5 max-sm:pb-2 max-sm:[scrollbar-width:none] max-sm:[&>*]:w-[84%] max-sm:[&>*]:shrink-0 max-sm:[&>*]:snap-start">
+          {models.map(m => <article key={m.id} className={`home-model-card overflow-hidden rounded-xl border border-line bg-panel ${m.soon ? "home-future" : ""}`}>
+            <div className="flex justify-between gap-3 border-b border-line px-5 py-3 font-mono text-xs text-ink-subtle"><span>{m.code}</span><span className={m.soon ? "text-caution" : ""}>{m.soon ? "SẮP RA MẮT" : m.type + " / MINH HỌA"}</span></div>
+            <ModelVisual model={m.id} paused={paused || m.soon} />
+            <div className="border-t border-line p-6 max-md:p-5">
+              <span className={`text-sm ${m.soon ? "text-caution" : "text-signal"}`}>{m.tag}</span>
+              <h3 className="mb-2 mt-1"><button onClick={() => setSelection(m.id)} className="flex w-full items-center justify-between gap-3 text-left text-xl font-semibold text-ink">{m.name}<i aria-hidden="true" className="not-italic text-brand">↗</i></button></h3>
+              <p className="m-0 mb-4 text-base leading-relaxed text-ink-muted">{m.description}</p>
+              <button onClick={() => setSelection(m.id)} className="text-sm text-ink-muted hover:text-brand">{m.soon ? "Xem tính năng dự kiến →" : "Hiểu mô hình →"}</button>
+            </div>
+          </article>)}
+        </div>
+        {!allModels && <div className="mt-8 text-center"><button onClick={() => setAllModels(true)} className={buttonStyles.secondary}>Xem thêm {homeModels.length - 3} mô hình</button></div>}
+      </Section>
+
+      {/* Pricing */}
+      <Section id="home-pricing">
+        <SectionHeader kicker="Bảng giá" title={<>Rẻ hơn <em>một lệnh mua sai.</em></>} lead="Một gói, đủ để kiểm định mọi mã bạn quan tâm mỗi ngày." />
+        <PricingTeaser />
+      </Section>
+
+      {/* FAQ */}
+      <Section id="home-faq">
+        <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr]">
+          <div className="self-start lg:sticky lg:top-24"><SectionHeader kicker="Câu hỏi thường gặp" title="Trước khi bạn bắt đầu." /></div>
+          <div className="divide-y divide-line rounded-xl border border-line bg-panel">
+            {faqs.map(([q, a]) => <details key={q} className="group px-6 max-md:px-4" onToggle={e => { if ((e.currentTarget as HTMLDetailsElement).open) track("faq_open", { question: q }); }}>
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-5 text-lg font-medium text-ink [&::-webkit-details-marker]:hidden max-md:text-base">{q}<span aria-hidden="true" className="text-2xl leading-none text-brand transition-transform group-open:rotate-45">+</span></summary>
+              <p className="m-0 pb-5 text-base leading-relaxed text-ink-muted">{a}</p>
+            </details>)}
+          </div>
+        </div>
+      </Section>
+
+      {/* Final CTA */}
+      <section className="border-t border-line bg-[radial-gradient(ellipse_at_center,#4e7c3422,transparent_65%)] px-5 py-24 text-center max-md:py-16">
+        <Kicker>Vốn của bạn. Quyết định của bạn.</Kicker>
+        <h2 className="mx-auto mb-8 mt-4 max-w-2xl text-4xl font-semibold leading-tight tracking-tight max-md:text-3xl">Bắt đầu từ mã bạn đang quan tâm.</h2>
+        <InspectForm id="home-symbol-bottom" onInspect={inspect} compact />
+        <p className="m-0 mt-5 text-sm text-ink-subtle">Hoặc <button onClick={() => scrollTo("home-pricing")} className="text-ink-muted underline underline-offset-4 hover:text-brand">xem bảng giá</button></p>
+      </section>
+    </main>
+
+    <footer className="border-t border-line">
+      <div className="mx-auto flex max-w-[1280px] flex-wrap items-start justify-between gap-6 px-7 py-10 text-sm text-ink-subtle max-md:flex-col max-md:px-5">
+        <div className="max-w-md">
+          <span className="text-lg font-semibold text-ink">Quan<span className="text-brand">Tik</span></span>
+          <p className="m-0 mt-2 leading-relaxed">QuanTik cung cấp công cụ phân tích định lượng, không phải khuyến nghị đầu tư. Hình minh họa trên trang mô tả cơ chế; kết quả thực tế xem trong ứng dụng.</p>
+        </div>
+        <nav aria-label="Liên kết cuối trang" className="flex flex-wrap gap-x-6 gap-y-2">
+          <Link href="/plans" className="hover:text-ink">Bảng giá</Link>
+          <Link href="/dashboard" className="hover:text-ink">Thị trường</Link>
+          <Link href="/login" className="hover:text-ink">Đăng nhập</Link>
+          <button onClick={() => window.scrollTo({ top: 0 })} className="hover:text-ink">Về đầu trang ↑</button>
+        </nav>
+      </div>
+    </footer>
+    {selection && <Explanation selection={selection} paused={paused} onClose={() => setSelection(null)} />}
+  </div>;
 }

@@ -21,10 +21,17 @@ import "./globals.css";
 
 import "katex/dist/katex.min.css";
 import { Preferences } from "@/components/preferences";
+import { Analytics } from "@/components/analytics";
+import { siteUrl, siteName, siteDescription, siteTitle, openGraphBase } from "@/lib/site";
 export const metadata: Metadata = {
-  title: { default: "QuanTik", template: "%s · QuanTik" },
-  description: "Kiểm định cổ phiếu trước khi ra quyết định.",
+  metadataBase: new URL(siteUrl),
+  title: { default: siteTitle, template: `%s · ${siteName}` },
+  description: siteDescription,
+  applicationName: siteName,
+  keywords: ["kiểm định cổ phiếu", "phân tích định lượng", "quant", "chứng khoán Việt Nam", "lọc cổ phiếu", "quản trị rủi ro", "HOSE", "HNX", "UPCOM"],
   icons: { icon: "/quantik-logo.jpg" },
+  openGraph: openGraphBase,
+  twitter: { card: "summary_large_image", title: siteTitle, description: siteDescription },
 };
 export default function RootLayout({
   children,
@@ -35,6 +42,7 @@ export default function RootLayout({
     <html lang="vi">
       <body>
         <Preferences>{children}</Preferences>
+        <Analytics />
       </body>
     </html>
   );

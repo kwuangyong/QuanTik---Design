@@ -6,6 +6,10 @@ COPY frontend/package.json ./frontend/package.json
 RUN npm ci
 COPY frontend ./frontend
 COPY backend/mock ./backend/mock
+# Public build-time config (inlined into the client bundle). GA is disabled when empty.
+ARG NEXT_PUBLIC_GA_ID=""
+ARG NEXT_PUBLIC_SITE_URL="https://quantik.io.vn"
+ENV NEXT_PUBLIC_GA_ID=$NEXT_PUBLIC_GA_ID NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
