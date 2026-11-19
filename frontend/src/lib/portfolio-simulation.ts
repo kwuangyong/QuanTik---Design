@@ -1,4 +1,4 @@
-import { gaussian, seededRandom, quantile, portfolioRisk, type Asset, type Portfolio } from "./portfolio-engine";
+import { covariance, gaussian, seededRandom, quantile, portfolioRisk, type Asset, type Portfolio } from "./portfolio-engine";
 import { quantModel } from "./portfolio-quant-adapter";
 export type Scenario = { horizon: number; marketShock: number; sector: string; sectorShock: number; symbol: string; symbolShock: number; stress: number; volatility: number; budget: number; seed: number };
 export const defaultScenario: Scenario = { horizon:20, marketShock:0, sector:"Ngân hàng", sectorShock:0, symbol:"FPT", symbolShock:0, stress:0, volatility:1, budget:.1, seed:42 };
@@ -27,37 +27,57 @@ export function deterministicImpact(asset: Asset, s: Scenario) {
   // Cú sốc là lợi suất cộng dồn cả kỳ; các nguồn độc lập cộng theo log.
   return Math.expm1(asset.beta * Math.log1p(s.marketShock) + (asset.sector===s.sector ? Math.log1p(s.sectorShock):0) + (asset.symbol===s.symbol ? Math.log1p(s.symbolShock):0));
 }
-export function simulatePortfolio(portfolio: Portfolio, assets: Asset[], scenario: Scenario, paths = 1200) {
+/** Mô phỏng giá tương đối (giá/giá hiện tại) cho cả universe. Không phụ thuộc danh mục, nên mọi danh mục dùng chung một bộ nhiễu. */
+export function simulateAssetPaths(assets: Asset[], scenario: Scenario, paths = 1200) {
   validateScenario(scenario, assets);
   if(!Number.isInteger(paths) || paths<100 || paths>10000) throw new Error("Số đường phải từ 100 đến 10.000.");
-  const risk = portfolioRisk(portfolio,assets), n = assets.length, s = scenario;
+  const n = assets.length, s = scenario, horizon = s.horizon;
   const models = assets.map(a => quantModel(a.symbol));
+  const returns = covariance(assets.map(a => a.returns));
+  const baseCorrelation = returns.map((row,i) => row.map((v,j) => returns[i][i] > 0 && returns[j][j] > 0 ? Math.max(-1, Math.min(1, v / Math.sqrt(returns[i][i] * returns[j][j]))) : i === j ? 1 : 0));
   // Co về I để ổn định; trộn ma trận toàn số 1 giữ tính PSD khi tăng tương quan.
-  const correlation = risk.correlation.map((row,i) => row.map((v,j) => i===j ? 1 : (1-s.stress)*.98*v+s.stress));
+  const correlation = baseCorrelation.map((row,i) => row.map((v,j) => i===j ? 1 : (1-s.stress)*.98*v+s.stress));
   const lower = cholesky(correlation), random = seededRandom(s.seed);
-  const values = assets.map(a => risk.holdings.find(h=>h.symbol===a.symbol)?.value ?? 0);
-  const shocks = assets.map(a => Math.log1p(deterministicImpact(a,s)) / s.horizon);
-  const buckets = Array.from({length:s.horizon+1},()=>[] as number[]);
-  const endings: number[] = [], means = assets.map(()=>0);
-  let lossCount=0, breachCount=0;
+  const shocks = assets.map(a => Math.log1p(deterministicImpact(a,s)) / horizon);
+  // relatives[(path*(horizon+1)+day)*n+i]; ngày 0 = 1.
+  const relatives = new Float64Array(paths*(horizon+1)*n);
   for(let path=0;path<paths;path++) {
     const prices = assets.map(()=>1), variances = models.map(m=>m.variance);
-    let breached=false;
-    buckets[0].push(risk.total);
-    for(let day=1;day<=s.horizon;day++) {
-      const noise = assets.map(()=>gaussian(random));
+    relatives.fill(1, path*(horizon+1)*n, (path*(horizon+1)+1)*n);
+    for(let day=1;day<=horizon;day++) {
+      const noise = assets.map(()=>gaussian(random)), offset = (path*(horizon+1)+day)*n;
       for(let i=0;i<n;i++) {
         const z = lower[i].reduce((sum,l,j)=>sum+l*noise[j],0), variance = variances[i]*s.volatility**2;
         prices[i] *= Math.exp(shocks[i]-.5*variance+Math.sqrt(variance)*z);
         // Phương sai kỳ vọng; không fit lại hoặc cập nhật theo nhiễu thực hiện.
         variances[i]=models[i].omega+(models[i].alpha+models[i].beta)*variances[i];
+        relatives[offset+i]=prices[i];
       }
-      const value=portfolio.cash+prices.reduce((sum,p,i)=>sum+p*values[i],0);
+    }
+  }
+  return {paths, horizon, n, relatives, correlation, scenario:{...s}};
+}
+export type AssetPaths = ReturnType<typeof simulateAssetPaths>;
+export function simulatePortfolio(portfolio: Portfolio, assets: Asset[], scenario: Scenario, paths = 1200, shared?: AssetPaths) {
+  const sim = shared ?? simulateAssetPaths(assets, scenario, paths);
+  if (shared && (shared.n !== assets.length || JSON.stringify(shared.scenario) !== JSON.stringify(scenario) || shared.paths !== paths)) throw new Error("Bộ đường mô phỏng dùng chung không khớp kịch bản.");
+  const risk = portfolioRisk(portfolio,assets), s = scenario, {n, horizon, relatives, correlation} = sim;
+  const values = assets.map(a => risk.holdings.find(h=>h.symbol===a.symbol)?.value ?? 0);
+  const buckets = Array.from({length:horizon+1},()=>[] as number[]);
+  const endings: number[] = [], means = assets.map(()=>0);
+  let lossCount=0, breachCount=0;
+  for(let path=0;path<paths;path++) {
+    let breached=false;
+    buckets[0].push(risk.total);
+    for(let day=1;day<=horizon;day++) {
+      const offset=(path*(horizon+1)+day)*n;
+      let value=portfolio.cash;
+      for(let i=0;i<n;i++) value+=relatives[offset+i]*values[i];
       buckets[day].push(value);
       if(risk.total>0 && value<=risk.total*(1-s.budget)) breached=true;
-      if(day===s.horizon) {
+      if(day===horizon) {
         endings.push(value); if(value<risk.total) lossCount++;
-        prices.forEach((p,i)=>{means[i]+=(p-1)*values[i]/paths;});
+        for(let i=0;i<n;i++) means[i]+=(relatives[offset+i]-1)*values[i]/paths;
       }
     }
     if(breached) breachCount++;
@@ -73,26 +93,67 @@ export function simulatePortfolio(portfolio: Portfolio, assets: Asset[], scenari
 }
 export type Limits = { stock: number; sector: number; volatility: number; budget: number };
 export const defaultLimits: Limits = {stock:.3,sector:.45,volatility:.22,budget:.1};
+/** Lô chẵn sàn HOSE. Phần lẻ hiện có chỉ được bán ra, không bao giờ mua thêm. */
+export const LOT_SIZE = 100;
+/** Hạ khối lượng về lô chẵn ≤ target; giữ nguyên nếu không cần giảm. */
+export function reduceToLot(current: number, target: number, lot = LOT_SIZE) {
+  return target >= current ? current : Math.max(0, Math.floor(Math.max(0, target) / lot) * lot);
+}
+export function validateLimits(limits: Limits) {
+  if(["stock","sector","volatility","budget"].some(k=>{const v=(limits as Record<string,number>)[k];return !Number.isFinite(v)||v<=0||v>1;})) throw new Error("Giới hạn phải lớn hơn 0 và không quá 100%.");
+  if(limits.budget<.01||limits.budget>.5) throw new Error("Ngân sách lỗ phải từ 1% đến 50% tổng tài sản.");
+}
+// Mỗi bước giảm 1 lô, hoặc ~2% vị thế với vị thế rất lớn, để số vòng lặp có giới hạn.
+const stepTarget=(quantity:number)=>quantity-Math.max(LOT_SIZE,Math.floor(quantity*.02/LOT_SIZE)*LOT_SIZE);
+const MAX_STEPS=20000;
 export function rebalancePreview(portfolio: Portfolio, assets: Asset[], limits: Limits, scenario: Scenario) {
-  if(Object.values(limits).some(v=>!Number.isFinite(v)||v<=0||v>1)) throw new Error("Giới hạn phải lớn hơn 0 và không quá 100%.");
-  const before = portfolioRisk(portfolio,assets);
-  const quantities=new Map(before.holdings.map(h=>[h.symbol,Math.min(h.quantity,Math.floor(limits.stock*before.total/h.price))]));
-  for(const sector of before.sectors) {
-    const members=before.holdings.filter(h=>h.sector===sector.name), value=members.reduce((sum,h)=>sum+quantities.get(h.symbol)!*h.price,0);
-    const scale=Math.min(1,limits.sector*before.total/(value||1));
-    members.forEach(h=>quantities.set(h.symbol,Math.floor(quantities.get(h.symbol)!*scale)));
-  }
-  const candidate=():Portfolio=>({cash:portfolio.cash+before.holdings.reduce((sum,h)=>sum+(h.quantity-quantities.get(h.symbol)!)*h.price,0),positions:portfolio.positions.map(p=>({...p,quantity:quantities.get(p.symbol)!})).filter(p=>p.quantity>0)});
-  const capped=portfolioRisk(candidate(),assets), scale=Math.min(1,limits.volatility/(capped.volatility||1));
-  quantities.forEach((quantity,symbol)=>quantities.set(symbol,Math.floor(quantity*scale)));
+  validateLimits(limits);
+  const before = portfolioRisk(portfolio,assets), total = before.total, n = assets.length;
   const appliedScenario={...scenario,budget:limits.budget};
-  const interim=simulatePortfolio(candidate(),assets,appliedScenario);
-  const lossScale=Math.min(1,limits.budget*before.total/(interim.var95||1));
-  quantities.forEach((quantity,symbol)=>quantities.set(symbol,Math.floor(quantity*lossScale)));
-  const after=candidate(), afterRisk=portfolioRisk(after,assets);
-  const baseline=simulatePortfolio(portfolio,assets,appliedScenario), simulation=simulatePortfolio(after,assets,appliedScenario);
+  const quantities=new Map(before.holdings.map(h=>[h.symbol,h.quantity]));
+  const priceOf=new Map(before.holdings.map(h=>[h.symbol,h.price])), indexOf=new Map(before.holdings.map(h=>[h.symbol,h.index]));
+  const reduce=(symbol:string,target:number)=>quantities.set(symbol,reduceToLot(quantities.get(symbol)!,target));
+  // 1. Trần từng mã.
+  for(const h of before.holdings) reduce(h.symbol,limits.stock*total/h.price);
+  // 2. Trần ngành: giảm theo tỉ lệ các mã còn lại trong ngành, rồi bù từng lô nếu làm tròn chưa đủ.
+  for(const sector of before.sectors) {
+    const members=before.holdings.filter(h=>h.sector===sector.name), cap=limits.sector*total;
+    const value=()=>members.reduce((sum,h)=>sum+quantities.get(h.symbol)!*h.price,0);
+    const scale=Math.min(1,cap/(value()||1));
+    if(scale<1) members.forEach(h=>reduce(h.symbol,quantities.get(h.symbol)!*scale));
+    for(let guard=0;value()>cap+1e-6&&guard<MAX_STEPS;guard++) {
+      const largest=[...members].filter(h=>quantities.get(h.symbol)!>0).sort((a,b)=>quantities.get(b.symbol)!*b.price-quantities.get(a.symbol)!*a.price)[0];
+      reduce(largest.symbol,stepTarget(quantities.get(largest.symbol)!));
+    }
+  }
+  const weights=()=>{const w=Array<number>(n).fill(0);quantities.forEach((q,symbol)=>{w[indexOf.get(symbol)!]=q*priceOf.get(symbol)!/(total||1);});return w;};
+  const held=()=>[...quantities].filter(([,q])=>q>0).map(([symbol])=>symbol);
+  // 3. Trần biến động: mỗi bước bán mã có biến động biên (Σw)ᵢ lớn nhất, tức giảm biến động nhiều nhất trên mỗi đồng bán.
+  for(let guard=0;guard<MAX_STEPS;guard++) {
+    const w=weights(), marginal=before.cov.map(row=>row.reduce((sum,v,j)=>sum+v*w[j],0));
+    const variance=Math.max(0,w.reduce((sum,x,i)=>sum+x*marginal[i],0));
+    if(Math.sqrt(variance*252)<=limits.volatility+1e-9) break;
+    const pick=held().sort((a,b)=>marginal[indexOf.get(b)!]-marginal[indexOf.get(a)!])[0];
+    if(!pick||marginal[indexOf.get(pick)!]<=0) break;
+    reduce(pick,stepTarget(quantities.get(pick)!));
+  }
+  // 4. Ngân sách VaR 95%: dùng cùng bộ đường giá; mỗi bước bán mã có tổn thất trung bình mỗi đồng lớn nhất trong 5% đường xấu nhất.
+  const shared=simulateAssetPaths(assets,appliedScenario), {paths,horizon,relatives}=shared, last=(path:number)=>(path*(horizon+1)+horizon)*n;
+  const budget=limits.budget*total, tailCount=Math.ceil(paths*.05);
+  for(let guard=0;guard<MAX_STEPS;guard++) {
+    const w=weights(), losses=Array.from({length:paths},(_,path)=>{let loss=0;for(let i=0;i<n;i++) loss+=w[i]*total*(1-relatives[last(path)+i]);return {path,loss};});
+    if(Math.max(0,quantile(losses.map(l=>l.loss),.95))<=budget) break;
+    const tail=losses.sort((a,b)=>b.loss-a.loss).slice(0,tailCount);
+    const tailLoss=(symbol:string)=>tail.reduce((sum,{path})=>sum+1-relatives[last(path)+indexOf.get(symbol)!],0)/tailCount;
+    const pick=held().sort((a,b)=>tailLoss(b)-tailLoss(a))[0];
+    if(!pick||tailLoss(pick)<=0) break;
+    reduce(pick,stepTarget(quantities.get(pick)!));
+  }
+  const after:Portfolio={cash:portfolio.cash+before.holdings.reduce((sum,h)=>sum+(h.quantity-quantities.get(h.symbol)!)*h.price,0),positions:portfolio.positions.map(p=>({...p,quantity:quantities.get(p.symbol)!})).filter(p=>p.quantity>0)};
+  const afterRisk=portfolioRisk(after,assets);
+  const baseline=simulatePortfolio(portfolio,assets,appliedScenario,paths,shared), simulation=simulatePortfolio(after,assets,appliedScenario,paths,shared);
   const changes=before.holdings.map(h=>({symbol:h.symbol,quantity:h.quantity-quantities.get(h.symbol)!,proceeds:(h.quantity-quantities.get(h.symbol)!)*h.price})).filter(c=>c.quantity>0);
-  // Làm tròn số nguyên có thể dịch cơ cấu nhỏ: báo kết quả kiểm chứng thay vì cam kết.
-  const compliant=afterRisk.holdings.every(h=>h.weight<=limits.stock+1e-9)&&afterRisk.sectors.every(h=>h.weight<=limits.sector+1e-9)&&afterRisk.volatility<=limits.volatility+1e-9&&simulation.var95<=limits.budget*before.total+1;
-  return {before,after:afterRisk,portfolio:after,baseline,simulation,changes,compliant};
+  // Kiểm chứng lại sau làm tròn lô: báo kết quả thay vì cam kết.
+  const compliant=afterRisk.holdings.every(h=>h.weight<=limits.stock+1e-9)&&afterRisk.sectors.every(h=>h.weight<=limits.sector+1e-9)&&afterRisk.volatility<=limits.volatility+1e-9&&simulation.var95<=budget+1;
+  return {before,after:afterRisk,portfolio:after,baseline,simulation,changes,compliant,lotSize:LOT_SIZE};
 }

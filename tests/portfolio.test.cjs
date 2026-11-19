@@ -72,11 +72,28 @@ test('Bảo toàn tiền mặt và cùng đường nhiễu: giảm nửa số c�
 test('Phương án hợp nhất không bán trùng, không tăng vị thế, giữ nguyên gốc và tài sản',()=>{
   for(const {portfolio:p} of samples){const saved=JSON.stringify(p),r=sim.rebalancePreview(p,assets,sim.defaultLimits,{...sim.defaultScenario,...sim.scenarioPresets[3].settings});
     assert.equal(JSON.stringify(p),saved);near(r.after.total,r.before.total);assert.equal(new Set(r.changes.map(c=>c.symbol)).size,r.changes.length);near(r.portfolio.cash-p.cash,r.changes.reduce((sum,c)=>sum+c.proceeds,0));
-    for(const h of r.portfolio.positions){assert.ok(Number.isInteger(h.quantity)&&h.quantity>0);assert.ok(h.quantity<=p.positions.find(a=>a.symbol===h.symbol).quantity);}
+    for(const h of r.portfolio.positions){const original=p.positions.find(a=>a.symbol===h.symbol).quantity;assert.ok(Number.isInteger(h.quantity)&&h.quantity>0);assert.ok(h.quantity===original||h.quantity%sim.LOT_SIZE===0,`${h.symbol} ${h.quantity} không phải lô chẵn`);assert.ok(h.quantity<=p.positions.find(a=>a.symbol===h.symbol).quantity);}
     assert.ok(r.after.holdings.every(h=>h.weight<=sim.defaultLimits.stock+1e-8));assert.ok(r.after.sectors.every(h=>h.weight<=sim.defaultLimits.sector+1e-8));assert.ok(r.after.volatility<=sim.defaultLimits.volatility+1e-8);assert.ok(r.simulation.var95<=r.before.total*sim.defaultLimits.budget+1);assert.equal(r.compliant,true);
   }
 });
 test('Từ chối thiết lập ngoài miền và thiếu model, không âm thầm fallback',()=>{
   for(const change of [{horizon:0},{stress:1.1},{volatility:NaN},{marketShock:-1},{sector:'BAD'},{symbol:'BAD'},{budget:0},{seed:-1},{seed:2**40}])assert.throws(()=>sim.simulatePortfolio(samples[0].portfolio,assets,{...sim.defaultScenario,...change},100));
   assert.throws(()=>sim.rebalancePreview(samples[0].portfolio,assets,{...sim.defaultLimits,stock:0},sim.defaultScenario));
+});
+test('Làm tròn lô 100: chỉ giảm, không tăng; giữ nguyên khi không cần giảm',()=>{
+  assert.equal(sim.reduceToLot(1237,5000),1237);assert.equal(sim.reduceToLot(1237,1236),1200);assert.equal(sim.reduceToLot(1237,99),0);assert.equal(sim.reduceToLot(150,-5),0);
+});
+test('Bộ đường dùng chung cho kết quả giống hệt mô phỏng độc lập',()=>{
+  const sc={...sim.defaultScenario,...sim.scenarioPresets[3].settings},shared=sim.simulateAssetPaths(assets,sc,300);
+  for(const {portfolio:p} of samples){const a=sim.simulatePortfolio(p,assets,sc,300),b=sim.simulatePortfolio(p,assets,sc,300,shared);near(a.var95,b.var95,1e-6);near(a.cvar95,b.cvar95,1e-6);near(a.breachProbability,b.breachProbability);}
+  assert.throws(()=>sim.simulatePortfolio(samples[0].portfolio,assets,{...sc,seed:7},300,shared));
+});
+test('Giảm theo rủi ro: bán mã gây lỗ đuôi lớn hơn trước, giữ mã phòng thủ',()=>{
+  const p={cash:0,positions:[{symbol:'SSI',quantity:5000,cost:20000},{symbol:'VNM',quantity:1500,cost:60000}]};
+  const sc={...sim.defaultScenario,marketShock:-.12,stress:.5,volatility:1.5};
+  const r=sim.rebalancePreview(p,assets,{stock:1,sector:1,volatility:1,budget:.05},sc),sold=Object.fromEntries(r.changes.map(c=>[c.symbol,c.proceeds]));
+  assert.ok((sold.SSI??0)>(sold.VNM??0),JSON.stringify(r.changes));assert.equal(r.compliant,true);
+});
+test('Ngân sách lỗ ngoài 1–50% bị từ chối rõ ràng',()=>{
+  for(const budget of [.005,.6])assert.throws(()=>sim.rebalancePreview(samples[0].portfolio,assets,{...sim.defaultLimits,budget},sim.defaultScenario),/Ngân sách lỗ/);
 });

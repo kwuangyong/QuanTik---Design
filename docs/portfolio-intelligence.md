@@ -41,9 +41,15 @@ Các module engine có thể được import từ quét toàn sàn hoặc trang 
 
 ## Phương án Action
 
-Thứ tự: trần từng mã → trần ngành → giảm đồng đều nếu vượt volatility → giảm đồng đều nếu VaR 95% vượt ngân sách. Mọi phần giảm chuyển sang tiền mặt và giữ nguyên tổng tài sản tại thời điểm giả lập. Trần luôn tính trên tổng tài sản gốc. Lượng giữ lại làm tròn xuống số nguyên, tương đương lượng giảm làm tròn lên một cổ phiếu. Mỗi mã chỉ có một dòng giảm cuối cùng.
+Thứ tự: trần từng mã → trần ngành → trần biến động → ngân sách VaR 95%. Mọi phần giảm chuyển sang tiền mặt và giữ nguyên tổng tài sản tại thời điểm giả lập. Trần luôn tính trên tổng tài sản gốc. Mỗi mã chỉ có một dòng giảm cuối cùng.
 
-Sau làm tròn, chạy lại và kiểm tra giới hạn; nếu chưa đạt sẽ gắn nhãn cần rà soát. Phương án là một heuristic giảm vị thế, không phải tối ưu hóa lợi nhuận hoặc nghiệm tối ưu toàn cục. VaR không phải mức lỗ tối đa; ngân sách VaR không bảo đảm xác suất chạm ngân sách bằng 0. Phí, thuế, thanh khoản, trượt giá, quy tắc lô và giới hạn giao dịch chưa tính.
+- **Lô giao dịch:** khối lượng giữ lại luôn là bội số `LOT_SIZE = 100` (lô chẵn HOSE); mã không cần giảm giữ nguyên khối lượng, kể cả phần lẻ. Khi phải giảm, phần lẻ sẵn có được bán ra trước. Không bao giờ tăng vị thế.
+- **Trần mã/ngành:** hạ về lô chẵn ≤ trần. Ngành giảm theo tỉ lệ các mã còn lại, sau đó bớt thêm từng lô ở mã lớn nhất nếu làm tròn chưa đủ.
+- **Trần biến động:** mỗi bước bán một lô (hoặc ~2% vị thế với vị thế rất lớn) ở mã có biến động biên `(Σw)ᵢ` lớn nhất, tức giảm phương sai nhiều nhất trên mỗi đồng bán, đến khi đạt trần. Mã phòng vệ (tương quan âm) không bị bán ở bước này.
+- **Ngân sách VaR:** `simulateAssetPaths` sinh đường giá tương đối một lần cho cả universe; vì giá không phụ thuộc danh mục, VaR của mọi khối lượng thử được tính lại từ cùng bộ nhiễu. Mỗi bước bán mã có tổn thất trung bình trên mỗi đồng lớn nhất trong 5% đường xấu nhất. Trước–sau cũng dùng chính bộ đường đó.
+- Giới hạn hợp lệ: 0–100% cho trần; ngân sách lỗ 1–50% (khớp miền của kịch bản).
+
+Sau cùng, chạy lại và kiểm tra giới hạn; nếu chưa đạt sẽ gắn nhãn cần rà soát. Phương án là một heuristic giảm vị thế, không phải tối ưu hóa lợi nhuận hoặc nghiệm tối ưu toàn cục. VaR không phải mức lỗ tối đa; ngân sách VaR không bảo đảm xác suất chạm ngân sách bằng 0. Phí, thuế, thanh khoản, trượt giá và biên độ giá chưa tính. Giảm tham lam theo rủi ro biên có thể bán hết một mã nếu mã đó chi phối đuôi lỗ.
 
 ## Chạy tại máy
 
