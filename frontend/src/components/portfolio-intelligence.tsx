@@ -2,9 +2,11 @@
 import { Children, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Download, Plus, Pencil, Trash2, ShieldAlert, Layers3, Activity, Info, Play, RotateCcw, Wallet, TrendingUp, Gauge, Target } from "lucide-react";
-import { Modal } from "./ui";
+import { PositionEditor } from "./portfolio-position-editor";
 import { portfolioAssets as assets, portfolioSamples, portfolioResources, portfolioDataInfo, money, pct } from "@/lib/portfolio";
-import { portfolioRisk, validatePortfolio, type Portfolio, type Position } from "@/lib/portfolio-engine";
+import { addPortfolioPurchases, portfolioRisk, validatePortfolio, type Asset, type Portfolio, type Position } from "@/lib/portfolio-engine";
+import { portfolioMarketSnapshot, portfolioValuation } from "@/lib/portfolio-market";
+import type { AgrEquitySnapshot } from "@/lib/agr-priceboard";
 import { defaultScenario, scenarioPresets, defaultLimits, simulatePortfolio, deterministicImpact, rebalancePreview, type Scenario, type Limits } from "@/lib/portfolio-simulation";
 import { quantModel } from "@/lib/portfolio-quant-adapter";
 import s from "./portfolio.module.css";
@@ -15,6 +17,8 @@ const tabs = ["Tổng quan", "Rủi ro & tương quan", "Kịch bản biến đ�
 const storageKey = "quantik.portfolio.v1";
 const initial = portfolioSamples[0].portfolio;
 const signedMoney = (value: number) => `${value > 0 ? "+" : ""}${money(value)}`;
+const sampleQuotes = new Map(assets.map(asset => [asset.symbol, asset]));
+const backupQuotes = new Map(portfolioMarketSnapshot.items.map(stock => [stock.symbol, stock]));
 
 export function PortfolioIntelligence() {
   const [portfolio, setPortfolio] = useState<Portfolio>(initial);
@@ -22,20 +26,49 @@ export function PortfolioIntelligence() {
   const [loaded, setLoaded] = useState(false), [status, setStatus] = useState("");
   const [editor, setEditor] = useState<Position | "new" | null>(null), [undo, setUndo] = useState<Portfolio | null>(null);
   const [scenario, setScenario] = useState<Scenario>(defaultScenario), [limits, setLimits] = useState<Limits>(defaultLimits);
-  const [run, setRun] = useState<{ key: string; result: Simulation; portfolio: Portfolio } | null>(null);
+  const [run, setRun] = useState<{ key: string; result: Simulation; portfolio: Portfolio; assets: Asset[] } | null>(null);
   const [plan, setPlan] = useState<{ key: string; result: Plan; scenario: Scenario; limits: Limits } | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const risk = useMemo(() => portfolioRisk(portfolio, assets), [portfolio]);
-  const simulationKey = JSON.stringify({portfolio,scenario});
-  const planKey = JSON.stringify({portfolio,scenario,limits});
-  const largest = [...risk.holdings].sort((a,b)=>b.weight-a.weight)[0];
-  const biggestRisk = [...risk.holdings].sort((a,b)=>b.riskContribution-a.riskContribution)[0];
+  const [market, setMarket] = useState<AgrEquitySnapshot>(portfolioMarketSnapshot);
+  const missingModels = portfolio.positions.filter(position => !sampleQuotes.has(position.symbol));
+  const marketPricing = portfolio.priceSource === "agr" || missingModels.length > 0;
+  const needsMarket = marketPricing || editor !== null;
+  useEffect(() => {
+    if (!needsMarket || window.location.protocol === "file:") return;
+    const request = new AbortController();
+    void fetch("/api/market/agr?view=portfolio", { signal: request.signal, cache: "no-store" })
+      .then(async response => {
+        if (!response.ok) return;
+        const snapshot: AgrEquitySnapshot = await response.json();
+        if (!request.signal.aborted && snapshot.items.length && snapshot.tradingDate) setMarket(snapshot);
+      })
+      .catch(() => { /* Keep the last AGR snapshot and its trading date. */ });
+    return () => request.abort();
+  }, [needsMarket]);
+  const marketQuotes = useMemo(() => new Map(market.items.map(stock => [stock.symbol, stock])), [market]);
+  const catalog = useMemo(() => {
+    const entries = new Map(marketQuotes);
+    for (const [symbol, stock] of backupQuotes) {
+      if (!entries.has(symbol)) entries.set(symbol, { ...stock, price: null });
+    }
+    return entries;
+  }, [marketQuotes]);
+  const quotes = marketPricing ? marketQuotes : sampleQuotes;
+  const valuation = portfolioValuation(portfolio, quotes);
+  const modeledAssets = useMemo(() => marketPricing ? assets.map(asset => ({ ...asset, price: marketQuotes.get(asset.symbol)?.price ?? asset.price })) : assets, [marketPricing, marketQuotes]);
+  const canModel = missingModels.length === 0 && valuation.total !== null;
+  const risk = useMemo(() => canModel ? portfolioRisk(portfolio, modeledAssets) : null, [canModel, portfolio, modeledAssets]);
+  const prices = valuation.holdings.map(holding => holding.price);
+  const simulationKey = JSON.stringify({portfolio,scenario,prices});
+  const planKey = JSON.stringify({portfolio,scenario,limits,prices});
+  const largest = risk && [...risk.holdings].sort((a,b)=>b.weight-a.weight)[0];
+  const biggestRisk = risk && [...risk.holdings].sort((a,b)=>b.riskContribution-a.riskContribution)[0];
   const concentrated = largest && largest.weight > limits.stock;
-  const correlatedPair = risk.holdings.flatMap((a,i)=>risk.holdings.slice(i+1).map(b=>({a:a.symbol,b:b.symbol,value:risk.correlation[a.index][b.index]}))).sort((a,b)=>b.value-a.value)[0];
+  const correlatedPair = risk?.holdings.flatMap((a,i)=>risk.holdings.slice(i+1).map(b=>({a:a.symbol,b:b.symbol,value:risk.correlation[a.index][b.index]}))).sort((a,b)=>b.value-a.value)[0];
   useEffect(() => {
     try {
       const saved = localStorage.getItem(storageKey);
-      if (saved) { const parsed = JSON.parse(saved) as Portfolio; validatePortfolio(parsed,assets); setPortfolio(parsed); setSample("custom"); setStatus("Đã khôi phục danh mục lưu trên trình duyệt."); }
+      if (saved) { const parsed = JSON.parse(saved) as Portfolio; validatePortfolio(parsed); setPortfolio(parsed); setSample("custom"); setStatus("Đã khôi phục danh mục lưu trên trình duyệt."); }
     } catch { setStatus("Không đọc được dữ liệu đã lưu; đang dùng danh mục mẫu."); }
     setLoaded(true);
   }, []);
@@ -44,59 +77,77 @@ export function PortfolioIntelligence() {
     try { localStorage.setItem(storageKey,JSON.stringify(portfolio)); }
     catch { setStatus("Trình duyệt không cho lưu dữ liệu. Bạn vẫn có thể xuất CSV."); }
   }, [portfolio,loaded]);
-  const update = (next: Portfolio) => { validatePortfolio(next,assets); setPortfolio(next); setSample("custom"); setError(""); };
+  const update = (next: Portfolio) => { validatePortfolio(next); setPortfolio(next); setSample("custom"); setError(""); };
   const execute = (kind: "scenario" | "plan") => {
+    if (!canModel) return;
     setBusy(true); setError("");
     // Cho trình duyệt vẽ trạng thái chạy trước phép tính đồng bộ có giới hạn.
     window.setTimeout(() => {
       try {
-        if(kind==="scenario") setRun({key:simulationKey,result:simulatePortfolio(portfolio,assets,scenario),portfolio});
-        else setPlan({key:planKey,result:rebalancePreview(portfolio,assets,limits,scenario),scenario:{...scenario},limits:{...limits}});
+        if(kind==="scenario") setRun({key:simulationKey,result:simulatePortfolio(portfolio,modeledAssets,scenario),portfolio,assets:modeledAssets});
+        else setPlan({key:planKey,result:rebalancePreview(portfolio,modeledAssets,limits,scenario),scenario:{...scenario},limits:{...limits}});
         setStatus(kind==="scenario" ? "Đã chạy 1.200 đường mô phỏng." : "Đã kiểm chứng phương án bằng cùng seed và giả định.");
       } catch (e) { setError(e instanceof Error ? e.message : "Không thể tính kết quả."); }
       finally { setBusy(false); }
     },40);
   };
   const exportCsv = () => {
-    const csv = "\uFEFFMã,Khối lượng,Giá mua VND,Giá mẫu VND,Giá trị VND,Lãi lỗ VND\r\n" + risk.holdings.map(h=>[h.symbol,h.quantity,h.cost,h.price,h.value,h.profit].join(",")).join("\r\n") + `\r\nTIEN_MAT,,,,${portfolio.cash},\r\n`;
-    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})), link=document.createElement("a"); link.href=url; link.download="QuanTik-Danh-muc-mau.csv"; link.click(); window.setTimeout(()=>URL.revokeObjectURL(url),1000); setStatus("Đã xuất danh mục CSV, gồm tiền mặt.");
+    const source = marketPricing ? `Giá AGR VND (${market.tradingDate})` : "Giá mẫu VND";
+    const csv = `\uFEFFMã,Khối lượng,Giá mua VND,${source},Giá trị VND,Lãi lỗ VND\r\n` + valuation.holdings.map(h=>[h.symbol,h.quantity,h.cost,h.price,h.value,h.profit].join(",")).join("\r\n") + `\r\nTIEN_MAT,,,,${portfolio.cash},\r\n`;
+    const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"})), link=document.createElement("a"); link.href=url; link.download=marketPricing ? "QuanTik-Danh-muc.csv" : "QuanTik-Danh-muc-mau.csv"; link.click(); window.setTimeout(()=>URL.revokeObjectURL(url),1000); setStatus("Đã xuất danh mục CSV, gồm tiền mặt.");
   };
   return <div className={s.page} data-portfolio>
     <header className={s.heading}>
       <div><p className={s.eyebrow}>QUANTIK / PORTFOLIO LAB</p><h1>Portfolio Intelligence</h1><p className={s.muted}>Hiểu <strong>nguồn rủi ro</strong>. Kiểm chứng <strong>kịch bản</strong>. Chủ động với <strong>danh mục</strong>.</p></div>
       <div className={s.actions}><button className={s.button} onClick={exportCsv}><Download size={15}/>Xuất CSV</button><button className={`${s.button} ${s.primary}`} onClick={()=>setEditor("new")}><Plus size={16}/>Thêm vị thế</button></div>
     </header>
-    <div className={s.notice}><Info size={16}/><span>Dữ liệu minh họa dùng chung · Giá/ngành từ snapshot, nến và Quant từ các module gốc. Chưa hiệu chỉnh với thị trường thật.</span></div>
+    <div className={s.notice}><Info size={16}/><span>{marketPricing ? `Giá AGR phiên ${market.tradingDate} · Giá khớp gần nhất hoặc giá tham chiếu.` : "Giá và mô hình Quant minh họa dùng chung với các module gốc."}</span></div>
     <div className={s.toolbar}>
       <label className={s.field}>Danh mục đang xem<select aria-label="Danh mục mẫu" value={sample} onChange={e=>{const index=Number(e.target.value); setPortfolio(structuredClone(portfolioSamples[index].portfolio));setSample(String(index));setUndo(null);setStatus(`Đã nạp ${portfolioSamples[index].name.toLowerCase()}.`);}}><option value="custom" disabled>Danh mục của bạn</option>{portfolioSamples.map((item,i)=><option key={item.name} value={i}>{item.name}</option>)}</select></label>
-      <span className={s.muted}>Đơn vị: VND · {risk.holdings.length} mã · {risk.sectors.length} ngành</span>
+      <span className={s.muted}>Đơn vị: VND · {valuation.holdings.length} mã</span>
     </div>
     <div className={s.tabs} role="tablist" aria-label="Portfolio Intelligence">{tabs.map((label,i)=><button key={label} id={`pi-tab-${i}`} type="button" role="tab" aria-selected={tab===i} aria-controls={`pi-panel-${i}`} tabIndex={tab===i?0:-1} onClick={()=>setTab(i)} onKeyDown={e=>{let next=i;if(e.key==="ArrowRight")next=(i+1)%4;else if(e.key==="ArrowLeft")next=(i+3)%4;else if(e.key==="Home")next=0;else if(e.key==="End")next=3;else return;e.preventDefault();setTab(next);document.getElementById(`pi-tab-${next}`)?.focus();}}><span>0{i+1}</span>{label}</button>)}</div>
     <div className={s.status} role="status">{status}{undo && <button className={s.button} style={{marginLeft:12}} onClick={()=>{update(undo);setUndo(null);setStatus("Đã khôi phục vị thế vừa xóa.");}}><RotateCcw size={14}/>Hoàn tác xóa</button>}</div>
     {error && <p className={s.error} role="alert">{error}</p>}
     <div key={tab} className={s.content} role="tabpanel" id={`pi-panel-${tab}`} aria-labelledby={`pi-tab-${tab}`}>
+      {!risk && <div className={s.notice}><Info size={16}/><span>{missingModels.length
+        ? `Chưa đủ dữ liệu Quant để tính rủi ro và mô phỏng cho danh mục. Mã thiếu dữ liệu: ${missingModels.map(position => position.symbol).join(", ")}.`
+        : "Cần giá của tất cả vị thế để tính rủi ro và mô phỏng."}</span></div>}
       {tab===0 && <>
         <div className={s.stats}>
-          <Stat kind="capital" label="Tổng tài sản" value={money(risk.total)} note="Cổ phiếu + tiền mặt · VND"/>
-          <Stat kind="return" label="Lãi / lỗ chưa thực hiện" value={signedMoney(risk.profit)} note={`${pct(risk.returnPct)} trên giá vốn cổ phiếu`} tone={risk.profit>=0?s.positive:s.negative}/>
-          <Stat kind="risk" label="Biến động năm" value={pct(risk.volatility)} note={`${portfolioDataInfo.observations} phiên lợi suất từ ${portfolioDataInfo.candles} nến mẫu dùng chung`}/>
-          <Stat label="Beta danh mục" value={risk.beta.toFixed(2)} note="Theo giả định beta từng mã, gồm tiền mặt"/>
+          <Stat kind="capital" label="Tổng tài sản" value={valuation.total===null?"—":money(valuation.total)} note={valuation.total===null?"Chưa đủ giá để định giá danh mục":"Cổ phiếu + tiền mặt · VND"}/>
+          <Stat kind="return" label="Lãi / lỗ chưa thực hiện" value={valuation.profit===null?"—":signedMoney(valuation.profit)} note={valuation.profit===null?"Chưa đủ giá thị trường":`${pct(valuation.invested ? valuation.profit/valuation.invested : 0)} trên giá vốn cổ phiếu`} tone={valuation.profit===null?"":valuation.profit>=0?s.positive:s.negative}/>
+          {risk && <>
+            <Stat kind="risk" label="Biến động năm" value={pct(risk.volatility)} note={`${portfolioDataInfo.observations} phiên lợi suất từ ${portfolioDataInfo.candles} nến mẫu dùng chung`}/>
+            <Stat label="Beta danh mục" value={risk.beta.toFixed(2)} note="Theo giả định beta từng mã, gồm tiền mặt"/>
+          </>}
         </div>
-        <section className={s.priority}><ShieldAlert size={26} className={s.accent}/><div className={s.priorityText}><span className={s.kicker}>Ưu tiên cần xem</span><h2>{!risk.total ? "Bắt đầu với một vị thế hoặc tiền mặt" : concentrated ? `${largest.symbol} chiếm ${pct(largest.weight)} tổng tài sản` : risk.volatility>limits.volatility ? "Biến động vượt giới hạn đang đặt" : "Kiểm tra sức chịu đựng trước khi điều chỉnh"}</h2><p className={s.muted}><Highlighted>{concentrated ? `Vượt giới hạn mỗi mã ${pct(limits.stock)}. ${largest.symbol} đóng góp ${pct(largest.riskContribution)} phương sai danh mục.` : "Đi từ rủi ro tập trung đến kịch bản xấu, rồi kiểm chứng phương án giảm vị thế sang tiền mặt."}</Highlighted></p></div><button className={s.button} onClick={()=>setTab(3)}>Xem Action plan<ArrowRight size={15}/></button></section>
+        {risk && <><section className={s.priority}><ShieldAlert size={26} className={s.accent}/><div className={s.priorityText}><span className={s.kicker}>Ưu tiên cần xem</span><h2>{!risk.total ? "Bắt đầu với một vị thế hoặc tiền mặt" : concentrated ? `${largest.symbol} chiếm ${pct(largest.weight)} tổng tài sản` : risk.volatility>limits.volatility ? "Biến động vượt giới hạn đang đặt" : "Kiểm tra sức chịu đựng trước khi điều chỉnh"}</h2><p className={s.muted}><Highlighted>{concentrated ? `Vượt giới hạn mỗi mã ${pct(limits.stock)}. ${largest.symbol} đóng góp ${pct(largest.riskContribution)} phương sai danh mục.` : "Đi từ rủi ro tập trung đến kịch bản xấu, rồi kiểm chứng phương án giảm vị thế sang tiền mặt."}</Highlighted></p></div><button className={s.button} onClick={()=>setTab(3)}>Xem Action plan<ArrowRight size={15}/></button></section>
         <div className={s.grid}>
-          <Panel title="Cấu trúc danh mục" subtitle="Tỉ trọng theo giá trị thị trường mẫu, gồm tiền mặt." tag="PHÂN BỔ"><Allocation risk={risk}/></Panel>
+          <Panel title="Cấu trúc danh mục" subtitle="Tỉ trọng theo giá trị thị trường, gồm tiền mặt." tag="PHÂN BỔ"><Allocation risk={risk}/></Panel>
           <Panel title="Điều cần chú ý" subtitle="Tách nguồn rủi ro trước khi nhìn vào lợi nhuận.">
             <Insight icon={<Activity size={18}/>} title={biggestRisk ? `${biggestRisk.symbol} dẫn đầu đóng góp rủi ro` : "Chưa có rủi ro cổ phiếu"}>{biggestRisk ? `${pct(biggestRisk.riskContribution)} phương sai từ ${pct(biggestRisk.weight)} tài sản. Tỉ trọng vốn không đồng nghĩa tỉ trọng rủi ro.` : "Tiền mặt được giả định không có biến động và không sinh lãi."}</Insight>
             <Insight icon={<Layers3 size={18}/>} title={correlatedPair ? `${correlatedPair.a} × ${correlatedPair.b}: ${correlatedPair.value.toFixed(2)}` : "Cần ít nhất hai mã để so tương quan"}>{correlatedPair ? "Đây là cặp cùng biến động mạnh nhất trong mẫu. Kiểm tra cả tương quan trong ngành và giữa các ngành." : "Một mã không tạo ra đa dạng hóa giữa cổ phiếu."}</Insight>
             <Insight icon={<ShieldAlert size={18}/>} title={`${pct(risk.cashWeight)} tài sản là tiền mặt`}>Mô phỏng kiểm tra khả năng chạm mức lỗ {pct(scenario.budget)} trong kỳ, bên cạnh lỗ tại cuối kỳ.</Insight>
           </Panel>
-        </div>
-        <Panel title="Vị thế đang nắm giữ" subtitle="Giá mua và giá mẫu đều tính bằng VND/cổ phiếu." tag={`${risk.holdings.length} MÃ`}>
-          {risk.holdings.length ? <div className={s.scroll}><table className={s.table}><thead><tr><th>Mã / ngành</th><th>Khối lượng</th><th>Giá mua</th><th>Giá mẫu</th><th>Giá trị</th><th>Lãi / lỗ</th><th>Tỉ trọng</th><th>Thao tác</th></tr></thead><tbody>{risk.holdings.map(h=><tr key={h.symbol}><td><Link href={`/analysis?symbol=${h.symbol}`}>{h.symbol}</Link><small>{h.sector}</small></td><td>{money(h.quantity)}</td><td>{money(h.cost)}</td><td>{money(h.price)}</td><td>{money(h.value)}</td><td className={h.profit>=0?s.positive:s.negative}>{signedMoney(h.profit)}</td><td>{pct(h.weight)}</td><td><div className={s.actions}><button className={s.button} aria-label={`Sửa ${h.symbol}`} onClick={()=>setEditor({symbol:h.symbol,quantity:h.quantity,cost:h.cost})}><Pencil size={14}/></button><button className={s.button} aria-label={`Xóa ${h.symbol}`} onClick={()=>{setUndo(portfolio);update({...portfolio,positions:portfolio.positions.filter(p=>p.symbol!==h.symbol)});setStatus(`Đã xóa ${h.symbol}.`);}}><Trash2 size={14}/></button></div></td></tr>)}</tbody></table></div> : <div className={s.empty}>Chưa có cổ phiếu. Thêm vị thế để bắt đầu phân tích.</div>}
+        </div></>}
+        <Panel title="Vị thế đang nắm giữ" subtitle="Giá mua bình quân và giá cổ phiếu tính bằng VND." tag={`${valuation.holdings.length} MÃ`}>
+          {valuation.holdings.length ? <div className={s.scroll}><table className={s.table}>
+            <thead><tr><th>Mã</th><th>Khối lượng</th><th>Giá vốn bình quân</th><th>{marketPricing?"Giá AGR":"Giá mẫu"}</th><th>Giá trị</th><th>Lãi / lỗ</th><th>Tỉ trọng</th><th>Thao tác</th></tr></thead>
+            <tbody>{valuation.holdings.map(h=><tr key={h.symbol}>
+              <td><Link href={`/analysis?symbol=${encodeURIComponent(h.symbol)}`}>{h.symbol}</Link><small>{marketPricing ? catalog.get(h.symbol)?.exchange : sampleQuotes.get(h.symbol)?.sector}</small></td>
+              <td>{money(h.quantity)}</td><td>{money(h.cost)}</td><td>{h.price===null?"—":money(h.price)}</td><td>{h.value===null?"—":money(h.value)}</td>
+              <td className={h.profit===null?"":h.profit>=0?s.positive:s.negative}>{h.profit===null?"—":signedMoney(h.profit)}</td><td>{h.weight===null?"—":pct(h.weight)}</td>
+              <td><div className={s.actions}>
+                <button className={s.button} aria-label={`Sửa ${h.symbol}`} onClick={()=>setEditor({symbol:h.symbol,quantity:h.quantity,cost:h.cost})}><Pencil size={14}/></button>
+                <button className={s.button} aria-label={`Xóa ${h.symbol}`} onClick={()=>{setUndo(portfolio);update({...portfolio,positions:portfolio.positions.filter(p=>p.symbol!==h.symbol)});setStatus(`Đã xóa ${h.symbol}.`);}}><Trash2 size={14}/></button>
+              </div></td>
+            </tr>)}</tbody>
+          </table></div> : <div className={s.empty}>Chưa có cổ phiếu. Thêm vị thế để bắt đầu phân tích.</div>}
           <div className={s.foot}><label className={s.field}>Tiền mặt (VND)<input aria-label="Tiền mặt VND" type="number" min="0" max="1000000000000" step="1" value={portfolio.cash} onChange={e=>{try{update({...portfolio,cash:Number(e.target.value)});}catch(err){setStatus((err as Error).message);}}}/></label><p className={s.muted}>Tự lưu trên trình duyệt này · Không đồng bộ lên máy chủ.</p></div>
         </Panel>
       </>}
-      {tab===1 && <>
+      {tab===1 && risk && <>
         <section className={s.priority}><div><h2>Nguồn rủi ro nằm ở đâu?</h2><p className={s.muted}><Highlighted>Tương quan Pearson, biến động và đóng góp phương sai dùng cùng cửa sổ nến mẫu của module Quant.</Highlighted></p></div><button className={s.button} onClick={()=>setTab(2)}>Kiểm chứng kịch bản<ArrowRight size={15}/></button></section>
         <div className={s.grid}>
           <Panel title="Tương quan giữa các mã" subtitle="−1: ngược chiều · 0: ít liên hệ tuyến tính · +1: cùng chiều.">{risk.holdings.length ? <Matrix labels={risk.holdings.map(h=>h.symbol)} values={risk.holdings.map(a=>risk.holdings.map(b=>risk.correlation[a.index][b.index]))}/> : <p className={s.empty}>Thêm vị thế để xem tương quan.</p>}</Panel>
@@ -105,7 +156,7 @@ export function PortfolioIntelligence() {
         <Panel title="Tương quan giữa các ngành" subtitle="Lợi suất ngành được gộp từ các mã đang nắm giữ, theo tỉ trọng giá trị cố định. Không đại diện chỉ số ngành toàn thị trường.">{risk.sectors.length ? <Matrix labels={risk.sectors.map(a=>a.name)} values={sectorCorrelation(risk)}/> : <p className={s.empty}>Chưa có ngành để so sánh.</p>}</Panel>
         <Panel title="Hồ sơ từng mã & bối cảnh Quant" subtitle="Volatility là biến động năm của chuỗi tổng hợp. HMM là xác suất trạng thái mẫu từng mã, không phải xác suất thắng."><div className={s.scroll}><table className={s.table}><thead><tr><th>Mã</th><th>Biến động năm</th><th>Beta mẫu</th><th>Đóng góp rủi ro</th><th>HMM tăng / ngang / giảm</th><th>GARCH σ phiên đầu</th></tr></thead><tbody>{risk.holdings.map(h=>{const model=quantModel(h.symbol);return <tr key={h.symbol}><td>{h.symbol}</td><td>{pct(h.volatility)}</td><td>{h.beta.toFixed(2)}</td><td>{pct(h.riskContribution)}</td><td>{pct(model.hmm.bull,0)} / {pct(model.hmm.sideways,0)} / {pct(model.hmm.bear,0)}</td><td>{pct(Math.sqrt(model.variance),2)}</td></tr>;})}</tbody></table></div></Panel>
       </>}
-      {tab===2 && <div className={s.scenarioGrid}>
+      {tab===2 && risk && <div className={s.scenarioGrid}>
         <section className={`${s.panel} ${s.settings}`}><div className={s.sectionHeading}><div><h2>Thiết lập kịch bản</h2><p className={s.muted}>Cú sốc cộng dồn trong cả kỳ.</p></div></div>
           <div className={s.presets}>{scenarioPresets.map(p=><button key={p.name} className={s.button} aria-pressed={Object.entries(p.settings).every(([k,v])=>scenario[k as keyof Scenario]===v)} onClick={()=>setScenario({...scenario,...p.settings})}>{p.name}</button>)}</div>
           <ScenarioControls scenario={scenario} setScenario={setScenario}/>
@@ -116,11 +167,11 @@ export function PortfolioIntelligence() {
           <div className={s.notice}><Info size={15}/><span>Lần chạy: {run.result.scenario.horizon} phiên · thị trường {pct(run.result.scenario.marketShock)} · {run.result.scenario.sector} {pct(run.result.scenario.sectorShock)} · {run.result.scenario.symbol} {pct(run.result.scenario.symbolShock)} · stress {pct(run.result.scenario.stress,0)} · volatility ×{run.result.scenario.volatility} · ngân sách {pct(run.result.scenario.budget)}.</span></div>
           <SimulationResults result={run.result}/>
           <Panel title="Phân rã tác động có hướng" subtitle="Cú sốc thuần so với thay đổi giá trị kỳ vọng Monte Carlo. Không cộng phân vị từng mã thành phân vị danh mục."><Attribution result={run.result}/></Panel>
-          <Panel title="Độ nhạy: thị trường × ngành" subtitle={`Thay hai cú sốc trên danh mục lần chạy trước; giữ cú sốc riêng mã. Kết quả là tác động thuần, không phải VaR hay dự báo.`}><Sensitivity portfolio={run.portfolio} scenario={run.result.scenario}/></Panel>
+          <Panel title="Độ nhạy: thị trường × ngành" subtitle={`Thay hai cú sốc trên danh mục lần chạy trước; giữ cú sốc riêng mã. Kết quả là tác động thuần, không phải VaR hay dự báo.`}><Sensitivity portfolio={run.portfolio} scenario={run.result.scenario} assets={run.assets}/></Panel>
           <button className={s.button} onClick={()=>setTab(3)}>Kiểm chứng phương án trong Action plan<ArrowRight size={15}/></button>
         </>}</div>
       </div>}
-      {tab===3 && <>
+      {tab===3 && risk && <>
         <section className={s.priority}><div className={s.priorityText}><h2>Từ cảnh báo đến phương án có điều kiện</h2><p className={s.muted}><Highlighted>Giảm vị thế vượt giới hạn sang tiền mặt; hợp nhất từng mã để tránh cộng trùng. Không thay đổi danh mục gốc, không tạo lệnh giao dịch.</Highlighted></p></div><ShieldAlert size={26} className={s.accent}/></section>
         <Panel title="Giới hạn & giả định kiểm chứng" subtitle="Kiểm tra VaR 95% cuối kỳ so với ngân sách lỗ. Xác suất chạm ngân sách trong kỳ được báo riêng, không phải ràng buộc bảo đảm."><div className={s.controls}>{([['stock','Tỉ trọng tối đa mỗi mã'],['sector','Tỉ trọng tối đa mỗi ngành'],['volatility','Biến động năm tối đa'],['budget','Ngân sách lỗ cuối kỳ (VaR 95%)']] as const).map(([key,label])=><label className={s.field} key={key}>{label}<select value={limits[key]} onChange={e=>setLimits({...limits,[key]:Number(e.target.value)})}>{(key==='stock'?[.2,.3,.4,.5]:key==='sector'?[.3,.45,.6,.8]:key==='volatility'?[.15,.22,.3,.4]:[.05,.1,.15,.2]).map(v=><option key={v} value={v}>{pct(v,0)}</option>)}</select></label>)}</div><div className={s.foot}><p className={s.muted}>Giả định đang chọn: {scenario.horizon} phiên · thị trường {pct(scenario.marketShock)} · {scenario.sector} {pct(scenario.sectorShock)} · {scenario.symbol} {pct(scenario.symbolShock)} · stress {pct(scenario.stress,0)} · σ ×{scenario.volatility}. Ngân sách Action thay ngân sách mô phỏng.</p><button className={s.button} onClick={()=>setTab(2)}>Sửa kịch bản</button><button className={`${s.button} ${s.primary}`} disabled={busy} onClick={()=>execute("plan")}>{busy?"Đang kiểm chứng…":"Tạo & kiểm chứng phương án"}</button></div></Panel>
         <div className={s.actionList}>
@@ -139,8 +190,20 @@ export function PortfolioIntelligence() {
         </>}
       </>}
     </div>
-    <SharedEvidence symbols={risk.holdings.map(h=>h.symbol)}/><details className={`${s.panel} ${s.method}`}><summary>Phương pháp, nguồn mẫu & giới hạn diễn giải</summary><ul><li>Giá/ngành tái sử dụng snapshot chung, đổi từ nghìn đồng sang VND. Pearson/covariance dùng lợi suất close-to-close trên các nến 1D mẫu có nhãn phiên giao nhau, cùng thứ tự; không sinh thêm chuỗi riêng.</li><li>Biến động năm = độ lệch chuẩn phiên × √252; đóng góp rủi ro = wᵢ(Σw)ᵢ / (wᵀΣw). Beta stress vẫn là giả định, được gộp theo tỉ trọng tài sản; tiền mặt beta 0. Chưa có hồi quy beta với benchmark đồng bộ.</li><li>GARCH lấy alpha/beta/omega và volatility mẫu từ analysis-visuals.json, quy đổi % sang số thập phân. Phương sai kỳ vọng hₜ₊₁ = ω + (α+β)hₜ. Đây không phải mô phỏng GARCH cập nhật phương sai theo từng cú sốc thực hiện.</li><li>Monte Carlo dùng nhiễu Gaussian tương quan, không gắn nhãn GARCH–t. Co tương quan 2% về I, rồi trộn với ma trận toàn số 1 theo mức stress để giữ tính xác định dương. Tương quan dùng chung giữa các kỳ.</li><li>Cú sốc thị trường đi qua beta, cộng cú sốc ngành và riêng mã theo log, phân bổ đều qua kỳ. Drift cơ sở bằng 0 theo kỳ vọng giá, không fit ARIMA/LightGBM. Tiền mặt không sinh lãi.</li><li>Phân vị lấy từ tổng giá trị từng đường chung; VaR/CVaR 95% là lỗ cuối kỳ so với tài sản đầu kỳ, chặn dưới ở 0. CVaR là trung bình 5% đường lỗ nhất. Xác suất chạm ngân sách xét tất cả phiên trong kỳ.</li><li>HMM chỉ mô tả trạng thái mẫu từng mã; không gộp thành HMM danh mục hay xác suất thắng. Tham số Quant và cửa sổ nến mẫu chưa hiệu chỉnh chung. Không suy diễn kết quả thành khuyến nghị mua bán thực tế.</li></ul></details>
-    {editor && <PositionEditor position={editor} portfolio={portfolio} onClose={()=>setEditor(null)} onSave={position=>{const positions=editor==="new"?[...portfolio.positions,position]:portfolio.positions.map(p=>p.symbol===position.symbol?position:p);update({...portfolio,positions});setEditor(null);setStatus(`Đã lưu vị thế ${position.symbol}.`);}}/>}
+    <SharedEvidence symbols={portfolio.positions.map(position=>position.symbol)}/>{risk && <details className={`${s.panel} ${s.method}`}><summary>Phương pháp, nguồn mẫu & giới hạn diễn giải</summary><ul><li>Giá mẫu tái sử dụng snapshot chung, đổi từ nghìn đồng sang VND. Pearson/covariance dùng lợi suất close-to-close trên các nến 1D mẫu có nhãn phiên giao nhau, cùng thứ tự; không sinh thêm chuỗi riêng.</li><li>Biến động năm = độ lệch chuẩn phiên × √252; đóng góp rủi ro = wᵢ(Σw)ᵢ / (wᵀΣw). Beta stress vẫn là giả định, được gộp theo tỉ trọng tài sản; tiền mặt beta 0. Chưa có hồi quy beta với benchmark đồng bộ.</li><li>GARCH lấy alpha/beta/omega và volatility mẫu từ analysis-visuals.json, quy đổi % sang số thập phân. Phương sai kỳ vọng hₜ₊₁ = ω + (α+β)hₜ. Đây không phải mô phỏng GARCH cập nhật phương sai theo từng cú sốc thực hiện.</li><li>Monte Carlo dùng nhiễu Gaussian tương quan, không gắn nhãn GARCH–t. Co tương quan 2% về I, rồi trộn với ma trận toàn số 1 theo mức stress để giữ tính xác định dương. Tương quan dùng chung giữa các kỳ.</li><li>Cú sốc thị trường đi qua beta, cộng cú sốc ngành và riêng mã theo log, phân bổ đều qua kỳ. Drift cơ sở bằng 0 theo kỳ vọng giá, không fit ARIMA/LightGBM. Tiền mặt không sinh lãi.</li><li>Phân vị lấy từ tổng giá trị từng đường chung; VaR/CVaR 95% là lỗ cuối kỳ so với tài sản đầu kỳ, chặn dưới ở 0. CVaR là trung bình 5% đường lỗ nhất. Xác suất chạm ngân sách xét tất cả phiên trong kỳ.</li><li>HMM chỉ mô tả trạng thái mẫu từng mã; không gộp thành HMM danh mục hay xác suất thắng. Tham số Quant và cửa sổ nến mẫu chưa hiệu chỉnh chung. Không suy diễn kết quả thành khuyến nghị mua bán thực tế.</li></ul></details>}
+    {editor && <PositionEditor position={editor} catalog={catalog} tradingDate={market.tradingDate} onClose={()=>setEditor(null)} onSave={entries=>{
+      if (editor === "new") {
+        update({...addPortfolioPurchases(portfolio, entries), priceSource:"agr"});
+        setTab(0);
+        setStatus(entries.length === 1 ? `Đã lưu vị thế ${entries[0].symbol}.` : `Đã lưu ${entries.length} lần mua.`);
+      } else {
+        const edited = entries[0];
+        update({...portfolio,positions:portfolio.positions.map(position=>position.symbol===edited.symbol?edited:position)});
+        setStatus(`Đã lưu vị thế ${edited.symbol}.`);
+      }
+      setUndo(null);
+      setEditor(null);
+    }}/>}
   </div>;
 }
 
@@ -155,7 +218,7 @@ function SharedEvidence({symbols}:{symbols:string[]}) {
   const quantCount=resources.filter(r=>r.quant.status==="DEMO").length;
   return <details className={`${s.panel} ${s.method}`}><summary>Nguồn dùng chung · {portfolioDataInfo.candles} nến mẫu · {portfolioDataInfo.observations} phiên lợi suất</summary>
     <p><Highlighted>{`Giá snapshot: ${portfolioDataInfo.priceLabel}. Giá/ngành và nến dùng cùng tài nguyên với các module gốc; giá vốn bạn đã nhập được giữ nguyên. Các cửa sổ mẫu chưa được hiệu chỉnh chung.`}</Highlighted></p>
-    <p><Highlighted>{`Độ phủ trong danh mục: snapshot Quét toàn sàn ${scanCount}/${resources.length} mã; Quant mẫu ${quantCount}/${resources.length} mã. Không nằm trong 10 dòng snapshot không có nghĩa bị loại hoặc điểm bằng 0.`}</Highlighted></p>
+    <p><Highlighted>{`Độ phủ trong danh mục: snapshot Quét toàn sàn ${scanCount}/${symbols.length} mã; Quant mẫu ${quantCount}/${symbols.length} mã. Không nằm trong 10 dòng snapshot không có nghĩa bị loại hoặc điểm bằng 0.`}</Highlighted></p>
     <div className={s.scroll}><table className={s.table}><thead><tr><th>Mã</th><th>Quét toàn sàn · snapshot</th><th>Quant · mẫu</th><th>Sharpe</th><th>Hurst</th><th>Dòng tiền CMF</th><th>Dự báo sau phí</th></tr></thead><tbody>{resources.map(r=>{const raw=(label:string)=>r.quant.factors.find(f=>f.label===label)?.raw??"—";return <tr key={r.symbol}><td>{r.symbol}</td><td>{r.screening.score===null?r.screening.label:`${r.screening.label} · ${r.screening.score}/100`}</td><td>{r.quant.score===null?"—":`${r.quant.label} · ${r.quant.score}/100`}</td><td>{raw("Hiệu quả rủi ro")}</td><td>{raw("Độ bền xu hướng")}</td><td>{raw("Dòng tiền")}</td><td>{raw("Dự báo sau phí")}</td></tr>;})}</tbody></table></div>
     <p>Điểm xếp hạng và dự báo mẫu không phải xác suất có lời. Beta stress vẫn là giả định. Các đầu ra nguồn chưa được dùng thay cho action gate hoặc drift của Monte Carlo.</p>
   </details>;
@@ -173,13 +236,6 @@ function Allocation({risk}:{risk:ReturnType<typeof portfolioRisk>}) {
 }
 function Matrix({labels,values}:{labels:string[];values:number[][]}) { return <div className={s.scroll}><table className={`${s.table} ${s.matrix}`}><thead><tr><th aria-label="Cặp tương quan"/>{labels.map(l=><th key={l}>{l}</th>)}</tr></thead><tbody>{values.map((row,i)=><tr key={labels[i]}><th scope="row">{labels[i]}</th>{row.map((v,j)=><td key={labels[j]} className={i===j?s.diagonal:""} style={i===j?undefined:{background:`color-mix(in srgb, ${v>=0?"var(--info)":"#b49adf"} ${Math.round(Math.abs(v)*38+5)}%, var(--surface))`}}>{v.toFixed(2)}</td>)}</tr>)}</tbody></table></div>; }
 function sectorCorrelation(risk:ReturnType<typeof portfolioRisk>) { return risk.sectorCorrelation; }
-function PositionEditor({position,portfolio,onSave,onClose}:{position:Position|"new";portfolio:Portfolio;onSave:(p:Position)=>void;onClose:()=>void}) {
-  const available=assets.filter(a=>!portfolio.positions.some(p=>p.symbol===a.symbol));
-  const [symbol,setSymbol]=useState(position==="new"?available[0]?.symbol??"":position.symbol),[quantity,setQuantity]=useState(position==="new"?"100":String(position.quantity)),[cost,setCost]=useState(position==="new"?String(assets.find(a=>a.symbol===symbol)?.price??0):String(position.cost)),[error,setError]=useState("");
-  return <Modal title={position==="new"?"Thêm vị thế":"Sửa vị thế"} onClose={onClose}><form className={s.form} onSubmit={e=>{e.preventDefault();try{const next={symbol,quantity:Number(quantity),cost:Number(cost)};validatePortfolio({...portfolio,positions:position==="new"?[...portfolio.positions,next]:portfolio.positions.map(p=>p.symbol===symbol?next:p)},assets);onSave(next);}catch(err){setError((err as Error).message);}}}>
-    {available.length===0&&position==="new"?<p className={s.muted}>Bạn đã thêm đủ sáu mã mẫu. Có thể sửa từng vị thế hiện tại.</p>:<><label className={s.field}>Mã cổ phiếu<select aria-label="Mã cổ phiếu" disabled={position!=="new"} value={symbol} onChange={e=>{setSymbol(e.target.value);setCost(String(assets.find(a=>a.symbol===e.target.value)!.price));}}>{(position==="new"?available:assets.filter(a=>a.symbol===symbol)).map(a=><option key={a.symbol} value={a.symbol}>{a.symbol} · {a.name}</option>)}</select></label><label className={s.field}>Khối lượng (cổ phiếu)<input required type="number" min="1" max="10000000" step="1" value={quantity} onChange={e=>setQuantity(e.target.value)}/></label><label className={s.field}>Giá mua (VND/cổ phiếu)<input required type="number" min="0.01" max="100000000" step="0.01" value={cost} onChange={e=>setCost(e.target.value)}/></label><p className={s.muted}>Giá mẫu hiện tại: {money(assets.find(a=>a.symbol===symbol)?.price??0)} VND. Chỉ hỗ trợ sáu mã có đủ dữ liệu minh họa.</p>{error&&<p className={s.error} role="alert">{error}</p>}<div className={s.actions}><button type="button" className={s.button} onClick={onClose}>Hủy</button><button className={`${s.button} ${s.primary}`}>Lưu vị thế</button></div></>}
-  </form></Modal>;
-}
 function ScenarioControls({scenario,setScenario}:{scenario:Scenario;setScenario:(s:Scenario)=>void}) {
   const field=(key:keyof Scenario,value:string)=>setScenario({...scenario,[key]:Number(value)});
   return <div className={s.controls}><label className={s.field}>Kỳ mô phỏng<select value={scenario.horizon} onChange={e=>field("horizon",e.target.value)}>{[5,20,60].map(v=><option key={v} value={v}>{v} phiên</option>)}</select></label><label className={s.field}>Ngân sách lỗ<select value={scenario.budget} onChange={e=>field("budget",e.target.value)}>{[.05,.1,.15,.2].map(v=><option key={v} value={v}>{pct(v,0)}</option>)}</select></label>
@@ -206,7 +262,7 @@ function Cone({result:r}:{result:Simulation}) {
   return <div className={s.scroll}><svg className={s.chart} viewBox="0 0 680 264" role="img" aria-label={`Dải phân vị danh mục qua ${r.scenario.horizon} phiên; giá trị cuối kỳ có trong phần chữ bên dưới`}><title>Phân vị tổng danh mục trên các đường Monte Carlo chung</title>{[0,.25,.5,.75,1].map(t=>{const val=lo+(hi-lo)*t;return <g key={t}><line className={s.gridline} x1="62" x2="648" y1={y(val)} y2={y(val)}/><text x="52" y={y(val)+4} textAnchor="end">{money(val/1e6)}</text></g>;})}<polygon className={s.outer} points={band("p05","p95")}/><polygon className={s.inner} points={band("p25","p75")}/><polyline className={s.median} points={line("p50")}/>{[0,.25,.5,.75,1].map(t=><text key={t} x={x(t*r.scenario.horizon)} y="247" textAnchor="middle">+{Math.round(t*r.scenario.horizon)}</text>)}</svg></div>;
 }
 function Attribution({result:r}:{result:Simulation}) { return <div className={s.scroll}><table className={s.table}><thead><tr><th>Mã / ngành</th><th>Cú sốc thuần VND</th><th>Thay đổi kỳ vọng VND</th></tr></thead><tbody>{r.attribution.map(a=><tr key={a.symbol}><td>{a.symbol}<small>{a.sector}</small></td><td className={a.shock>=0?s.positive:s.negative}>{signedMoney(a.shock)}</td><td className={a.mean>=0?s.positive:s.negative}>{signedMoney(a.mean)}</td></tr>)}{r.sectorAttribution.map(a=><tr key={a.name}><td>Tổng {a.name}</td><td>{signedMoney(a.shock)}</td><td>{signedMoney(a.mean)}</td></tr>)}</tbody></table></div>; }
-function Sensitivity({portfolio,scenario}:{portfolio:Portfolio;scenario:Scenario}) { const risk=portfolioRisk(portfolio,assets);return <div className={s.scroll}><table className={`${s.table} ${s.matrix}`}><thead><tr><th>Thị trường ↓ / ngành →</th>{[-.15,0,.1].map(v=><th key={v}>{pct(v,0)}</th>)}</tr></thead><tbody>{[-.15,-.05,.05].map(m=><tr key={m}><th scope="row">{pct(m,0)}</th>{[-.15,0,.1].map(v=>{const effect=risk.holdings.reduce((sum,h)=>sum+h.value*deterministicImpact(h,{...scenario,marketShock:m,sectorShock:v}),0)/(risk.total||1);return <td key={v} className={effect>=0?s.positive:s.negative}>{pct(effect)}</td>;})}</tr>)}</tbody></table></div>; }
+function Sensitivity({portfolio,scenario,assets}:{portfolio:Portfolio;scenario:Scenario;assets:Asset[]}) { const risk=portfolioRisk(portfolio,assets);return <div className={s.scroll}><table className={`${s.table} ${s.matrix}`}><thead><tr><th>Thị trường ↓ / ngành →</th>{[-.15,0,.1].map(v=><th key={v}>{pct(v,0)}</th>)}</tr></thead><tbody>{[-.15,-.05,.05].map(m=><tr key={m}><th scope="row">{pct(m,0)}</th>{[-.15,0,.1].map(v=>{const effect=risk.holdings.reduce((sum,h)=>sum+h.value*deterministicImpact(h,{...scenario,marketShock:m,sectorShock:v}),0)/(risk.total||1);return <td key={v} className={effect>=0?s.positive:s.negative}>{pct(effect)}</td>;})}</tr>)}</tbody></table></div>; }
 function Action({priority,title,evidence,direction,condition}:{priority:string;title:string;evidence:string;direction:string;condition:string}) { return <article className={s.actionCard} data-priority={priority}><h3><span className={s.tag}>{priority} · {priority==="P1"?"Ưu tiên cao":"Theo dõi"}</span>{title}</h3><div className={s.actionDetails}><p className={s.muted}><span className={s.actionLabel}>Căn cứ</span><Highlighted>{evidence}</Highlighted></p><p className={s.muted}><span className={s.actionLabel}>Hướng xử lý</span><Highlighted>{direction}</Highlighted></p><p className={s.muted}><span className={s.actionLabel}>Điều kiện</span><Highlighted>{condition}</Highlighted></p></div></article>; }
 function Comparison({plan:p}:{plan:Plan}) {
   const rows=[{name:"Tổng tài sản (VND)",before:money(p.before.total),after:money(p.after.total)},{name:"Tiền mặt",before:pct(p.before.cashWeight),after:pct(p.after.cashWeight)},{name:"Tỉ trọng mã lớn nhất",before:pct(Math.max(0,...p.before.holdings.map(h=>h.weight))),after:pct(Math.max(0,...p.after.holdings.map(h=>h.weight)))},{name:"Tỉ trọng ngành lớn nhất",before:pct(Math.max(0,...p.before.sectors.map(h=>h.weight))),after:pct(Math.max(0,...p.after.sectors.map(h=>h.weight)))},{name:"Biến động năm",before:pct(p.before.volatility),after:pct(p.after.volatility)},{name:"VaR 95% cuối kỳ (VND)",before:money(p.baseline.var95),after:money(p.simulation.var95)},{name:"CVaR 95% cuối kỳ (VND)",before:money(p.baseline.cvar95),after:money(p.simulation.cvar95)},{name:"Xác suất lỗ cuối kỳ",before:pct(p.baseline.lossProbability),after:pct(p.simulation.lossProbability)},{name:"Chạm ngân sách trong kỳ",before:pct(p.baseline.breachProbability),after:pct(p.simulation.breachProbability)}];

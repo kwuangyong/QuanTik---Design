@@ -1,7 +1,8 @@
 /** Engine thuần: mọi giá dùng VND, lợi suất/biến động dùng số thập phân. */
 export type Asset = { symbol: string; name: string; sector: string; price: number; beta: number; color: string; returns: number[] };
 export type Position = { symbol: string; quantity: number; cost: number };
-export type Portfolio = { positions: Position[]; cash: number };
+export type Portfolio = { positions: Position[]; cash: number; priceSource?: "agr" };
+const equitySymbol = /^[A-Z][A-Z0-9]{1,4}$/;
 export function seededRandom(seed: number) {
   let state = seed >>> 0;
   return () => { state += 0x6D2B79F5; let t = state; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
@@ -21,14 +22,39 @@ export function covariance(series: number[][]) {
   const means = series.map(row => row.reduce((s, v) => s + v, 0) / n);
   return series.map((a, i) => series.map((b, j) => a.reduce((sum, v, k) => sum + (v - means[i]) * (b[k] - means[j]), 0) / (n - 1)));
 }
-export function validatePortfolio(portfolio: Portfolio, assets: Asset[]) {
+function validatePosition(position: Position) {
+  const { symbol, quantity, cost } = position;
+  if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 1e7 || !Number.isFinite(cost) || cost <= 0 || cost > 1e8) {
+    throw new Error(`Khối lượng của ${symbol} phải là số nguyên từ 1 đến 10 triệu và giá mua phải lớn hơn 0, tối đa 100 triệu VND.`);
+  }
+}
+export function validatePortfolio(portfolio: Portfolio, assets?: Asset[]) {
   if (!Number.isFinite(portfolio.cash) || portfolio.cash < 0 || portfolio.cash > 1e12) throw new Error("Tiền mặt phải từ 0 đến 1.000 tỷ VND.");
+  if (!Array.isArray(portfolio.positions)) throw new Error("Danh mục không hợp lệ.");
   const symbols = new Set<string>();
   for (const p of portfolio.positions) {
-    if (!assets.some(a => a.symbol === p.symbol) || symbols.has(p.symbol)) throw new Error("Mã không được hỗ trợ hoặc bị trùng.");
-    if (!Number.isSafeInteger(p.quantity) || p.quantity < 1 || p.quantity > 1e7 || !Number.isFinite(p.cost) || p.cost <= 0 || p.cost > 1e8) throw new Error("Khối lượng phải là số nguyên 1–10 triệu; giá mua phải lớn hơn 0 và tối đa 100 triệu VND.");
+    if (!p || typeof p.symbol !== "string" || (!assets && !equitySymbol.test(p.symbol))) throw new Error("Mã cổ phiếu không hợp lệ.");
+    validatePosition(p);
+    if (symbols.has(p.symbol) || (assets && !assets.some(a => a.symbol === p.symbol))) throw new Error("Mã không được hỗ trợ hoặc bị trùng.");
     symbols.add(p.symbol);
   }
+}
+export function addPortfolioPurchases(portfolio: Portfolio, purchases: Position[]): Portfolio {
+  const positions = new Map(portfolio.positions.map(position => [position.symbol, position]));
+  for (const purchase of purchases) {
+    validatePosition(purchase);
+    const previous = positions.get(purchase.symbol);
+    if (!previous) {
+      positions.set(purchase.symbol, purchase);
+      continue;
+    }
+    const quantity = previous.quantity + purchase.quantity;
+    const cost = previous.cost + (purchase.cost - previous.cost) * purchase.quantity / quantity;
+    positions.set(purchase.symbol, { symbol: purchase.symbol, quantity, cost });
+  }
+  const updated = { ...portfolio, positions: [...positions.values()] };
+  validatePortfolio(updated);
+  return updated;
 }
 export function portfolioRisk(portfolio: Portfolio, assets: Asset[]) {
   validatePortfolio(portfolio, assets);

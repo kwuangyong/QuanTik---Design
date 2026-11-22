@@ -1,6 +1,6 @@
 "use client";
 import { tw } from "@/lib/tailwind";
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type PointerEvent, type ReactNode } from "react";
 import { X } from "lucide-react";
 export function PageHeading({ title, description, children, }: {
     title: string;
@@ -29,14 +29,46 @@ export function Panel({ title, action, children, className = "", }: {
       {children}
     </section>);
 }
-export function Modal({ title, onClose, children, className = "", }: {
+export function Modal({ title, onClose, children, className = "", draggable = false }: {
     title: string;
     onClose: () => void;
     children: ReactNode;
     className?: string;
+    draggable?: boolean;
 }) {
     const ref = useRef<HTMLDialogElement>(null);
+    const offset = useRef({ x: 0, y: 0 });
+    const drag = useRef<{ pointer: number; x: number; y: number } | null>(null);
     const titleId = useId();
+    const move = (x: number, y: number) => {
+        const dialog = ref.current;
+        if (!dialog) return;
+        const { left, right, top, bottom } = dialog.getBoundingClientRect();
+        const margin = 8;
+        const bound = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+        offset.current = {
+            x: bound(x, offset.current.x + margin - left, offset.current.x + window.innerWidth - margin - right),
+            y: bound(y, offset.current.y + margin - top, offset.current.y + window.innerHeight - margin - bottom),
+        };
+        dialog.style.setProperty("--dialog-x", `${offset.current.x}px`);
+        dialog.style.setProperty("--dialog-y", `${offset.current.y}px`);
+    };
+    const startDrag = (event: PointerEvent<HTMLElement>) => {
+        if (!event.isPrimary || event.button !== 0 || (event.target as Element).closest("button")) return;
+        drag.current = { pointer: event.pointerId, x: event.clientX - offset.current.x, y: event.clientY - offset.current.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+    };
+    useEffect(() => {
+        if (!draggable || !ref.current) return;
+        const keepInView = () => move(offset.current.x, offset.current.y);
+        const observer = new ResizeObserver(keepInView);
+        observer.observe(ref.current);
+        window.addEventListener("resize", keepInView);
+        return () => {
+            observer.disconnect();
+            window.removeEventListener("resize", keepInView);
+        };
+    }, [draggable]);
     useEffect(() => {
         const el = ref.current;
         if (!el)
@@ -65,7 +97,10 @@ export function Modal({ title, onClose, children, className = "", }: {
                     onClose();
             }
         }}>
-      <header>
+      <header onPointerDown={draggable ? startDrag : undefined} onPointerMove={draggable ? event => {
+          const active = drag.current;
+          if (active?.pointer === event.pointerId) move(event.clientX - active.x, event.clientY - active.y);
+      } : undefined} onLostPointerCapture={draggable ? () => { drag.current = null; } : undefined}>
         <h2 id={titleId}>{title}</h2>
         <button autoFocus className="icon-button inline-flex items-center justify-center [width:40px] [height:40px] [flex-shrink:0] [border-width:1px] [border-style:solid] [border-color:var(--border)] [border-radius:4px] [background:transparent] [color:var(--muted)] [transition:background_0.18s,_color_0.18s] [&:hover]:[background:var(--raised)] [&:hover]:[color:var(--text)]" onClick={onClose} aria-label="Đóng">
           <X size={20}/>

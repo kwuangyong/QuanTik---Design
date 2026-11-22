@@ -13,7 +13,7 @@ const result = await build({
   jsx: "automatic",
   target: "es2020",
   format: "iife",
-  define: { "process.env.NODE_ENV": '"production"' },
+  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_GA_ID": '""' },
   alias: {
     "next/link": resolve(root, "frontend/preview/router.tsx"),
     "next/navigation": resolve(root, "frontend/preview/router.tsx"),

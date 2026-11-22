@@ -47,7 +47,8 @@ const assert=require('node:assert/strict');
       await page.getByRole('tab',{name:/Tổng quan/}).click();
       await page.getByRole('button',{name:'Thêm vị thế',exact:true}).click();
       const dialog=page.getByRole('dialog');
-      await dialog.getByRole('combobox',{name:'Mã cổ phiếu',exact:true}).selectOption('SSI');
+      await dialog.getByRole('combobox',{name:'Mã cổ phiếu',exact:true}).fill('SSI');
+      await dialog.getByRole('option',{name:/^SSI /}).click();
       await dialog.getByLabel('Khối lượng (cổ phiếu)').fill('1000');
       await dialog.getByLabel('Giá mua (VND/cổ phiếu)').fill('30000');
       await dialog.getByRole('button',{name:'Lưu vị thế'}).click();
@@ -57,7 +58,7 @@ const assert=require('node:assert/strict');
       await page.reload();await page.getByRole('button',{name:'Sửa SSI',exact:true}).waitFor();
       assert.deepEqual(errors,[]);
       // Các request tài khoản cũ của Shell có thể bị chặn, Portfolio không phụ thuộc chúng.
-      const externalAssets=requests.filter(url=>!url.includes('/api/v1/'));
+      const externalAssets=requests.filter(url=>!url.includes('/api/v1/')&&!url.endsWith('/api/market/agr?view=portfolio'));
       assert.deepEqual(externalAssets,[]);
       report.push({kind,themes:2,tabs:4,errors,externalAssets,passed:true});
       await context.close();

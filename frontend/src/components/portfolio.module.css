@@ -50,3 +50,54 @@
 @media(max-width:1050px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.actionDetails{grid-template-columns:1fr;gap:16px}.actionDetails p+p{padding:16px 0 0;border-left:0;border-top:1px solid var(--border)}}
 @media(max-width:650px){.heading{flex-direction:column;gap:18px}.panel{padding:18px}.stat{padding:16px}.statLabel{align-items:flex-start;min-height:42px}.number{font-size:20px;letter-spacing:-.7px}.statIcon{width:25px;height:25px}.stats{gap:10px}.allocation{flex-direction:column;align-items:stretch;gap:24px}.donut{align-self:center}.tabs{gap:4px}.tabs button{font-size:12px;padding:9px 6px;min-height:52px;gap:6px}.priority{padding:18px;gap:14px}.priority>svg{padding:8px}.sectionHeading{flex-wrap:wrap}.controls{grid-template-columns:1fr}.settings{display:grid;grid-template-columns:1fr}.toolbar{flex-direction:column;align-items:stretch;padding:16px}.toolbar .field{min-width:0}.toolbar>.muted{font-size:11px}.page{gap:20px}.actionCard{padding:18px}.actionCard h3{flex-wrap:wrap}.form input{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.content{animation:none}.button{transition:none}}
+
+.positionDialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(800px, calc(100% - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  translate: var(--dialog-x, 0px) var(--dialog-y, 0px);
+}
+.positionDialog[open] { display: flex; flex-direction: column; }
+:global(html):has(.positionDialog[open]) { overflow: hidden; }
+.positionDialog > header {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 20px 24px 12px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.positionDialog > header:active { cursor: grabbing; }
+.dragIcon { position: absolute; inset: 4px 0 auto; margin-inline: auto; color: var(--muted); pointer-events: none; }
+.positionDialog .form { display: flex; flex-direction: column; min-height: 0; gap: 0; padding: 0; }
+.positionRows { display: grid; gap: 14px; overflow: auto; overscroll-behavior: contain; padding: 4px 24px 16px; }
+.positionRow { min-width: 0; padding: 10px 12px 12px; border: 1px solid var(--border); border-radius: 8px; }
+.positionRow legend { padding-inline: 5px; color: var(--text); font-size: 13px; }
+.positionFields { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.positionFields > .field { grid-template-rows: minmax(2.3em, auto) auto; }
+.removeRow { margin-top: 2.55em; padding: 9px; }
+.symbolField { position: relative; }
+.symbolField small { color: var(--muted); overflow-wrap: anywhere; }
+.symbolResults { grid-column: 1; max-height: 180px; overflow: auto; overscroll-behavior: contain; border: 1px solid var(--border); border-radius: 6px; background: var(--background); }
+.symbolResults button { display: flex; width: 100%; align-items: baseline; gap: 8px; padding: 8px; text-align: left; color: var(--text); }
+.symbolResults button:hover, .symbolResults button[aria-selected=true] { background: var(--raised); }
+.symbolResults button span { flex: 1; overflow-wrap: anywhere; }
+.noMatches { display: block; padding: 8px; }
+.positionFooter { flex: 0 0 auto; display: grid; gap: 10px; padding: 12px 24px 18px; border-top: 1px solid var(--border); }
+.positionFooter p.error { color: var(--negative); }
+.positionFooter .editorActions { justify-content: space-between; }
+.editorActions > .actions { margin-inline-start: auto; }
+@media (max-width: 650px) {
+  .positionDialog > header { padding-inline: 14px; }
+  .positionRows, .positionFooter { padding-inline: 14px; }
+  .positionFields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .positionFields > .field { grid-template-rows: auto; }
+  .positionFields > :first-child { grid-column: 1/-1; }
+  .removeRow { grid-column: 1/-1; justify-self: end; margin-top: 0; }
+}
