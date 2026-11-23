@@ -1,10 +1,10 @@
 # Portfolio Intelligence — bản thử nghiệm
 
-Route: `/portfolio`. Quản lý vị thế, đánh giá rủi ro, mô phỏng đa chiều và kiểm chứng phương án giảm vị thế. Bản thử nghiệm dùng dữ liệu mẫu, không gọi API thị trường hoặc đặt lệnh.
+Route: `/portfolio`. Theo dõi vị thế trên HOSE, HNX và UPCoM bằng dữ liệu bảng điện AGR. Mô hình rủi ro và mô phỏng dùng dữ liệu Quant mẫu cho các mã có sẵn mô hình.
 
 ## Luồng sử dụng
 
-1. **Tổng quan:** chọn một trong ba danh mục mẫu, nhập/sửa/xóa vị thế qua Modal có sẵn. Giá mua dùng VND/cổ phiếu, khối lượng số nguyên. Có tiền mặt, hoàn tác xóa, lưu trình duyệt và CSV.
+1. **Tổng quan.** Chọn một danh mục mẫu hoặc nhập nhiều lần mua trong hộp thêm vị thế. Tìm theo mã hoặc tên công ty trên ba sàn. Các lần mua cùng mã được cộng khối lượng và tính giá vốn bình quân gia quyền. Có thể sửa hoặc xóa vị thế, cập nhật tiền mặt, hoàn tác xóa và xuất CSV. Danh mục tự lưu trên trình duyệt.
 2. **Rủi ro & tương quan:** xem tương quan mã và ngành, biến động năm, beta và đóng góp phương sai. Đọc HMM riêng từng mã làm bối cảnh.
 3. **Kịch bản biến động:** chọn 5/20/60 phiên; cú sốc thị trường/ngành/mã; mức tăng tương quan và hệ số biến động. Bấm **Chạy mô phỏng**. Đổi thiết lập hoặc danh mục sẽ đánh dấu kết quả cũ, không âm thầm thay kết quả.
 4. **Action plan:** đặt trần mã/ngành/biến động/ngân sách lỗ, đọc ưu tiên P1/P2 và căn cứ–hướng xử lý–điều kiện. Bấm **Tạo & kiểm chứng phương án** để xem lượng giảm hợp nhất và trước–sau. Không sửa danh mục gốc hoặc đặt lệnh.
@@ -12,7 +12,7 @@ Route: `/portfolio`. Quản lý vị thế, đánh giá rủi ro, mô phỏng đ
 ## Kiến trúc có thể tái sử dụng
 
 - `frontend/src/lib/portfolio-engine.ts`: kiểu dữ liệu, validation, covariance, Pearson, tương quan ngành, định giá, P&L, biến động năm và đóng góp rủi ro. Không phụ thuộc React, DOM hoặc API.
-- `frontend/src/lib/portfolio.ts`: sáu mã và ba danh mục mẫu, lấy giá/ngành/nến qua adapter dùng chung; định dạng tiền/tỉ lệ.
+- `frontend/src/lib/portfolio.ts` chứa sáu mã có mô hình Quant và ba danh mục mẫu. `frontend/src/lib/portfolio-market.ts` định giá vị thế từ bảng điện AGR. Bản chụp dự phòng `frontend/src/content/agr-equities.json` lấy cổ phiếu (`StockType = 2`) từ [bảng điện AGR](https://trading.agr.vn/datafeed/instruments).
 - `frontend/src/lib/portfolio-resources.ts`: tái sử dụng `getStock`, `getScanResult`, `getDemoResult`, `getDemoCandles`, `getAnalysisVisuals`, `factorProfile`, `moduleReading` và `analysisReason`. Căn chỉnh nến theo giao nhãn phiên; chuẩn hóa báo cáo đã công bố theo đúng mã/phiên/ca và section availability.
 - `frontend/src/lib/portfolio-quant-adapter.ts`: GARCH/HMM đọc qua `getAnalysisVisuals`, không đọc JSON riêng; từ chối thiếu model hoặc tham số không hợp lệ.
 - `frontend/src/lib/portfolio-simulation.ts`: Cholesky, mô phỏng có seed, phân vị/đuôi lỗ, phân rã tác động và phương án tái phân bổ. Nhận danh mục và tập asset làm đối số, không cần UI.
@@ -23,7 +23,7 @@ Các module engine có thể được import từ quét toàn sàn hoặc trang 
 ## Đơn vị và công thức
 
 - Giá/giá vốn/tài sản/P&L dùng VND. Lợi suất, tỉ trọng, volatility trong engine dùng số thập phân; chỉ nhân 100 khi hiển thị.
-- Giá/ngành từ snapshot dùng chung của `mock-data.ts`; nguồn ghi rõ đơn vị nghìn đồng nên đổi sang VND đúng một lần. Lợi suất `close[t]/close[t−1]−1` từ nến mẫu 1D của Quant. Hiện có 48 nến chung, tương ứng 47 quan sát; không tự sinh thêm chuỗi 252 phiên. Đây vẫn là dữ liệu mẫu, không phải lịch sử thị trường thực.
+- Danh mục mẫu dùng giá từ `mock-data.ts`, đổi từ nghìn đồng sang VND. Sau khi thêm lần mua, danh mục dùng giá khớp gần nhất hoặc giá tham chiếu bằng VND từ phiên AGR hiển thị trên trang. Khi một vị thế thiếu giá, tổng tài sản và lãi lỗ danh mục được để trống. Lợi suất `close[t]/close[t−1]−1` vẫn dựa trên 48 nến mẫu 1D của Quant, tương ứng 47 quan sát. Mô phỏng yêu cầu mọi vị thế có mô hình và có giá.
 - Beta cho cú sốc thị trường vẫn là giả định theo mã, chưa được fit với benchmark đồng bộ. Hệ số 252 trong quy đổi volatility chỉ là số phiên năm, không phải số quan sát hiện có.
 - Snapshot quét chỉ gồm 10 dòng mẫu; sáu mã Portfolio hiện không nằm trong tập này. Ghi `NOT_IN_SAMPLE` và điểm `null`, không suy là bị loại hoặc điểm 0. Quant demo được ghi nhãn riêng, không thay thế screening thực hay action gate.
 - Giá vốn của danh mục người dùng lưu được giữ nguyên khi đổi nguồn giá. Chỉ giá vốn của các danh mục mẫu mới được đặt theo tỉ lệ giá snapshot.

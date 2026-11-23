@@ -74,17 +74,43 @@ test('AGR indices: maps all four identities, preserves point/percent units and s
 });
 test('AGR snapshot route returns 502 for invalid upstream and does not leak upstream errors', async () => {
   const { GET } = load('app/api/market/agr/route.ts');
+  const request = new Request('http://localhost/api/market/agr');
   const previous = global.fetch;
   try {
     global.fetch = async url => Response.json({ s: 'ok', d: url.endsWith('/instruments') ? [snapshot] : [{ marketCode: 'HOSE', marketIndex: '1705.91', indexPercentChange: '0.45' }] });
-    const result = await GET(); assert.equal(result.status, 200);
+    const result = await GET(request); assert.equal(result.status, 200);
     assert.equal((await result.json()).indices[0].marketIndex, '1705.91');
     global.fetch = async url => { if (url.endsWith('/instruments')) return Response.json({ s: 'ok', d: [snapshot] }); throw new Error('index source unavailable'); };
-    const partial = await GET(); assert.equal(partial.status, 200);
+    const partial = await GET(request); assert.equal(partial.status, 200);
     assert.equal((await partial.json()).indices, null);
     global.fetch = async () => Response.json({ s: 'error', d: [] });
-    assert.equal((await GET()).status, 502);
+    assert.equal((await GET(request)).status, 502);
     global.fetch = async () => { throw new Error('private upstream details'); };
-    assert.doesNotMatch(await (await GET()).text(), /private upstream details/);
+    assert.doesNotMatch(await (await GET(request)).text(), /private upstream details/);
+  } finally { global.fetch = previous; }
+});
+
+test('AGR portfolio response includes equities on three exchanges, with unscaled prices', async () => {
+  const { GET } = load('app/api/market/agr/route.ts');
+  const previous = global.fetch;
+  const requests = [];
+  try {
+    global.fetch = async url => {
+      requests.push(url);
+      return Response.json({ s: 'ok', d: [
+        { ...snapshot, StockType: '2' },
+        { SB: 'HUT', FN: 'Tasco', FC: '02', StockType: 2, CP: 0, RE: '12400' },
+        { symbol: 'A32', exchange: 'UPCOM', StockType: '2', closePrice: 0, reference: 0 },
+        { ...snapshot, symbol: 'FUE', StockType: '3' },
+      ] });
+    };
+    const response = await GET(new Request('http://localhost/api/market/agr?view=portfolio'));
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { tradingDate: snapshot.tradingdate, items: [
+      { symbol: 'FPT', exchange: 'HOSE', name: 'FPT Corp', price: 58200 },
+      { symbol: 'HUT', exchange: 'HNX', name: 'Tasco', price: 12400 },
+      { symbol: 'A32', exchange: 'UPCOM', name: 'A32', price: null },
+    ] });
+    assert.equal(requests.length, 1);
   } finally { global.fetch = previous; }
 });

@@ -31,6 +31,15 @@ test('Từ chối vị thế trùng, mã lạ, số âm, NaN và khối lượng
   const base=samples[0].portfolio,p=base.positions[0];
   for(const next of [{...base,cash:-1},{...base,cash:NaN},{...base,positions:[p,p]},{...base,positions:[{...p,symbol:'BAD'}]},{...base,positions:[{...p,quantity:1.5}]},{...base,positions:[{...p,cost:0}]}])assert.throws(()=>engine.portfolioRisk(next,assets));
 });
+test('Gộp lần mua cùng mã và từ chối cả lô nếu một dòng không hợp lệ',()=>{
+  const original={cash:500000,positions:[{symbol:'HUT',quantity:100,cost:10000}]};
+  const purchase={symbol:'HUT',quantity:100,cost:13000};
+  const newPosition={symbol:'A32',quantity:300,cost:25000};
+  const result=engine.addPortfolioPurchases(original,[purchase,newPosition,{...purchase,quantity:200,cost:15000}]);
+  assert.deepEqual(result,{cash:500000,positions:[{symbol:'HUT',quantity:400,cost:13250},newPosition]});
+  assert.throws(()=>engine.addPortfolioPurchases(original,[newPosition,{...purchase,quantity:10000000}]));
+  assert.deepEqual(original.positions,[{symbol:'HUT',quantity:100,cost:10000}]);
+});
 test('Adapter quy đổi % và phương sai phần trăm; không bịa model thiếu',()=>{
   const raw=require('../backend/mock/analysis-visuals.json').reports.find(r=>r.symbol==='FPT'),m=adapter.quantModel('FPT');
   near(m.omega,raw.garch.omega/10000);near(m.variance,(raw.garch.volatility.at(-1).valuePct/100)**2);near(Object.values(m.hmm).reduce((a,b)=>a+b,0),1);assert.throws(()=>adapter.quantModel('BAD'));

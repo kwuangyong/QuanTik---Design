@@ -50,10 +50,37 @@ export function mergeAgrRecord(previous: AgrRecord | undefined, incoming: AgrRec
   }
   return { ...previous, ...next };
 }
-export function toAgrStock(record: AgrRecord, metadata?: Stock): Stock | null {
+function agrStockIdentity(record: AgrRecord) {
   const symbol = String(record.symbol ?? "");
   const exchange = String(record.exchange ?? ({ "10": "HOSE", "02": "HNX", "04": "UPCOM" } as Record<string, string>)[String(record.FloorCode)] ?? "");
   if (!/^[A-Z][A-Z0-9]{1,4}$/.test(symbol) || !["HOSE", "HNX", "UPCOM"].includes(exchange)) return null;
+  return { symbol, exchange };
+}
+
+export type AgrEquity = { symbol: string; name: string; exchange: string; price: number | null };
+export type AgrEquitySnapshot = { items: AgrEquity[]; tradingDate: string };
+
+export function toAgrEquities(records: AgrRecord[]): AgrEquitySnapshot {
+  const items = new Map<string, AgrEquity>();
+  let tradingDate = "";
+  for (const raw of records) {
+    const record = expandAgrRecord(raw);
+    if (String(record.StockType) !== "2") continue;
+    const identity = agrStockIdentity(record);
+    if (!identity) continue;
+    const close = numberOrNull(record.closePrice);
+    const reference = numberOrNull(record.reference);
+    const price = close && close > 0 ? close : reference && reference > 0 ? reference : null;
+    items.set(identity.symbol, { ...identity, name: String(record.FullName || identity.symbol), price });
+    if (!tradingDate && typeof record.tradingdate === "string") tradingDate = record.tradingdate;
+  }
+  return { items: [...items.values()], tradingDate };
+}
+
+export function toAgrStock(record: AgrRecord, metadata?: Stock): Stock | null {
+  const identity = agrStockIdentity(record);
+  if (!identity) return null;
+  const { symbol, exchange } = identity;
   const price = (value: unknown) => { const n = numberOrNull(value); return n === null ? null : n / 1000; };
   const quote = (side: "bid" | "offer", level: number) => {
     const raw = record[`${side}Price${level}`];
