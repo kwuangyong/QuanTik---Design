@@ -51,7 +51,7 @@ function RequestPanel({ symbol, compact = false }: { symbol: string; compact?: b
         {rights.data.active && (rights.data.active_jobs || 0) >= rights.data.active_limit && <p role="status">Chờ một yêu cầu đang xử lý kết thúc trước khi gửi thêm.</p>}
       </>}
       {options.data && !options.data.ready && <p role="status" className="mt-3 border-l-2 border-[var(--accent)] pl-3">{analysisReason(options.data.reason)} Chưa tiếp nhận yêu cầu và chưa tính hạn mức.</p>}
-      {options.data?.ready && !options.data.symbols.includes(symbol) && <p role="status">Mã {symbol} chưa có dữ liệu phân tích mới nhất.</p>}
+      {options.data?.ready && !options.data.symbols.includes(symbol) && <p role="status">Chưa thể gửi yêu cầu cho mã {symbol} ở phiên {selected}.</p>}
       {samePending && error && <p role="status">Chưa xác định được kết quả gửi. Gửi lại cùng nội dung sẽ truy hồi yêu cầu cũ, không tạo thêm yêu cầu.</p>}
       <form className="mt-4 grid gap-3" onSubmit={event => { event.preventDefault(); if (canSend) setReview(true); }}>
         <fieldset disabled={busy || review} className="grid min-w-0 gap-3">
