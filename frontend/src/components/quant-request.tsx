@@ -50,7 +50,13 @@ function RequestPanel({ symbol, compact = false }: { symbol: string; compact?: b
         {rights.data.active && rights.data.remaining === 0 && <p role="status">Đã đạt giới hạn ngày. Mở lại hạn mức lúc {stamp(rights.data.daily_reset_at)}.</p>}
         {rights.data.active && (rights.data.active_jobs || 0) >= rights.data.active_limit && <p role="status">Chờ một yêu cầu đang xử lý kết thúc trước khi gửi thêm.</p>}
       </>}
-      {options.data && !options.data.ready && <p role="status" className="mt-3 border-l-2 border-[var(--accent)] pl-3">{analysisReason(options.data.reason)} Chưa tiếp nhận yêu cầu và chưa tính hạn mức.</p>}
+      {options.data && !options.data.ready && <div className="mt-3 border-l-2 border-[var(--accent)] pl-3">
+        <p role="status">
+          {options.data.selected_session && <>Phiên {options.data.selected_session}. </>}
+          {analysisReason(options.data.reason)} Chưa tiếp nhận yêu cầu và chưa tính hạn mức.
+        </p>
+        <button type="button" className={accountStyles.buttonSecondary} disabled={options.loading} onClick={options.reload}>Kiểm tra lại trạng thái Quant</button>
+      </div>}
       {options.data?.ready && !options.data.symbols.includes(symbol) && <p role="status">Mã {symbol} chưa có dữ liệu phân tích mới nhất.</p>}
       {samePending && error && <p role="status">Chưa xác định được kết quả gửi. Gửi lại cùng nội dung sẽ truy hồi yêu cầu cũ, không tạo thêm yêu cầu.</p>}
       <form className="mt-4 grid gap-3" onSubmit={event => { event.preventDefault(); if (canSend) setReview(true); }}>

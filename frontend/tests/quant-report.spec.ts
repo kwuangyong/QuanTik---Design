@@ -91,9 +91,16 @@ test("Quant: chặn thiếu gói/kiểm định và không lộ report khi mất
   await page.reload();
   await expect(page.getByText(/Danh sách thị trường chưa hoàn tất kiểm định/)).toBeVisible();
   expect(state.created).toBe(0);
+  const submit = page.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true });
+  await expect(submit).toBeDisabled();
+  state.reason = "MODEL_NOT_READY";
+  const checkStatus = page.getByRole("button", { name: "Kiểm tra lại trạng thái Quant" });
+  await checkStatus.click();
+  await expect(page.getByText(/Phiên 2026-10-16\. Mô hình phân tích cho phiên này chưa sẵn sàng/)).toBeVisible();
+  await expect(submit).toBeDisabled();
   state.ready = true; state.status = "SUCCEEDED"; state.denyReport = true;
-  await page.reload();
-  await page.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
+  await checkStatus.click();
+  await submit.click();
   await page.getByRole("button", { name: "Xác nhận", exact: true }).click();
   const job = page.getByRole("region", { name: "Yêu cầu phân tích", exact: true });
   await expect(job.getByText(/Không tìm thấy dữ liệu/)).toBeVisible();
