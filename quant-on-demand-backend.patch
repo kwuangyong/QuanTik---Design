@@ -1,0 +1,562 @@
+From 1bbb9fd882fb8c695640915593a6ebec728f7b4b Mon Sep 17 00:00:00 2001
+From: nguyen duy <ducduy14ngochoi@gmail.com>
+Date: Mon, 23 Nov 2026 13:34:51 +0000
+Subject: [PATCH] fix: run Quant on demand for supported symbols
+
+---
+ backend/src/service/analysis_readiness.py | 29 ++++++------
+ backend/src/service/analysis_worker.py    | 55 ++++++++++++++++------
+ backend/src/service/dependencies.py       | 56 ++++++++++++++++++++---
+ backend/src/service/ingestion.py          | 21 +++++----
+ backend/src/service/model_lifecycle.py    |  6 ++-
+ backend/src/service/snapshots.py          | 25 +++++++---
+ backend/tests/test_snapshots.py           | 53 +++++++++++++++++----
+ 7 files changed, 185 insertions(+), 60 deletions(-)
+
+diff --git a/backend/src/service/analysis_readiness.py b/backend/src/service/analysis_readiness.py
+index 224cb4d..2a7b12e 100644
+--- a/backend/src/service/analysis_readiness.py
++++ b/backend/src/service/analysis_readiness.py
+@@ -13,8 +13,15 @@ from service.scheduling import VN
+ DEFAULT_CONFIG = replace(QuantConfig(), PRICE_INPUT_UNIT="VND")
+ 
+ 
++def snapshot_name(target: date, config: QuantConfig, symbol: str | None = None) -> str:
++    config_hash = checksum(asdict(config))
++    if symbol is not None:
++        return "requested:" + checksum({"session": target.isoformat(), "config": config_hash, "symbol": symbol})
++    return "completed:" + target.isoformat() + ":" + config_hash
++
++
+ def snapshot_symbols(db, target: date) -> set[str] | None:
+-    name = "completed:" + target.isoformat() + ":" + checksum(asdict(DEFAULT_CONFIG))
++    name = snapshot_name(target, DEFAULT_CONFIG)
+     members = db.scalar(select(MarketSnapshot.payload["member_checksums"]).join(PublishedSnapshot,
+         PublishedSnapshot.snapshot_id == MarketSnapshot.id).where(
+             PublishedSnapshot.name == name, MarketSnapshot.status == "READY"))
+@@ -22,7 +29,7 @@ def snapshot_symbols(db, target: date) -> set[str] | None:
+ 
+ 
+ def require_snapshot_service(db, target: date) -> None:
+-    name = "completed:" + target.isoformat() + ":" + checksum(asdict(DEFAULT_CONFIG))
++    name = snapshot_name(target, DEFAULT_CONFIG)
+     ready = db.scalar(select(MarketSnapshot.id).join(PublishedSnapshot, PublishedSnapshot.snapshot_id == MarketSnapshot.id)
+         .where(PublishedSnapshot.name == name, MarketSnapshot.status == "READY"))
+     if ready:
+@@ -58,11 +65,6 @@ def validate_request(db, settings, target: date, symbol: str) -> None:
+     universe = db.get(UniverseVersion, manifest.universe_id)
+     if not universe or symbol not in universe.payload["members"]:
+         raise DataError("UNKNOWN_INSTRUMENT")
+-    if symbol not in manifest.histories:
+-        raise DataError("SYMBOL_DATA_NOT_READY", True)
+-    selected = snapshot_symbols(db, target)
+-    if selected is not None and symbol not in selected:
+-        raise DataError("SYMBOL_SNAPSHOT_INELIGIBLE")
+ 
+ 
+ def options(db, settings, target: date | None = None) -> dict:
+@@ -75,10 +77,7 @@ def options(db, settings, target: date | None = None) -> dict:
+         manifest, _ = ready_inputs(db, selected, DEFAULT_CONFIG, settings)
+         require_snapshot_service(db, selected)
+         universe = db.get(UniverseVersion, manifest.universe_id)
+-        symbols = sorted(set(universe.payload["members"]) & set(manifest.histories))
+-        selected_symbols = snapshot_symbols(db, selected)
+-        if selected_symbols is not None:
+-            symbols = sorted(set(symbols) & selected_symbols)
++        symbols = sorted(universe.payload["members"])
+     except DataError as exc:
+         reason = exc.code
+     return {"sessions": list(reversed(sessions[-60:])), "selected_session": selected,
+@@ -120,9 +119,13 @@ def validate_manifest(db, manifest: DataManifest, settings) -> None:
+         raise DataError("QUANT_DATA_NOT_VALIDATED", True)
+ 
+ 
+-def ready_inputs(db, target: date, config: QuantConfig, settings) -> tuple[DataManifest, str | None]:
+-    manifest = db.scalar(select(DataManifest).where(DataManifest.target_session == target,
++def latest_manifest(db, target: date) -> DataManifest | None:
++    return db.scalar(select(DataManifest).where(DataManifest.target_session == target,
+         DataManifest.input_mode == "COMPLETED_DAILY").order_by(DataManifest.revision_order.desc()).limit(1))
++
++
++def ready_inputs(db, target: date, config: QuantConfig, settings) -> tuple[DataManifest, str | None]:
++    manifest = latest_manifest(db, target)
+     if not manifest:
+         raise DataError("DATA_NOT_READY", True)
+     validate_manifest(db, manifest, settings)
+diff --git a/backend/src/service/analysis_worker.py b/backend/src/service/analysis_worker.py
+index 1a9031b..3b4e254 100644
+--- a/backend/src/service/analysis_worker.py
++++ b/backend/src/service/analysis_worker.py
+@@ -1,13 +1,14 @@
+ """Durable customer analysis execution; ingestion/training never run inside a request."""
+ import threading
+ import time
+-from dataclasses import asdict, replace
++from dataclasses import asdict
+ from datetime import datetime, timezone
+ from zoneinfo import ZoneInfo
+ 
+ from sqlalchemy import select, update
+ 
+ from service import jobs
++from service.analysis_readiness import DEFAULT_CONFIG, latest_manifest, snapshot_name
+ from service.market_data import DataError, DailyHistory, checksum
+ from service.canonical_json import semantic_checksum
+ from service.models import Account, DataManifest, DependencyRequest, DependencyWaiter, HistoryRevision, Inbox, Job, JobAttempt, MarketSnapshot, ModelVersion, Outbox, PublishedSnapshot
+@@ -16,7 +17,6 @@ from service.settings import Settings
+ from service.quant.versions import ENGINE_VERSION, SNAPSHOT_POLICY
+ from service.delivery import Envelope, PoisonMessage
+ 
+-DEFAULT_CONFIG = replace(QuantConfig(), PRICE_INPUT_UNIT="VND")
+ 
+ 
+ def finalize_member(*args, **kwargs):
+@@ -42,14 +42,6 @@ def resolve_inputs(db, job: Job, settings: Settings) -> dict:
+     if not account or not account.enabled:
+         raise DataError("ACCOUNT_DISABLED")
+     pinned = job.pinned_versions
+-    if pinned:
+-        snapshot_id = pinned["market_snapshot"]
+-    else:
+-        name = "completed:" + job.target_session.isoformat() + ":" + checksum(asdict(DEFAULT_CONFIG))
+-        pointer = db.get(PublishedSnapshot, name)
+-        if not pointer:
+-            raise DataError("SNAPSHOT_NOT_READY", True)
+-        snapshot_id = pointer.snapshot_id
+     # JSON/JSONB projection keeps every job from decoding the whole market snapshot.
+     stmt = select(MarketSnapshot.manifest_id, MarketSnapshot.model_id, MarketSnapshot.config,
+         MarketSnapshot.dependency_key, MarketSnapshot.payload["versions"].label("dependency"),
+@@ -59,8 +51,27 @@ def resolve_inputs(db, job: Job, settings: Settings) -> dict:
+         MarketSnapshot.payload["liquidity_universe"].label("liquidity_universe"),
+         MarketSnapshot.payload["reference_checksum"].as_string().label("reference_checksum"),
+         MarketSnapshot.payload["warnings"].label("warnings"))
+-    row = db.execute(stmt.where(MarketSnapshot.id == snapshot_id, MarketSnapshot.status == "READY",
+-        MarketSnapshot.target_session == job.target_session)).first()
++    stmt = stmt.where(MarketSnapshot.status == "READY", MarketSnapshot.target_session == job.target_session)
++    if pinned:
++        snapshot_id = pinned["market_snapshot"]
++        row = db.execute(stmt.where(MarketSnapshot.id == snapshot_id)).first()
++    else:
++        pointer = db.get(PublishedSnapshot, snapshot_name(job.target_session, DEFAULT_CONFIG))
++        row = db.execute(stmt.where(MarketSnapshot.id == pointer.snapshot_id)).first() if pointer else None
++        if not row or not row.member:
++            requested = db.get(PublishedSnapshot, snapshot_name(job.target_session, DEFAULT_CONFIG, job.symbol))
++            manifest = latest_manifest(db, job.target_session)
++            if requested and manifest:
++                row = db.execute(stmt.where(MarketSnapshot.id == requested.snapshot_id,
++                    MarketSnapshot.manifest_id == manifest.id)).first()
++                pointer = requested
++            if not row or not row.member:
++                # A missing market snapshot is shared across waiters. An excluded
++                # symbol, or one with no history to feed that build, needs its own.
++                if pointer or (manifest and "VNINDEX" in manifest.histories and job.symbol not in manifest.histories):
++                    raise DataError("SYMBOL_SNAPSHOT_NOT_READY", True)
++                raise DataError("SNAPSHOT_NOT_READY", True)
++        snapshot_id = pointer.snapshot_id
+     if not row:
+         raise DataError("SNAPSHOT_NOT_READY", True)
+     content_hash = semantic_checksum if row.dependency and row.dependency.get("policy") == SNAPSHOT_POLICY else checksum
+@@ -75,8 +86,13 @@ def resolve_inputs(db, job: Job, settings: Settings) -> dict:
+     manifest = db.get(DataManifest, row.manifest_id)
+     if not manifest or manifest.target_session != job.target_session:
+         raise DataError("MANIFEST_MISMATCH")
+-    history = db.get(HistoryRevision, manifest.histories[job.symbol])
+-    if not history or history.symbol != job.symbol or history.target_session != job.target_session:
++    requested_history = row.dependency.get("requested_history")
++    if requested_history and requested_history["symbol"] != job.symbol:
++        raise DataError("SNAPSHOT_MEMBER_CORRUPTED")
++    history_id = requested_history["id"] if requested_history else manifest.histories.get(job.symbol)
++    history = db.get(HistoryRevision, history_id) if history_id else None
++    if (not history or history.symbol != job.symbol or history.target_session != job.target_session
++            or history.input_mode != "COMPLETED_DAILY"):
+         raise DataError("HISTORY_MISMATCH")
+     if checksum(history.payload) != history.checksum:
+         raise DataError("HISTORY_CHECKSUM_MISMATCH")
+@@ -113,6 +129,8 @@ def resolve_inputs(db, job: Job, settings: Settings) -> dict:
+ def register_dependency(db, job: Job, reason: str) -> None:
+     payload = {"target_session": job.target_session.isoformat(), "config": asdict(DEFAULT_CONFIG),
+         "engine": ENGINE_VERSION, "snapshot_policy": SNAPSHOT_POLICY}
++    if reason == "SYMBOL_SNAPSHOT_NOT_READY":
++        payload["symbol"] = job.symbol
+     key = checksum(payload)
+     now = int(time.time())
+     db.execute(dialect_insert(db)(DependencyRequest).values(key=key, kind="analysis_snapshot", payload=payload,
+@@ -239,13 +257,20 @@ def wake_waiters(sessions, settings: Settings) -> int:
+         waiting = list(db.scalars(select(Job).where(Job.status == "WAITING_DATA")
+             .order_by(Job.created_at).limit(100).with_for_update(skip_locked=True)))
+         for job in waiting:
++            waiter = db.get(DependencyWaiter, job.id)
++            dependency = db.get(DependencyRequest, waiter.dependency_key) if waiter else None
+             try:
+                 resolve_inputs(db, job, settings)
+             except DataError as exc:
+                 if not exc.retryable:
+                     jobs.fail_waiting(db, job.id, exc.code)
+-                else:
++                elif exc.code == "SYMBOL_SNAPSHOT_NOT_READY" and (not dependency or not dependency.payload.get("symbol")):
++                    register_dependency(db, job, exc.code)
+                     job.reason = exc.code
++                elif dependency and dependency.status == "FAILED":
++                    jobs.fail_waiting(db, job.id, dependency.reason or exc.code)
++                else:
++                    job.reason = dependency.reason if dependency and dependency.status == "WAITING" else exc.code
+                 continue
+             if jobs.wake_data(db, job.id):
+                 count += 1
+diff --git a/backend/src/service/dependencies.py b/backend/src/service/dependencies.py
+index c7a7193..cfb1c45 100644
+--- a/backend/src/service/dependencies.py
++++ b/backend/src/service/dependencies.py
+@@ -1,13 +1,13 @@
+ """Shared background dependency requests and recovery control loop."""
+ import time
+ import threading
+-from datetime import date
++from datetime import date, timedelta
+ 
+ from sqlalchemy import select, update
+ 
+ from service.analysis_worker import wake_waiters
+-from service.market_data import DataError
+-from service.models import Account, DependencyRequest, DependencyWaiter, Job, new_id
++from service.market_data import DataError, checksum, save_history
++from service.models import Account, DependencyRequest, DependencyWaiter, DataManifest, HistoryRevision, Job, UniverseVersion, new_id
+ from service.quant.configuration import QuantConfig
+ from service.analysis_readiness import ready_inputs
+ from service.operational_config import OperationsPolicy, active_version
+@@ -62,6 +62,43 @@ class DependencyHeartbeat:
+         self.thread.join(timeout=5)
+ 
+ 
++def requested_history_id(sessions, settings, manifest: DataManifest, symbol: str, config: QuantConfig, guard) -> str:
++    from service.quant_data_validation import history_accepted
++
++    with sessions() as db:
++        guard(db)
++        universe = db.get(UniverseVersion, manifest.universe_id)
++        member = universe.payload["members"].get(symbol)
++        if not member:
++            raise DataError("UNKNOWN_INSTRUMENT")
++        if not member.get("sector"):
++            raise DataError("SYMBOL_SECTOR_UNAVAILABLE")
++        rows = db.scalars(select(HistoryRevision).where(HistoryRevision.symbol == symbol,
++            HistoryRevision.target_session == manifest.target_session, HistoryRevision.input_mode == "COMPLETED_DAILY")
++            .order_by((HistoryRevision.id == manifest.histories.get(symbol)).desc(),
++                HistoryRevision.payload["metadata"]["observed_at"].as_string().desc(),
++                HistoryRevision.id).execution_options(yield_per=1))
++        for row in rows:
++            if (len(row.payload["bars"]) >= config.MIN_HISTORY and checksum(row.payload) == row.checksum
++                    and (settings.allow_fixture_analysis or history_accepted(row.payload))):
++                return row.id
++        policy = OperationsPolicy.model_validate(active_version(db, "OPERATIONS").payload)
++        if not policy.ingestion_enabled or not settings.scheduled_provider_enabled:
++            raise DataError("SYMBOL_INGESTION_PAUSED", True)
++    from service.ingestion import configured_provider
++
++    provider = configured_provider(sessions, settings)
++    target = manifest.target_session
++    history = provider.history(symbol, target - timedelta(days=policy.history_calendar_days), target,
++        minimum_bars=config.MIN_HISTORY)
++    with sessions() as db, db.begin():
++        guard(db)
++        if (history.symbol != symbol or history.target_session != target or history.input_mode != "COMPLETED_DAILY"
++                or len(history.payload["bars"]) < config.MIN_HISTORY or not history_accepted(history.payload)):
++            raise DataError("QUANT_DATA_NOT_VALIDATED")
++        return save_history(db, history).id
++
++
+ def run_dependency_once(sessions, settings) -> int:
+     now, token = int(time.time()), new_id()
+     with sessions() as db, db.begin():
+@@ -78,11 +115,16 @@ def run_dependency_once(sessions, settings) -> int:
+         with sessions() as db:
+             current_dependency(db, key, token)
+             manifest, _ = ready_inputs(db, target, config, settings)
+-            manifest_id = manifest.id
+         from service.snapshots import build_market_snapshot
+         with DependencyHeartbeat(sessions, key, token):
+-            snapshot = build_market_snapshot(sessions, manifest_id, config,
+-                operation_guard=lambda db: current_dependency(db, key, token))
++            def guard(db):
++                return current_dependency(db, key, token)
++
++            symbol = payload.get("symbol")
++            kwargs = {}
++            if symbol:
++                kwargs["requested_history"] = (symbol, requested_history_id(sessions, settings, manifest, symbol, config, guard))
++            snapshot = build_market_snapshot(sessions, manifest.id, config, operation_guard=guard, **kwargs)
+             with sessions() as db:
+                 current_dependency(db, key, token)
+             if snapshot.status != "READY" or (not snapshot.model_id and not settings.allow_degraded_analysis):
+@@ -90,7 +132,7 @@ def run_dependency_once(sessions, settings) -> int:
+         status, reason, delay = "READY", None, 0
+     except DataError as exc:
+         status = "CLOSED" if exc.code == "DEPENDENCY_NO_WAITERS" else "WAITING" if exc.retryable else "FAILED"
+-        reason, delay = exc.code, 300
++        reason, delay = exc.code, max(300, exc.retry_after or 0)
+     except Exception:
+         status, reason, delay = "WAITING", "DEPENDENCY_COMPUTE_ERROR", 300
+     with sessions() as db, db.begin():
+diff --git a/backend/src/service/ingestion.py b/backend/src/service/ingestion.py
+index dc657ab..1fb0535 100644
+--- a/backend/src/service/ingestion.py
++++ b/backend/src/service/ingestion.py
+@@ -75,6 +75,17 @@ def publish_cached_manifest(db, start: date, target_session: date):
+     return publish_manifest(db, universe, histories, target_session=target_session, input_mode="COMPLETED_DAILY")
+ 
+ 
++def configured_provider(sessions, settings: Settings) -> VnstockProvider:
++    with sessions() as db:
++        values, _row = read_integration(db, "vnstock", settings)
++    if not values["api_key"]:
++        raise DataError("PROVIDER_API_KEY_MISSING")
++    return VnstockProvider(sessions, limits={
++        "per_minute": settings.dnse_limit_per_minute, "per_hour": settings.dnse_limit_per_hour,
++        "per_day": settings.dnse_limit_per_day, "per_month": settings.dnse_limit_per_month},
++        account_key=values["api_key"])
++
++
+ def ingest_market(settings: Settings, start: date, target_session: date,
+                   selected_symbols: list[str] | None = None, input_mode: str = "COMPLETED_DAILY",
+                   minimum_bars: int = 1, *, operation_guard=None, resume: bool = False) -> dict:
+@@ -89,15 +100,7 @@ def ingest_market(settings: Settings, start: date, target_session: date,
+                     operation_guard(db)
+ 
+         guard()
+-        with sessions() as db:
+-            values, _row = read_integration(db, "vnstock", settings)
+-        account_key = values["api_key"]
+-        if not account_key:
+-            raise DataError("PROVIDER_API_KEY_MISSING")
+-        provider = VnstockProvider(sessions, limits={
+-            "per_minute": settings.dnse_limit_per_minute, "per_hour": settings.dnse_limit_per_hour,
+-            "per_day": settings.dnse_limit_per_day, "per_month": settings.dnse_limit_per_month},
+-            account_key=account_key)
++        provider = configured_provider(sessions, settings)
+         guard()
+         current_day = datetime.now(ZoneInfo("Asia/Ho_Chi_Minh"))
+         day_start = int(current_day.replace(hour=0, minute=0, second=0, microsecond=0).timestamp())
+diff --git a/backend/src/service/model_lifecycle.py b/backend/src/service/model_lifecycle.py
+index b342f20..1c4c156 100644
+--- a/backend/src/service/model_lifecycle.py
++++ b/backend/src/service/model_lifecycle.py
+@@ -11,12 +11,14 @@ from service.quant.configuration import QuantConfig
+ from service.quant.training import TrainingPolicy, train_artifact
+ 
+ 
+-def manifest_frames(db, manifest: DataManifest, minimum_bars: int = 120) -> tuple[dict, object, dict]:
++def manifest_frames(db, manifest: DataManifest, minimum_bars: int = 120, *,
++                    requested_history: tuple[str, str] | None = None) -> tuple[dict, object, dict]:
+     universe = db.get(UniverseVersion, manifest.universe_id)
+     if not universe or manifest.input_mode != "COMPLETED_DAILY":
+         raise DataError("MODEL_REQUIRES_COMPLETED_MANIFEST")
+     data, sectors, index = {}, {}, None
+-    for symbol, history_id in manifest.histories.items():
++    histories = manifest.histories | {requested_history[0]: requested_history[1]} if requested_history else manifest.histories
++    for symbol, history_id in histories.items():
+         history = db.get(HistoryRevision, history_id)
+         if not history or history.symbol != symbol or history.target_session != manifest.target_session or history.input_mode != "COMPLETED_DAILY":
+             raise DataError("MANIFEST_HISTORY_MISMATCH")
+diff --git a/backend/src/service/snapshots.py b/backend/src/service/snapshots.py
+index c67a208..efe3936 100644
+--- a/backend/src/service/snapshots.py
++++ b/backend/src/service/snapshots.py
+@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
+ 
+ from sqlalchemy import or_, select, update
+ 
++from service.analysis_readiness import model_for_session, snapshot_name
+ from service.market_data import DataError, checksum
+ from service.canonical_json import semantic_checksum
+ from service.model_lifecycle import manifest_frames
+@@ -61,7 +62,8 @@ def cached_baseline(sessions, key: str, compute) -> dict:
+         raise
+ 
+ 
+-def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, minimum_coverage: float = 0, operation_guard=None) -> MarketSnapshot:
++def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, minimum_coverage: float = 0,
++                          operation_guard=None, requested_history: tuple[str, str] | None = None) -> MarketSnapshot:
+     if not 0 <= minimum_coverage <= 1:
+         raise DataError("INVALID_SNAPSHOT_COVERAGE")
+     now = int(time.time())
+@@ -73,14 +75,20 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+         manifest = db.get(DataManifest, manifest_id)
+         if not manifest:
+             raise DataError("MANIFEST_NOT_FOUND")
+-        data, index, sectors = manifest_frames(db, manifest, config.MIN_HISTORY)
++        data, index, sectors = manifest_frames(db, manifest, config.MIN_HISTORY, requested_history=requested_history)
+         selected, screening_excluded = select_candidates(data, index)
++        if requested_history:
++            symbol, history_id = requested_history
++            if symbol not in data:
++                raise DataError("SYMBOL_DATA_NOT_READY")
++            if symbol not in selected:
++                selected.append(symbol)
++            screening_excluded.pop(symbol, None)
+         available_symbols = set(data)
+         data = {symbol: analysis_window(data[symbol], config) for symbol in selected}
+         index = analysis_window(index, config)
+         universe = db.get(UniverseVersion, manifest.universe_id)
+         members = universe.payload["members"]
+-        from service.analysis_readiness import model_for_session
+         selected_model = model_for_session(db, manifest.target_session, config, now=now)
+         model = db.get(ModelVersion, selected_model) if selected_model else None
+         model_age = (evaluation_day - model.cutoff_session).days if model else None
+@@ -92,6 +100,8 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+             "engine": ENGINE_VERSION, "policy": SNAPSHOT_POLICY, "evaluation_day": evaluation_day.isoformat(),
+             "minimum_coverage": minimum_coverage}
+         dependency["selection_policy"] = SELECTION_POLICY
++        if requested_history:
++            dependency["requested_history"] = {"symbol": symbol, "id": history_id}
+     key, token = semantic_checksum(dependency), new_id()
+     with sessions() as db, db.begin():
+         db.execute(_insert(db)(MarketSnapshot).values(id=new_id(), dependency_key=key, manifest_id=manifest_id,
+@@ -121,7 +131,8 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+                     .values(lease_until=int(time.time()) + 600))
+                 if renewed.rowcount != 1:
+                     raise DataError("SNAPSHOT_LEASE_LOST", True)
+-            baseline_key = checksum({"stock": manifest.histories[symbol], "index": manifest.histories["VNINDEX"],
++            stock_history_id = requested_history[1] if requested_history and symbol == requested_history[0] else manifest.histories[symbol]
++            baseline_key = checksum({"stock": stock_history_id, "index": manifest.histories["VNINDEX"],
+                 "engine": ENGINE_VERSION, "config": asdict(config), "evaluation_day": evaluation_day.isoformat()})
+             baseline = cached_baseline(sessions, baseline_key, lambda: compute_baseline(symbol, frame,
+                 exchange=members[symbol]["exchange"], evaluated_at=evaluation, index_frame=index, config=config))
+@@ -132,6 +143,8 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+             print(f"Snapshot baseline ready: {symbol}")
+         eligible = {symbol: data[symbol] for symbol in baselines}
+         eligible_sectors = {symbol: sectors[symbol] for symbol in baselines}
++        if requested_history and requested_history[0] not in baselines:
++            raise DataError("SYMBOL_BASELINE_UNAVAILABLE")
+         if len(baselines) < 5 or len(baselines) / len(members) < minimum_coverage:
+             raise DataError("SNAPSHOT_COVERAGE_NOT_READY", True)
+         with engine_context(config):
+@@ -159,7 +172,7 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+         with engine_context(config):
+             reference = build_reference(reports)
+         payload = json_metrics({"versions": dependency, "members": reports, "reference": reference,
+-            "selection": {"policy": SELECTION_POLICY, "symbols": selected, "limit": 70},
++            "selection": {"policy": SELECTION_POLICY, "symbols": selected, "limit": 71 if requested_history else 70},
+             "excluded": excluded, "coverage_ratio": len(reports) / len(members), "warnings": warnings,
+             "model_age_days": model_age, "data_as_of": index.index[-1].date().isoformat(),
+             "liquidity_universe": liquidity_universe(
+@@ -176,7 +189,7 @@ def build_market_snapshot(sessions, manifest_id: str, config: QuantConfig, *, mi
+                 .values(status="READY", execution_token=None, lease_until=0, payload=payload, payload_checksum=hashed))
+             if changed.rowcount != 1:
+                 raise DataError("SNAPSHOT_LEASE_LOST", True)
+-            name = "completed:" + manifest.target_session.isoformat() + ":" + checksum(asdict(config))
++            name = snapshot_name(manifest.target_session, config, requested_history[0] if requested_history else None)
+             db.execute(_insert(db)(PublishedSnapshot).values(name=name, snapshot_id=snapshot_id)
+                 .on_conflict_do_nothing(index_elements=["name"]))
+             pointer = db.scalar(select(PublishedSnapshot).where(PublishedSnapshot.name == name).with_for_update())
+diff --git a/backend/tests/test_snapshots.py b/backend/tests/test_snapshots.py
+index d092a88..e39af87 100644
+--- a/backend/tests/test_snapshots.py
++++ b/backend/tests/test_snapshots.py
+@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
+ from alembic import command
+ from alembic.config import Config
+ 
+-from service import snapshots
++from service import dependencies, snapshots
+ from service.db import make_engine, session_factory
+ from service.market_data import DataError, checksum, normalize_history, normalize_universe, publish_manifest, save_history, save_universe
+ from service.models import DataManifest, MarketSnapshot, PublishedSnapshot
+@@ -22,6 +22,7 @@ from service.models import Account, AnalysisReport, DependencyRequest, Dependenc
+ from service.api import create_app
+ from service.analysis_worker import AnalysisWorker, Envelope, wake_waiters
+ from service.broker import BrokerUnavailable, RabbitTransport, dispatch_once
++from service.operational_config import activate, create_version
+ from service.settings import Settings
+ from service.quant import engines as e
+ from service.quant.assembly import finalize_member
+@@ -149,7 +150,7 @@ def test_snapshot_reference_cache_report_invariance_and_publication(tmp_path, mo
+     public.write_bytes(key.public_key().public_bytes(serialization.Encoding.PEM,
+         serialization.PublicFormat.SubjectPublicKeyInfo))
+     settings = Settings(_env_file=None, database_url=url, environment="test", jwt_private_key_path=private,
+-        jwt_public_key_path=public, allow_fixture_analysis=True, allow_degraded_analysis=True)
++        jwt_public_key_path=public, allow_fixture_analysis=True, allow_degraded_analysis=True, scheduled_provider_enabled=True)
+     worker = AnalysisWorker(sessions, settings)
+     import time
+     with sessions() as db, db.begin():
+@@ -157,11 +158,13 @@ def test_snapshot_reference_cache_report_invariance_and_publication(tmp_path, mo
+         db.add(account)
+         db.flush()
+         account_id = account.id
+-        bucket = paid_bucket(db, account_id, valid_from=int(time.time())-10, valid_until=int(time.time())+3600, quota_total=5, active_limit=2)
++        bucket = paid_bucket(db, account_id, valid_from=int(time.time())-10, valid_until=int(time.time())+3600, quota_total=7, active_limit=2)
+         db.add(bucket)
+         db.flush()
+         bucket_id = bucket.id
+         analysis_calendar(db)
++        operations = create_version(db, "OPERATIONS", {"ingestion_enabled": True}, None)
++        activate(db, operations.id, None, "Exercise on demand ingestion", None)
+ 
+     class ConfirmedTransport:
+         fail = True
+@@ -196,10 +199,10 @@ def test_snapshot_reference_cache_report_invariance_and_publication(tmp_path, mo
+             access, _ = client.app.state.identity.new_session(db, db.get(Account, account_id))
+         headers = {"Authorization": "Bearer " + access}
+         choices = client.get("/api/v1/analyses/options?target_session=2026-10-14", headers=headers).json()
+-        assert choices["ready"] and choices["symbols"] == sorted(frames)
+-        rejected = client.post("/api/v1/analyses", json={"symbol": "S06", "target_session": "2026-10-14"},
+-            headers=headers | {"Idempotency-Key": "filtered-out"})
+-        assert rejected.status_code == 422 and rejected.json()["code"] == "SYMBOL_SNAPSHOT_INELIGIBLE"
++        assert choices["ready"] and choices["symbols"] == [f"S{i:02}" for i in range(8)]
++        rejected = client.post("/api/v1/analyses", json={"symbol": "XYZ", "target_session": "2026-10-14"},
++            headers=headers | {"Idempotency-Key": "unknown"})
++        assert rejected.status_code == 422 and rejected.json()["code"] == "UNKNOWN_INSTRUMENT"
+         body = {"symbol": "S00", "target_session": "2026-10-14"}
+         first = client.post("/api/v1/analyses", json=body, headers=headers | {"Idempotency-Key": "worker-flow"})
+         assert first.status_code == 202
+@@ -230,6 +233,40 @@ def test_snapshot_reference_cache_report_invariance_and_publication(tmp_path, mo
+             assert db.scalar(select(func.count()).select_from(AnalysisReport)) == 1
+             assert db.scalar(select(func.count()).select_from(Inbox)) == 1
+             assert db.get(QuotaBucket, bucket_id).consumed == 1
++        # A prefilter exclusion reuses stored history. An uncached symbol fetches
++        # history from the provider, with both jobs using the regular report path.
++        from types import SimpleNamespace
++        from service import ingestion, quant_data_validation
++        fetched = []
++
++        def fetch(symbol, start, target, *, minimum_bars):
++            fetched.append((symbol, target))
++            return normalize_history(raw, symbol=symbol, kind="EQUITY", source="vci",
++                target_session=target, observed_at=datetime(2026, 10, 15, tzinfo=timezone.utc),
++                minimum_bars=minimum_bars)
++
++        monkeypatch.setattr(ingestion, "configured_provider", lambda *args: SimpleNamespace(history=fetch))
++        with monkeypatch.context() as provider_fixture:
++            provider_fixture.setattr(quant_data_validation, "history_accepted", lambda _: True)
++            for symbol in ("S06", "S07"):
++                submitted = client.post("/api/v1/analyses", json=body | {"symbol": symbol},
++                    headers=headers | {"Idempotency-Key": "on-demand-" + symbol})
++                assert submitted.status_code == 202
++                requested_job_id = submitted.json()["id"]
++                dispatch_once(sessions, transport)
++                assert worker.process(transport.events[-1]) == "WAITING_DATA"
++                assert dependencies.run_dependency_once(sessions, settings) == 1
++                assert wake_waiters(sessions, settings) == 1
++                dispatch_once(sessions, transport)
++                assert worker.process(transport.events[-1]) == "SUCCEEDED"
++                requested_job = client.get("/api/v1/analyses/" + requested_job_id, headers=headers).json()
++                requested_report = client.get("/api/v1/reports/" + requested_job["report_id"], headers=headers).json()
++                assert requested_report["symbol"] == symbol and len(requested_report["sections"]) == 16
++        assert fetched == [("S07", days[-1].date())]
++        with sessions() as db:
++            assert db.get(PublishedSnapshot, pointer_name).snapshot_id == corrected.id
++            assert "S07" not in db.get(DataManifest, third_id).histories
++
+         # Strict defaults wait for live data/model and do not start customer compute.
+         waiting = client.post("/api/v1/analyses", json=body,
+             headers=headers | {"Idempotency-Key": "strict-policy"}).json()["id"]
+@@ -286,6 +323,6 @@ def test_snapshot_reference_cache_report_invariance_and_publication(tmp_path, mo
+             assert final_job.status == "FAILED" and final_job.reason == "ACCOUNT_DISABLED"
+             assert final_job.compute_started_at is not None
+             quota = db.get(QuotaBucket, bucket_id)
+-            assert (quota.consumed, quota.reserved, quota.active_jobs) == (2, 0, 0)
++            assert (quota.consumed, quota.reserved, quota.active_jobs) == (4, 0, 0)
+             assert all(a.stopped_at is not None for a in db.scalars(select(JobAttempt)))
+     engine.dispose()
+-- 
+2.52.0
+
