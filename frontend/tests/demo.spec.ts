@@ -48,6 +48,6 @@ test("Đổi mã Quant kiểm tra danh sách thật, không dùng kết quả m�
   await page.getByLabel("Chọn mã phân tích", { exact: true }).fill("ZZZ");
   await page.getByRole("button", { name: "Chọn mã", exact: true }).click();
   await expect(page.getByRole("button", { name: "Gửi yêu cầu Quant ZZZ", exact: true })).toBeDisabled();
-  await expect(page.getByText(/Mã ZZZ chưa có dữ liệu phân tích/)).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Chưa thể gửi yêu cầu cho mã ZZZ ở phiên 2026-10-16." })).toBeVisible();
   expect(quant.created).toBe(0);
 });
