@@ -23,6 +23,33 @@ function price(spot, strike, vol, years, future, put, rate, yieldRate) {
   return blackPrice(forward, strike, vol * Math.sqrt(years), Math.exp(-rate * years), put);
 }
 
+function mertonPrice({spot, strike, vol, years, rate, yieldRate, put, intensity, jumpMean, jumpVol}) {
+  // Under risk-neutral dynamics, compensate for the average multiplicative jump.
+  const meanCount = intensity*years;
+  const logExpectedJump = jumpMean+jumpVol**2/2;
+  const forward = spot*Math.exp((rate-yieldRate)*years);
+  const discount = Math.exp(-rate*years);
+  if (meanCount===0) return blackPrice(forward,strike,vol*Math.sqrt(years),discount,put);
+
+  const adjustedForward = forward*Math.exp(-meanCount*Math.expm1(logExpectedJump));
+  // Also track the asset-weighted Poisson tail for large positive jumps.
+  // Checking just the count probability can miss significant value in that tail.
+  const tiltedCount = meanCount*Math.exp(logExpectedJump);
+  let weight = Math.exp(-meanCount), tiltedWeight = Math.exp(-tiltedCount);
+  let paid = 0, countMass = 0, tiltedMass = 0;
+  for (let jumps=0; jumps<256; jumps++) {
+    const conditionalForward = adjustedForward*Math.exp(jumps*logExpectedJump);
+    const totalVol = Math.sqrt(vol**2*years+jumps*jumpVol**2);
+    paid += weight*blackPrice(conditionalForward,strike,totalVol,discount,put);
+    countMass += weight;
+    tiltedMass += tiltedWeight;
+    if (countMass>=1-1e-13 && tiltedMass>=1-1e-13) return paid;
+    weight *= meanCount/(jumps+1);
+    tiltedWeight *= tiltedCount/(jumps+1);
+  }
+  return NaN;
+}
+
 function warrantPrice(spot, strike, vol, years, rate, yieldRate, ratio, fixings) {
   // Condition on known fixings. Approximate the remaining contribution to the
   // five-day average by matching its first two moments under risk-neutral GBM.

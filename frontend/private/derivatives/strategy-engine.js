@@ -51,6 +51,11 @@ const futuresMethods = {
     rule:'Ước lượng mức độ tiếp diễn hoặc đảo chiều của biến động từng nến từ dữ liệu futures. Hệ số |φ| ≥ 1 khiến mô hình không đủ điều kiện.',
     formula:'ΔF(t+1) = a + φ × ΔF(t) + ε.'
   },
+  kalman: {
+    name:'Kalman Basis Filter · State Space',
+    rule:'Tách basis tiềm ẩn khỏi nhiễu quan sát. Trạng thái hồi về trung vị của cửa sổ trước tín hiệu với bán rã giả định 5 nến. Chỉ số VN30 được giữ cố định khi quy đổi đường dự phóng sang futures.',
+    formula:'Xₜ = m + φ(Xₜ₋₁ − m) + wₜ; Bₜ = Xₜ + vₜ. φ = 2^(−1/5). R là phương sai nhiễu giả định từ MAD của ΔB, Q = R/4. Kₜ = Pₜ⁻/(Pₜ⁻ + R).'
+  },
   confirmedBreakout: {
     name:'Phá biên có xác nhận · QuanTik',
     rule:'Xét giá futures đóng ngoài biên của các nến trước. Trong 3 nến gần nhất, VN30 phải cùng chiều và dịch chuyển ít nhất bằng nửa mức dịch chuyển futures. Loại tín hiệu khi khoảng cách còn lại tới mục tiêu tham chiếu không đủ bù chi phí.',
@@ -164,7 +169,41 @@ function stableEcm(futures,spot) {
   return true;
 }
 
+function kalmanBasis(bars, horizon) {
+  const latest = bars.at(-1);
+  const observed = bars.map(bar=>bar.close-bar.spot);
+  const past = observed.slice(0,-1);
+  const center = median(past);
+  const changes = past.slice(1).map((value,i)=>value-past[i]);
+  const typicalChange = median(changes);
+  const observationVariance = Math.max(.1,1.4826*median(changes.map(value=>Math.abs(value-typicalChange))))**2;
+  const processVariance = observationVariance/4;
+  const phi = Math.pow(2,-1/5);
+
+  let estimate = center, variance = observationVariance, squaredInnovation = 0, signalInnovation;
+  for (const value of observed) {
+    const prior = center+phi*(estimate-center);
+    const priorVariance = phi*phi*variance+processVariance;
+    const innovation = value-prior;
+    const innovationVariance = priorVariance+observationVariance;
+    const gain = priorVariance/innovationVariance;
+    estimate = prior+gain*innovation;
+    variance = (1-gain)*priorVariance;
+    squaredInnovation += innovation**2;
+    signalInnovation = innovation/Math.sqrt(innovationVariance);
+  }
+  const points = [latest.close];
+  for (let step=1; step<=horizon+1; step++) {
+    points.push(latest.spot+center+phi**step*(estimate-center));
+  }
+  if (points.some(point=>!Number.isFinite(point)||point<=0)) return {error:'Quỹ đạo Kalman không hợp lệ.'};
+  const diagnostic = 'Basis ẩn '+estimate.toFixed(2)+' ± '+Math.sqrt(variance).toFixed(2)+
+    ' điểm (1σ theo mô hình) · Mức cân bằng '+center.toFixed(2)+' · Sai lệch quan sát chuẩn hóa '+signalInnovation.toFixed(2)+'.';
+  return {points,diagnostic,rmse:Math.sqrt(squaredInnovation/observed.length)};
+}
+
 function fittedForecast(bars, method, horizon) {
+  if (method==='kalman') return kalmanBasis(bars,horizon);
   const latest=bars.at(-1);
   const basis=bar=>bar.close-bar.spot;
   const futureDiff=bars.slice(1).map((bar,i)=>bar.close-bars[i].close);

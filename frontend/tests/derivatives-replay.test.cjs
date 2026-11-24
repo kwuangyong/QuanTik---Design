@@ -121,3 +121,35 @@ test('asymmetric volatility trade has different payoff caps and two breakevens',
   assert.deepEqual([...result.roots],[1780,1820]);
   assert.equal(vm.runInContext('optionPayoff(legs,1700)-20',context),15);
 });
+
+test('Kalman basis projects a decaying shock without consuming future data', () => {
+  const past = Array.from({length:19}, () => [1802,1800]);
+  const context = strategyFixture([...past,[1810,1800],[1790,1800]]);
+  const run = expression => vm.runInContext(expression,context);
+  const result = run("strategyState(rows,19,'kalman',{...config,fee:0,slip:0})");
+  assert.equal(result.side,-1);
+  assert.ok(result.points[1]>1802 && result.points[1]<1810);
+  assert.ok(result.points.at(-1)<result.points[1]);
+  assert.ok(Number.isFinite(result.rmse));
+  assert.deepEqual(run("strategyState(rows.slice(0,20),19,'kalman',{...config,fee:0,slip:0})"),result);
+  assert.equal(run("strategyState(rows,19,'kalman',{...config,fee:900_000}).side"),0);
+  assert.equal(run("strategyState(rows,18,'kalman',config).error.includes('20 nến')"),true);
+});
+
+test('Merton prices converge to BSM without jumps and agree with a reference value', () => {
+  const script = readFileSync(resolve(__dirname,'../private/derivatives/option-pricing.js'),'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(script,context);
+  const inputs = {spot:1822.3,strike:1820,vol:.22,years:90/365,rate:.04,yieldRate:.01,put:false,
+    intensity:2,jumpMean:-.05,jumpVol:.08};
+  const bsm = context.price(inputs.spot,inputs.strike,inputs.vol,inputs.years,false,false,inputs.rate,inputs.yieldRate);
+  assert.equal(context.mertonPrice({...inputs,intensity:0}),bsm);
+  assert.ok(Math.abs(context.mertonPrice({...inputs,jumpMean:0,jumpVol:0})-bsm)<1e-8);
+  // Independent Gaussian CDF via erfc and Poisson sum at the default scenario.
+  assert.ok(Math.abs(context.mertonPrice(inputs)-98.55903763160524)<0.001);
+  const extreme = {...inputs,years:1,intensity:20,jumpMean:.5,jumpVol:.5};
+  const call = context.mertonPrice(extreme);
+  const put = context.mertonPrice({...extreme,put:true});
+  const parity = extreme.spot*Math.exp(-extreme.yieldRate)-extreme.strike*Math.exp(-extreme.rate);
+  assert.ok(Math.abs(call-put-parity)<1e-8);
+});

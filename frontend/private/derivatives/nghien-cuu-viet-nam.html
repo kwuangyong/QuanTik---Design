@@ -8,7 +8,7 @@
 <h1>Đề án nghiên cứu định lượng cho QuanTik</h1>
 <p>Ưu tiên kiểm chứng chiến lược VN30 futures sau chi phí và đo hiệu quả phòng hộ danh mục cổ phiếu. Quyền chọn và AI phát triển theo dữ liệu đủ dùng cho từng bài toán.</p></div>
 <div class="frame"><aside><nav aria-label="Mục lục nghiên cứu">
-<a href="#ban-lam-viec">Thiết kế bàn làm việc</a><a href="#thitruong">Thị trường và người dùng</a><a href="#quy">Bài học từ các quỹ</a><a href="#arxiv">Các bài nghiên cứu</a><a href="#chien-luoc-quantik">Chiến lược QuanTik</a><a href="#thi-nghiem">Ba thí nghiệm cho VN30</a><a href="#du-lieu">Dữ liệu và kiểm định</a><a href="#lo-trinh">Thứ tự phát triển</a>
+<a href="#ban-lam-viec">Thiết kế bàn làm việc</a><a href="#thitruong">Thị trường và người dùng</a><a href="#quy">Bài học từ các quỹ</a><a href="#arxiv">Các bài nghiên cứu</a><a href="#mo-hinh-stochastic">Mô hình stochastic</a><a href="#chien-luoc-quantik">Chiến lược QuanTik</a><a href="#thi-nghiem">Ba thí nghiệm cho VN30</a><a href="#du-lieu">Dữ liệu và kiểm định</a><a href="#lo-trinh">Thứ tự phát triển</a>
 </nav></aside>
 <article>
 <section id="ban-lam-viec">
@@ -66,6 +66,12 @@
 <p>Nghiên cứu về ngày đáo hạn ở HOSE đặt ra giả thuyết rằng phiên đáo hạn có hành vi khác phiên thường. Giai đoạn nghiên cứu dùng cơ chế thanh toán trước đây. Khi chuyển sang dữ liệu mới, gắn nhãn ngày đáo hạn và kiểm tra lại theo đặc tả hiện hành. KRX vận hành từ 05/05/2025 là một mốc để phân tầng biến động, spread và chất lượng dữ liệu. <a href="https://www.mdpi.com/2227-7072/10/1/3">Expiration-Day Effects</a> · <a href="https://owa.hnx.vn/ftp/PORTALNEW/HEADER_IMAGES/20250506/20250505%20-%20HOSE%20-%20Thong%20tin%20ve%20ngay%20dau%20tien%20He%20thong%20cong%20nghe%20thong%20tin%20moi%20chinh%20thuc%20van%20hanh.docx.pdf">Thông tin vận hành KRX</a></p>
 </section>
 
+<section id="mo-hinh-stochastic">
+<h2>Mô hình stochastic và nghiên cứu dữ liệu sổ lệnh</h2>
+<div class="case"><h3>Kalman Basis Filter</h3><p>Mô hình trạng thái phân biệt basis quan sát với basis tiềm ẩn. Dùng trạng thái hồi quy về trung vị quá khứ, với bán rã giả định 5 nến. Bộ lọc cập nhật theo từng nến đã đóng, sau đó giữ VN30 cố định để quy đổi dự phóng basis sang giá futures. Mô hình chạy được với CSV có giá futures và VN30 đồng bộ. Phương sai dùng để hiển thị độ bất định có điều kiện theo mô hình. Hệ số và khả năng tạo tín hiệu cần kiểm định lại theo từng hợp đồng. <a href="https://doi.org/10.1115/1.3662552">Kalman · Nghiên cứu gốc</a></p></div>
+<div class="case"><h3>Merton Jump–Diffusion</h3><p>Ngoài biến động liên tục, giá cơ sở có bước nhảy ngẫu nhiên với số lần theo Poisson. Với <code>κ = exp(μJ + σJ²/2) − 1</code>, mô hình trừ <code>λκ</code> khỏi drift trung hòa rủi ro. Engine cộng giá điều kiện theo từng số lần nhảy, có trọng số Poisson. QuanTik dùng mô hình để stress-test quyền chọn chỉ số giả định ở ba strike với tham số nhập tay. Hiệu chỉnh theo thị trường cần báo giá nhiều strike và kỳ hạn. <a href="https://dspace.mit.edu/entities/publication/e63635d9-d2bf-40ce-a79b-67786dd9f105">Merton · Nghiên cứu gốc</a></p></div>
+<div class="case"><h3>Order Flow Imbalance và Hawkes Process</h3><p>Một nghiên cứu arXiv năm 2024 dùng sự kiện sổ lệnh của thị trường Ấn Độ để dự báo mất cân bằng dòng lệnh. Bài viết công khai của Jane Street năm 2026 xem xét dùng autoregressive diffusion để sinh dữ liệu thị trường và thảo luận suy giảm chất lượng khi dự phóng xa. Citadel Securities mô tả microstructure là một lĩnh vực nghiên cứu của họ. Để thử các ý tưởng này với VN30, cần dữ liệu giao dịch và cập nhật bid/ask theo sự kiện, với dấu thời gian và thứ tự sự kiện đủ để tái dựng sổ lệnh. Đây là hướng nghiên cứu dữ liệu cho QuanTik. <a href="https://arxiv.org/abs/2408.03594">arXiv · Forecasting High Frequency Order Flow Imbalance</a> · <a href="https://blog.janestreet.com/can-you-use-autoregressive-diffusion-to-generate-market-data/">Jane Street · Autoregressive diffusion</a> · <a href="https://www.citadelsecurities.com/careers/quantitative-research/">Citadel Securities · Quantitative Research</a></p></div>
+</section>
 <section id="chien-luoc-quantik">
 <h2>Chiến lược QuanTik để kiểm định</h2>
 <div class="case"><h3>Phá biên có VN30 xác nhận</h3>

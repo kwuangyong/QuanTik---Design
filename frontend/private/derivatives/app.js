@@ -67,9 +67,42 @@ function surfaceColor(value) {
   return 'rgb(' + stops[i].map((v,k) => Math.round(v + (stops[i+1][k] - v) * (t - i))).join(',') + ')';
 }
 
+function renderJumpComparison(inputs) {
+  const box = el('jump-diffusion');
+  box.hidden = inputs.product!=='index';
+  if (box.hidden) return;
+  const fields = ['jump-intensity','jump-mean','jump-vol'].map(el);
+  const results = el('jump-comparison');
+  const status = el('jump-status');
+  const values = fields.map(field=>field.valueAsNumber);
+  if (inputs.error || fields.some((field,i)=>!field.validity.valid || !Number.isFinite(values[i]))) {
+    results.replaceChildren();
+    status.textContent = 'Kiểm tra tham số định giá và tham số bước nhảy.';
+    return;
+  }
+  const [intensity,meanPct,volPct] = values;
+  const {spot,strike,vol,rate,yieldRate,days,put} = inputs;
+  const years = days/365;
+  const jumpMean = meanPct/100, jumpVol = volPct/100;
+  const fmt = new Intl.NumberFormat('vi-VN',{maximumFractionDigits:4});
+  const probability = -Math.expm1(-intensity*years);
+  status.textContent = (put?'Put':'Call')+' · Xác suất có ít nhất một bước nhảy theo mô hình '+fmt.format(100*probability)+'%.';
+  results.replaceChildren(...[.9,1,1.1].map(factor=>{
+    const level = strike*factor;
+    const bsm = price(spot,level,vol,years,false,put,rate,yieldRate);
+    const merton = mertonPrice({spot,strike:level,vol,years,rate,yieldRate,put,intensity,jumpMean,jumpVol});
+    const row = document.createElement('tr');
+    for (const value of [level,bsm,merton,merton-bsm]) {
+      row.insertCell().textContent = Number.isFinite(value)?fmt.format(value):'—';
+    }
+    return row;
+  }));
+}
+
 function render() {
   if (el('lab').hidden) return;
-  const {spot, strike, put, vol, days, warrant, future, product, error, evaluate, fixings, ratio, rate, yieldRate} = readOptionInputs();
+  const inputs = readOptionInputs();
+  const {spot, strike, put, vol, days, warrant, future, product, error, evaluate, fixings, ratio, rate, yieldRate} = inputs;
   const config = optionProducts[product];
   const fmt = (x, n = 2) => x.toLocaleString('vi-VN', {minimumFractionDigits: n, maximumFractionDigits: n});
   el('warrant-inputs').hidden = !warrant;
@@ -92,6 +125,7 @@ function render() {
   canvas.height = h * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+  renderJumpComparison(inputs);
   el('advanced-risk').hidden = warrant || Boolean(error);
   if (!warrant && !error) {
     const risk = vanillaRisk(spot,strike,vol,days/365,rate,yieldRate,future,put);

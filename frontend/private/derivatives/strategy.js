@@ -154,7 +154,7 @@
     el('strategy-rule').textContent=definition.rule;
     el('strategy-equation').textContent=definition.formula;
     el('strategy-fit').textContent=state.error||state.diagnostic+(isRule ? '' :
-      ' · Sai số khớp trong cửa sổ '+number(state.rmse,3)+' điểm/nến.');
+      ' · RMSE '+(strategy==='kalman'?'sai lệch quan sát':'trong cửa sổ')+' '+number(state.rmse,3)+' điểm.');
     const unavailable=Boolean(state.error)||state.net===null;
     const approachMetrics=isRule ? [
       ['Mục tiêu tham chiếu',unavailable?'—':number(state.target,2)+' điểm'],
@@ -277,11 +277,11 @@
     el('strategy-backtest-status').textContent = symbol+' · '+source+' · '+period+' · '+
       scored.length+' nến đánh giá · '+(range==='holdout' ? firstSignal+' nến trước mốc chia. ' : '')+
       (Object.values(results).every(result=>!result.trades.length) ? 'Chưa có lượt khớp theo giả định đã chọn.' : 'Đối chứng đứng ngoài 0 ₫.');
-    const colors=['#ffad75','#5ce2d4','#d2a7f5','#ffd76a','#84aaff'];
+    const colors=['#ffad75','#5ce2d4','#d2a7f5','#9ce79c','#ffd76a','#84aaff'];
     const x=scored.map(row=>chartTime(row.time));
     Plotly.react(el('strategy-equity'),Object.entries(results).map(([key,result],i)=>({
       type:'scatter',mode:'lines',name:futuresMethods[key].name.split(' · ')[0],x,y:result.equity,
-      line:{color:colors[i],width:2,dash:['solid','dash','dot','dashdot','longdash'][i]}
+      line:{color:colors[i],width:2,dash:['solid','dash','dot','dashdot','longdash','longdashdot'][i]}
     })),{
       margin:{l:66,r:12,t:15,b:85},font:{color:'#b5c6c2'},paper_bgcolor:'transparent',plot_bgcolor:'transparent',
       legend:{orientation:'h',y:-.35},xaxis:{...axis,type:'date',tickformat:'%H:%M',hoverformat:'%d/%m %H:%M',title:{text:'Giờ Việt Nam (ICT)'}},
