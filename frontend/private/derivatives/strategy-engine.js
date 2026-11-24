@@ -167,7 +167,7 @@ function strategyState(rows,cursor,method,config) {
 }
 
 function replayStrategy(rows,method,config,firstSignal=0) {
-  const {hold,stop,fee,slip}=config;
+  const {hold,stop,fee,slip,trailingStop=false}=config;
   let position=null,pending=null,pendingExit='',net=0,wins=0,peak=0,drawdown=0,forced=0,eligible=0;
   const equity=[],trades=[];
   function close(row,reason) {
@@ -192,7 +192,7 @@ function replayStrategy(rows,method,config,firstSignal=0) {
     if(position&&(!sameDay||step!==position.cadence)) close(row,'Nến đầu sau gián đoạn');
     else if(pendingExit&&position) close(row,pendingExit);
     if(!end&&sameDay&&pending&&step===pending.cadence) {
-      position={...pending,fill:row.close+pending.side*slip,entryQuote:row.close,entryTime:row.time,index:i};
+      position={...pending,fill:row.close+pending.side*slip,entryQuote:row.close,entryTime:row.time,index:i,bestMove:0};
     }
     pending=null;pendingExit='';
     if(!position&&!end) {
@@ -203,8 +203,13 @@ function replayStrategy(rows,method,config,firstSignal=0) {
       }
     } else if(position) {
       if(end) close(row,'Mốc chốt dữ liệu');
-      else if ((row.close-position.fill)*position.side<=-stop) pendingExit='Vượt ngưỡng dừng';
-      else if (i-position.index>=hold-1) pendingExit='Hết thời gian giữ';
+      else {
+        const move = (row.close-position.entryQuote)*position.side;
+        if (trailingStop && i>position.index) position.bestMove = Math.max(position.bestMove,move);
+        if ((row.close-position.fill)*position.side<=-stop) pendingExit='Vượt ngưỡng dừng';
+        else if (trailingStop && position.bestMove>0 && position.bestMove-move>=stop) pendingExit='Vượt ngưỡng dừng bám giá';
+        else if (i-position.index>=hold-1) pendingExit='Hết thời gian giữ';
+      }
     }
     const marked=position?net+Math.round((row.close-position.entryQuote)*position.side*vn30Multiplier)
       -2*slip*vn30Multiplier-fee:net;

@@ -81,3 +81,24 @@ function simulateWarrant(spot, strike, vol, years, rate, yieldRate, ratio, fixin
   }
   return {mean, stderr:Math.sqrt(squaredDeviation / (pairs-1) / pairs)};
 }
+
+// Sensitivities are per calendar day or one percentage point, in premium points.
+function vanillaRisk(underlying, strike, vol, years, rate, dividend, future, put) {
+  const discount = Math.exp(-rate*years);
+  const forward = future ? underlying : underlying*Math.exp((rate-dividend)*years);
+  const scale = future ? discount : Math.exp(-dividend*years);
+  const root = Math.sqrt(years);
+  const d1 = Math.log(forward/strike)/(vol*root) + vol*root/2;
+  const d2 = d1-vol*root;
+  const density = Math.exp(-d1*d1/2)/Math.sqrt(2*Math.PI);
+  const sign = put ? -1 : 1;
+  const premium = blackPrice(forward,strike,vol*root,discount,put);
+  const thetaCarry = future ? rate*premium :
+    sign*(dividend*underlying*scale*normal(sign*d1)-rate*strike*discount*normal(sign*d2));
+  return {
+    theta:(thetaCarry-underlying*scale*density*vol/(2*root))/365,
+    rho:(future ? -years*premium : sign*years*strike*discount*normal(sign*d2))/100,
+    vanna:-scale*density*d2/(vol*100),
+    vomma:underlying*scale*density*root*d1*d2/(vol*10000)
+  };
+}

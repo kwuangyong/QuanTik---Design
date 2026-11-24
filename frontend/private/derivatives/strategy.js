@@ -50,6 +50,8 @@
           <label>Ngân sách lỗ (VND)<input id="strategy-budget" type="number" min="0" step="any" value="3000000"></label>
           <label>Dừng lỗ (điểm)<input id="strategy-stop" type="number" min="0.1" step="any" value="5"></label>
         </div>
+        <label><input id="strategy-trailing-stop" type="checkbox" aria-describedby="strategy-trailing-note"> Dừng bám giá khi phát lại</label>
+        <p id="strategy-trailing-note" class="strategy-body">Nếu bật, dùng cùng khoảng dừng và chỉ bám theo giá đóng cửa thuận lợi sau khi khớp vào. Khi chạm ngưỡng, thử thoát ở nến kế tiếp.</p>
         <details class="strategy-risk">
           <summary>Phí, trượt giá và ký quỹ</summary>
           <label>Phí hai chiều mỗi HĐ (VND)<input id="strategy-fee" type="number" min="0" step="any" value="30000"></label>
@@ -176,7 +178,7 @@
       ' HĐ' + (sized.marginLimit === null ? ' theo ngân sách lỗ, chưa tính sức mua.' : ' theo ngân sách lỗ và ký quỹ đã nhập.') +
       (stop !== null ? ' Mức dừng giả định ' + number(stop,2) + ' điểm tính từ giá khớp dự phóng.' : '') +
       ' Mức lỗ có thể vượt giả định nếu giá nhảy qua điểm dừng.' : 'Kiểm tra ngân sách, khoảng dừng, phí và ký quỹ.';
-    lastBrief = {symbol,source:source.startsWith('CSV')?'CSV do người dùng cung cấp':source,as_of:new Date(latest.time).toISOString(),method:method.value,signal,stats:state,assumptions:values,position_size:sized,stop};
+    lastBrief = {symbol,source:source.startsWith('CSV')?'CSV do người dùng cung cấp':source,as_of:new Date(latest.time).toISOString(),method:method.value,signal,stats:state,assumptions:{...values,trailingStop:el('strategy-trailing-stop').checked},position_size:sized,stop};
   }
 
   function invalidateReport() {
@@ -281,6 +283,7 @@
     const fields=['window','stop','fee','slip','hold'];
     const inputs=fields.map(key=>el('strategy-'+key));
     const config=Object.fromEntries(fields.map((key,i)=>[key,inputs[i].valueAsNumber]));
+    config.trailingStop=el('strategy-trailing-stop').checked;
     if (inputs.some(input=>!input.checkValidity()||!Number.isFinite(input.valueAsNumber))) {
       el('strategy-backtest-status').textContent='Kiểm tra cửa sổ, thời gian giữ, ngưỡng và chi phí.';return;
     }
@@ -319,7 +322,7 @@
   el('strategy-export-trades').onclick=()=>{
     if (!report) return;
     const cfg=report.config;
-    const header=['symbol','model','source','source_file','range','range_start_utc','range_end_utc','window_bars','hold_bars','stop_points','slip_points_per_side','quantity','signal_utc','entry_utc','exit_utc','side','entry_fill_points','exit_fill_points','gross_vnd','slippage_vnd','fee_roundtrip_vnd','net_vnd','exit_reason'];
+    const header=['symbol','model','source','source_file','range','range_start_utc','range_end_utc','window_bars','hold_bars','stop_points','slip_points_per_side','quantity','signal_utc','entry_utc','exit_utc','side','entry_fill_points','exit_fill_points','gross_vnd','slippage_vnd','fee_roundtrip_vnd','net_vnd','exit_reason','trailing_stop_enabled'];
     const iso = time => new Date(time).toISOString();
     const csvCell = value => {
       if (typeof value==='number') return String(value);
@@ -330,7 +333,7 @@
     const lines = report.results[method.value].trades.map(t=>[
       symbol,method.value,dataset.source,dataset.sourceName,report.range,iso(report.first),iso(report.last),cfg.window,cfg.hold,cfg.stop,cfg.slip,1,
       iso(t.signalTime),iso(t.entryTime),iso(t.time),t.side===1?'Long':'Short',Number(t.entry.toFixed(6)),Number(t.exit.toFixed(6)),
-      t.gross,t.slippageCost,t.fee,t.pnl,t.reason
+      t.gross,t.slippageCost,t.fee,t.pnl,t.reason,cfg.trailingStop?1:0
     ].map(csvCell).join(','));
     download('quantik-'+symbol+'-'+method.value+'-'+report.range+'.csv','\uFEFF'+[header.join(','),...lines].join('\r\n')+'\r\n','text/csv;charset=utf-8');
   };
@@ -382,6 +385,7 @@
     },500);
   };
   for (const key of [...keys,'range']) el('strategy-'+key).oninput=()=>{invalidateReport();draw();};
+  el('strategy-trailing-stop').onchange=()=>{invalidateReport();draw();};
   method.onchange=()=>{displayedTrades=50;showLedger();draw();};
   el('strategy-brief').onclick=()=>{
     if (!lastBrief) return;

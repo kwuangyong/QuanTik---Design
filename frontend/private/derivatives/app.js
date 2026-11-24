@@ -92,6 +92,14 @@ function render() {
   canvas.height = h * dpr;
   const ctx = canvas.getContext('2d');
   ctx.scale(dpr, dpr);
+  el('advanced-risk').hidden = warrant || Boolean(error);
+  if (!warrant && !error) {
+    const risk = vanillaRisk(spot,strike,vol,days/365,rate,yieldRate,future,put);
+    const fields = [['Theta',risk.theta,'điểm / ngày'],['Rho',risk.rho,'điểm / 1 điểm % lãi suất'],
+      ['Vanna',risk.vanna,'Delta / 1 điểm % biến động'],['Vomma',risk.vomma,'điểm / (điểm % biến động)²']];
+    el('risk-values').innerHTML = fields.map(([label,value,unit]) =>
+      '<div class="metric">'+label+'<b>'+fmt(value,5)+'</b><small>'+unit+'</small></div>').join('');
+  }
   if (error) {
     el('metrics').textContent = error;
     return;
