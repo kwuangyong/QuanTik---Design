@@ -1,0 +1,9 @@
+.pricing-note{font-size:14px;line-height:1.5;margin:10px 0;color:#b7c7c3}
+#warrant-inputs{margin-top:16px;border-top:1px solid #2c4141;padding-top:14px}
+#warrant-inputs summary{cursor:pointer;color:#ffad75}
+#warrant-inputs a{display:inline-block;margin-top:12px;color:#b0c2be;font-size:13px}
+#fixings .row{gap:10px}
+#fixings label{margin-top:8px}
+#fixings input:disabled{opacity:.5}
+#lab .plot canvas{position:sticky;top:10px}
+#warrant-chart{height:290px}.model-list th,.model-list td{text-align:left;white-space:normal;font:14px/1.5 Inter,system-ui,sans-serif;vertical-align:top}.model-list th{color:#b7c7c3}.model-list td:first-child{width:27%;font-weight:650}.model-list td:last-child{color:#b7c7c3}.model-list a,.model-links a{color:#ffad75}.model-links{font-size:14px;line-height:1.6}

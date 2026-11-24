@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Thư viện mô hình định giá · QuanTik</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#080d0b;color:#edf4ef;font:16px Inter,system-ui,sans-serif}header,main{max-width:1120px;margin:auto;padding:20px 5%}header{border-bottom:1px solid #294337}header a{display:inline-flex;align-items:center;gap:9px;color:#edf4ef;font-weight:700;text-decoration:none}img{border-radius:6px}h1{font-size:clamp(30px,5vw,48px);letter-spacing:-.045em;margin:8px 0}p{color:#b4c3b6;max-width:72ch;line-height:1.55}h2{font-size:21px;margin-top:27px}a{color:#ffb17d}.panel{padding:14px 20px;border:1px solid #294337;background:#0d1913;border-radius:12px;margin-top:14px}.model-list table{border-collapse:collapse;width:100%}.model-list td,.model-list th{border-bottom:1px solid #294337;padding:13px 10px}.tag{color:#67d6a5;font-size:13px;display:block;margin-top:4px}.scroll{overflow:auto}@media(max-width:640px){.panel{padding:7px}.model-list table{min-width:550px}}
+</style>
+<link rel="stylesheet" href="option-pricing.css">
+</head>
+<body><header><a href="./?tab=options"><img src="quantik-logo.jpg" width="30" height="30" alt=""> QuanTik · Mở công cụ định giá</a></header>
+<main>
+<h1>12 phương pháp định giá</h1>
+<p>Với thị trường Việt Nam, chọn công thức theo tài sản cơ sở, quyền thực hiện và giá dùng để thanh toán. Chứng quyền mua HOSE dùng bình quân 5 giá đóng cửa trước đáo hạn. Sản phẩm quyền chọn chỉ số VN30 được HNX giới thiệu ở giai đoạn chuẩn bị. Giá trong QuanTik là giá lý thuyết theo đầu vào thủ công.</p>
+<div class="panel scroll model-list"><table>
+<thead><tr><th scope="col">Phương pháp</th><th scope="col">Ứng dụng với sản phẩm Việt Nam</th><th scope="col">Đầu vào cần có</th></tr></thead>
+<tbody>
+<tr><td>Bình quân số học · Khớp hai mômen <span class="tag">Có thể chạy</span></td><td>Định giá tham chiếu chứng quyền mua HOSE. Tính cả giá đã chốt và giá còn chưa chốt.</td><td>Giá cổ phiếu, strike, tỷ lệ chuyển đổi, lịch 5 phiên, giá đã chốt, lãi suất, cổ tức và biến động.</td></tr>
+<tr><td>Black–Scholes–Merton <span class="tag">Có thể chạy</span></td><td>Giá tham chiếu cho quyền chọn chỉ số VN30 kiểu châu Âu trong kịch bản minh họa.</td><td>Chỉ số, strike, kỳ hạn, lãi suất, cổ tức, biến động.</td></tr>
+<tr><td>Black–76 <span class="tag">Có thể chạy</span></td><td>Kịch bản nghiên cứu quyền chọn có hợp đồng tương lai làm tài sản cơ sở.</td><td>Giá futures tương ứng, strike, kỳ hạn, lãi suất và biến động.</td></tr>
+<tr><td>Monte Carlo · Bình quân 5 phiên <span class="tag">Có thể chạy</span></td><td>Kiểm chứng định giá chứng quyền bằng cách mô phỏng đúng lịch chưa chốt và chiết khấu kỳ vọng chi trả.</td><td>Bộ đầu vào của chứng quyền và số đường mô phỏng. Báo sai số Monte Carlo.</td></tr>
+<tr><td>Cây nhị phân CRR</td><td>Đối chiếu quyền chọn vanilla. Có thể mô hình hóa thực hiện sớm nếu hợp đồng cho phép.</td><td>Điều khoản thực hiện, số bước thời gian, lãi suất, cổ tức và biến động.</td></tr>
+<tr><td>Sai phân hữu hạn</td><td>Giải PDE để kiểm chứng định giá vanilla hoặc hợp đồng có điều kiện biên đặc thù.</td><td>Động học giá, điều kiện biên, lưới giá và thời gian.</td></tr>
+<tr><td>Heston</td><td>Định giá và nghiên cứu độ lệch IV của quyền chọn chỉ số khi có chuỗi báo giá đủ sâu.</td><td>Bid/ask theo strike và kỳ hạn để hiệu chỉnh 5 tham số dưới xác suất trung hòa rủi ro.</td></tr>
+<tr><td>Merton Jump-Diffusion</td><td>Ước lượng mức giá nhạy thế nào với cú nhảy của cổ phiếu hoặc chỉ số trong kịch bản.</td><td>Biến động, cường độ và phân phối bước nhảy dưới xác suất trung hòa rủi ro.</td></tr>
+<tr><td>Bates</td><td>Kết hợp Heston và bước nhảy để nghiên cứu rủi ro đuôi của quyền chọn chỉ số.</td><td>Chuỗi báo giá sâu, nhiều strike và kỳ hạn, gồm các strike xa giá hiện tại.</td></tr>
+<tr><td>Dupire Local Volatility</td><td>Suy biến động cục bộ từ chuỗi quyền chọn chỉ số, dùng để định giá theo động học đã hiệu chỉnh.</td><td>Bề mặt giá đủ mượt theo strike và kỳ hạn, qua kiểm tra chênh lệch giá.</td></tr>
+<tr><td>SABR</td><td>Nghiên cứu đường IV theo strike. Dùng IV hiệu chỉnh làm đầu vào tính giá theo Black–76 khi phù hợp với hợp đồng.</td><td>Forward, báo giá cùng kỳ hạn và quy ước biến động của thị trường.</td></tr>
+<tr><td>Longstaff–Schwartz</td><td>Định giá bằng mô phỏng và hồi quy nếu hợp đồng cho phép thực hiện tại nhiều thời điểm.</td><td>Lịch thực hiện, mô hình đường giá và dữ liệu để kiểm tra độ hội tụ.</td></tr>
+</tbody></table></div>
+<p class="model-links">Đặc tả sản phẩm và thanh toán. <a href="https://staticfile.hsx.vn/Uploads/UploadDocuments/2428423/122.2025%20TT-BTC.pdf">Thông tư 122/2025/TT-BTC</a> · <a href="https://www.gov.hnx.vn/vi-vn/chi-tiet-su-kien-60023638-0-hnx.html?_page=1">HNX về sản phẩm quyền chọn chỉ số dự kiến</a></p>
+</main></body></html>

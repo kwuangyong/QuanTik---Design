@@ -1,0 +1,122 @@
+<!doctype html><html lang="vi"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>QuanTik · Phòng phái sinh</title><style>
+*{box-sizing:border-box}body{margin:0;background:#080d0b;color:#edf4ef;font:16px Inter,system-ui,sans-serif}header,main{max-width:1450px;margin:auto}header{height:72px;display:flex;align-items:center;gap:28px;padding:0 4%;border-bottom:1px solid #294337}header strong{font-size:24px;letter-spacing:-1.5px}header i{color:#ff914d;font-size:29px;vertical-align:middle;margin-right:6px}header span,small,label,footer{color:#a6b9ad}header em{margin-left:auto;font:13px monospace;color:#67d6a5;border:1px solid #294337;border-radius:20px;padding:7px 12px}main{padding:30px 4%}h1{font-size:clamp(30px,4vw,53px);letter-spacing:-.06em;margin:6px 0}h2{font-size:20px;letter-spacing:-.04em;margin:0}p{color:#a6b9ad;margin:5px 0 22px}.bar{display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap;margin-bottom:22px}.tabs{display:inline-flex;background:#0d1913;padding:4px;border:1px solid #294337;border-radius:9px}button,select,input,textarea{font:inherit;color:inherit}button{cursor:pointer;border:0;border-radius:6px;background:transparent;color:#a6b9ad;padding:9px 14px;font-size:14px}button.active{background:#ff914d;color:#10170f}.grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(285px,1fr);gap:16px}.panel{border:1px solid #294337;background:#0d1913;border-radius:14px;padding:22px;min-width:0}.panelhead{display:flex;align-items:center;justify-content:space-between;gap:10px}.panelhead small{font:13px monospace;color:#ff914d}.plot{background:radial-gradient(ellipse at 52% 65%,#17271f 0%,#101e17 62%,#0d1913 85%)}canvas{display:block;width:100%;height:310px}.legend{display:flex;align-items:center;gap:9px;color:#a6b9ad;font-size:13px}.scale{height:5px;width:86px;border-radius:5px;background:linear-gradient(90deg,#277757,#91c68c,#ff914d)}label{display:block;font-size:14px;margin-top:16px}select,input[type=number],textarea{width:100%;margin-top:6px;background:#17271f;border:1px solid #35503b;border-radius:6px;padding:10px}input[type=range]{width:100%;accent-color:#ff914d}output{float:right;color:#edf4ef;font-family:monospace}.row{display:flex;gap:14px}.row>*{flex:1;min-width:0}.wide{margin-top:16px}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:18px}.metric{border-left:2px solid #35503b;padding-left:12px}.metric b{display:block;font:26px monospace;margin:6px 0;color:#ff914d}.metric small{font-size:13px}footer{margin:22px 0;font:13px monospace}textarea{min-height:200px;font:15px/1.7 monospace;color:#a9e4c6}.save{background:#ff914d;color:#10170f;margin:12px 0}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #ffa76e}@media(max-width:760px){.grid{grid-template-columns:1fr}.metrics{grid-template-columns:1fr 1fr}header span{display:none}canvas{height:245px}.panel{padding:16px}}
+header strong{display:flex;align-items:center;gap:9px}header img{object-fit:cover;border-radius:7px}.metric b,output{font-variant-numeric:tabular-nums}:root{color-scheme:dark}.contracts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}.contract{text-align:left;background:#101d16;border:1px solid #294337;padding:15px;border-radius:10px}.contract[aria-pressed=true]{border-color:#ff914d;background:#262318}.contract strong,.contract b{display:block}.contract b{font:23px monospace;color:#edf4ef;margin:9px 0}.contract strong{color:#ffb27e}.contract small{font-size:13px}#view{width:auto;max-width:100%}#chart{height:340px}#desk .panelhead{flex-wrap:wrap}.result{margin-top:20px;padding-top:14px;border-top:1px solid #294337}.result b{display:block;font:24px monospace;margin-top:7px}.scroll{overflow:auto}table{border-collapse:collapse;width:100%;font:14px monospace;white-space:nowrap}td,th{padding:13px 9px;text-align:right;border-bottom:1px solid #294337}th{font:14px system-ui;color:#a6b9ad}td:first-child,th:first-child{text-align:left}tr.selected{background:#17271f}td button{color:#ffae78;padding:4px}@media(max-width:760px){.contracts{grid-template-columns:1fr 1fr}#chart{height:275px}.tabs{flex-wrap:wrap}} </style><link rel="stylesheet" href="workspace.css"><link rel="stylesheet" href="strategy.css"><link rel="stylesheet" href="option-pricing.css"><link rel="stylesheet" href="options-scenarios.css"><link rel="stylesheet" href="research-notebook.css"><header class="terminal-header">
+  <strong><img src="quantik-logo.jpg" width="38" height="38" alt="">QuanTik</strong>
+  <nav class="tabs workspace-tabs" aria-label="Sản phẩm và công cụ">
+    <button id="futures" class="active" aria-pressed="true">Hợp đồng tương lai</button>
+    <button id="builtin" aria-pressed="false">Quyền chọn</button>
+    <button id="custom" aria-pressed="false">Code riêng</button>
+  </nav>
+  <button id="find" class="find" type="button" aria-haspopup="dialog">Tìm mã, công cụ <kbd>/</kbd></button>
+</header>
+<main>
+<div class="bar terminal-title">
+  <h1 id="pageTitle">Phòng phái sinh</h1>
+  <span id="workspace-source" class="terminal-source">Dữ liệu mô phỏng</span>
+</div>
+<section id="futures-workspace" aria-label="Hợp đồng tương lai">
+  <div class="futures-mode">
+    <nav aria-label="Công cụ hợp đồng tương lai">
+      <button id="futures-quotes" class="active" aria-pressed="true" aria-controls="desk">Bảng giá &amp; biểu đồ</button>
+      <button id="futures-models" aria-pressed="false" aria-controls="strategy-desk">Mô hình &amp; kiểm định</button>
+    </nav>
+    <div class="terminal-import-wrap"><span id="quote-import-status" role="status"></span><button id="quotes-template" class="terminal-template" type="button">Tải CSV mẫu</button><button id="quotes-import" class="terminal-import" type="button">Nạp CSV</button></div>
+  </div>
+  <div id="cards" class="contracts" aria-label="Chọn kỳ hạn VN30"></div>
+  <section id="desk" aria-label="Bảng giá và biểu đồ VN30">
+    <div class="grid terminal-desk">
+      <section class="panel terminal-chart">
+        <div class="panelhead">
+          <div><small id="ticker"></small><h2 id="chartTitle"></h2></div>
+          <label class="terminal-chart-view"><span>Biểu đồ</span><select id="view"><option>Giá trong phiên</option><option>Basis</option><option>Đường cong kỳ hạn</option><option>Giá lý thuyết 3D</option></select></label>
+        </div>
+        <dl class="terminal-facts" id="quote-facts"></dl>
+        <label class="compare" id="curveSwitch" hidden><input id="compareCurve" type="checkbox" checked> So với điểm đầu phiên mẫu</label>
+        <div id="chart" role="img" aria-label="Biểu đồ hợp đồng đang chọn"></div>
+        <p id="help" class="terminal-chart-note"></p>
+      </section>
+      <section class="panel terminal-ticket" id="position-ticket" aria-labelledby="ticket-title">
+        <div class="panelhead"><h2 id="ticket-title">Kịch bản vị thế</h2><small>Giả lập</small></div>
+        <p id="ticket-context" class="terminal-subtle"></p>
+        <div class="row">
+          <label>Chiều vị thế<select id="dir"><option>Long</option><option>Short</option></select></label>
+          <label>Số hợp đồng<input id="qty" type="number" min="1" max="10000" step="1" value="1"></label>
+        </div>
+        <div class="row">
+          <label>Giá vào (điểm)<input id="entry" type="number" min="0.1" step="0.1"></label>
+          <label>Giá thoát (điểm)<input id="exitPrice" type="number" min="0.1" step="0.1"></label>
+        </div>
+        <div class="row">
+          <label>Phí hai chiều (₫/HĐ)<input id="ticket-fee" type="number" min="0" step="1" value="30000"></label>
+          <label>Trượt mỗi chiều (điểm)<input id="ticket-slip" type="number" min="0" step="any" value="0.2"></label>
+        </div>
+        <div class="result terminal-ticket-result" aria-live="polite">
+          <div class="terminal-result-main"><small>P&amp;L sau chi phí</small><b id="profit"></b></div>
+          <dl><div><dt>Trước chi phí</dt><dd id="ticket-gross"></dd></div><div><dt>Tổng chi phí</dt><dd id="ticket-cost"></dd></div><div><dt>Giá hòa vốn theo bước giá</dt><dd id="ticket-even"></dd></div></dl>
+        </div>
+        <p class="terminal-subtle">100.000 ₫/điểm/HĐ · Bước giá 0,1 điểm</p>
+        <label>Tên kịch bản<input id="ticket-name" type="text" maxlength="80" placeholder="Ví dụ: Long kỳ hạn gần"></label>
+        <button type="button" id="ticket-save" class="terminal-import">Lưu kịch bản</button>
+        <p id="ticket-message" class="terminal-subtle" role="status"></p>
+      </section>
+    </div>
+    <section class="panel wide terminal-comparison">
+      <div class="panelhead"><h2>So sánh kỳ hạn</h2><small id="quotes-time"></small></div>
+      <p id="comparison-note" class="terminal-subtle"></p>
+      <div class="scroll" tabindex="0" aria-label="Bảng so sánh kỳ hạn"><table><thead><tr><th scope="col">Hợp đồng</th><th scope="col">Đáo hạn</th><th scope="col">Futures (điểm)</th><th scope="col">Basis (điểm)</th><th scope="col" title="(Futures / VN30 − 1) × 365 / số ngày còn lại">Basis năm (%)</th><th scope="col">Chênh với mã chọn (điểm)</th></tr></thead><tbody id="quotes"></tbody></table></div>
+    </section>
+    <details class="panel wide terminal-portfolio" id="portfolio-hedge">
+      <summary id="portfolio-summary">Phòng hộ danh mục</summary>
+      <p id="portfolio-context" class="terminal-subtle"></p>
+      <div class="terminal-portfolio-grid">
+        <div>
+          <div class="row">
+            <label>Giá trị danh mục (₫)<input id="portfolio-value" type="number" min="1" step="1" value="1824600000" required></label>
+            <label>Beta so với VN30<input id="portfolio-beta" type="number" step="any" value="1" required></label>
+          </div>
+          <div class="row">
+            <label>Tỷ lệ phòng hộ (%)<input id="portfolio-target" type="number" min="0" max="100" step="any" value="50" required></label>
+            <label>Biến động VN30 (%)<input id="portfolio-stress" type="number" min="-100" step="any" value="-5" required></label>
+          </div>
+          <p id="portfolio-cost-assumption" class="terminal-subtle"></p>
+        </div>
+        <div class="terminal-ticket-result" aria-live="polite">
+          <div class="terminal-result-main"><small>Vị thế phòng hộ giả định</small><b id="portfolio-lots"></b></div>
+          <dl>
+            <div><dt>P&amp;L danh mục trước phòng hộ</dt><dd id="portfolio-before"></dd></div>
+            <div><dt>P&amp;L từ futures trước chi phí</dt><dd id="portfolio-futures-pnl"></dd></div>
+            <div><dt>Phí và trượt giá hai chiều</dt><dd id="portfolio-cost"></dd></div>
+            <div><dt>P&amp;L sau phòng hộ và chi phí</dt><dd id="portfolio-after"></dd></div>
+            <div><dt>Beta còn lại</dt><dd id="portfolio-residual"></dd></div>
+          </dl>
+        </div>
+      </div>
+      <p class="terminal-subtle">Mô hình giả định futures và VN30 biến động cùng tỷ lệ, beta không đổi và số hợp đồng làm tròn đến số nguyên gần nhất. Basis và beta có thể thay đổi. Kết quả chưa tính ký quỹ.</p>
+      <p class="terminal-subtle"><a href="https://www.cmegroup.com/content/dam/cmegroup/education/files/understanding-stock-index-futures.pdf">CME Group · Phương pháp</a> · <a href="https://vsd.vn/thong-tin-san-pham">VSDC · Đặc tả hợp đồng</a></p>
+    </details>
+    <section class="panel wide terminal-journal" id="scenario-journal" aria-labelledby="journal-title">
+      <h2 id="journal-title">Sổ kịch bản</h2>
+      <p class="terminal-subtle">Lưu trong trình duyệt này. Kịch bản đã lưu giữ nguyên dữ liệu và giả định tại lúc lưu.</p>
+      <div id="ticket-journal"></div>
+    </section>
+  </section>
+</section>
+<section id="editor" class="panel" hidden><h2>Mô hình Python của bạn</h2><label for="code">Bản nháp lưu trong trình duyệt · Bản thiết kế chưa chạy Python</label><textarea id="code" spellcheck="false">def price(snapshot):
+    spot = snapshot["spot"]
+    strike = snapshot["strike"]
+    return max(spot - strike, 0)  # Payoff Call tại đáo hạn</textarea><button class="save" id="save">Lưu bản nháp</button> <small id="msg"></small></section><div id="lab" hidden><div class="grid"><section class="panel plot"><div class="panelhead"><h2>Bề mặt giá quyền chọn</h2><small id="kind">CALL</small></div><small>Giá lý thuyết theo giá cơ sở và biến động</small><canvas id="surface" role="img" aria-label="Bề mặt ba chiều thể hiện giá mô hình theo giá đầu vào và biến động"></canvas><div class="legend">Giá thấp <span class="scale"></span> Giá cao</div></section><section class="panel"><h2>Tham số định giá</h2><label>Sản phẩm<select id="model">
+<option value="index">Quyền chọn chỉ số VN30</option>
+<option value="future">Quyền chọn trên futures</option>
+<option value="warrant">Chứng quyền mua HOSE</option>
+</select></label><p class="pricing-note" id="product-note"></p>
+<div class="row"><label id="side-label">Loại quyền chọn<select id="side"><option>Call</option><option>Put</option></select></label><label>Giá thực hiện<input id="strike" type="number" min="0.1" max="10000000" step="any" value="1820"></label></div>
+<label><span id="asset">Chỉ số VN30</span><input type="number" id="spot" min="0.1" max="10000000" step="any" value="1822.3"></label>
+<label>Biến động năm<output id="vVal"></output><input type="range" id="vol" min="5" max="70" value="22"></label>
+<label>Kỳ hạn<output id="dVal"></output><input type="range" id="days" min="1" max="365" value="90"></label>
+<div class="row"><label>Lãi suất (%/năm)<input id="rate" type="number" min="-10" max="50" step="any" value="4"></label><label id="dividend-label">Cổ tức (%/năm)<input id="yield" type="number" min="0" max="50" step="any" value="0"></label></div>
+<details id="warrant-inputs" hidden open><summary>Giá đóng cửa dùng để thanh toán</summary><label>Tỷ lệ chuyển đổi (CW : 1 cổ phiếu)<input id="ratio" type="number" min="0.0001" max="100000" step="any" value="5"></label>
+<p class="pricing-note">Nhập số ngày lịch trước đáo hạn của 5 phiên giao dịch liền trước. Với phiên đã qua hoặc đã đóng hôm nay, nhập giá đóng cửa thực tế.</p>
+<div id="fixings"></div>
+<div class="row"><label>Bid (VND/CW, tùy chọn)<input id="warrant-bid" type="number" min="0" max="10000000" step="any"></label><label>Ask (VND/CW, tùy chọn)<input id="warrant-ask" type="number" min="0" max="10000000" step="any"></label></div>
+<a href="https://staticfile.hsx.vn/Uploads/UploadDocuments/2428423/122.2025%20TT-BTC.pdf">Quy tắc thanh toán chứng quyền</a></details>
+</section></div><section class="panel wide"><div class="panelhead"><h2>Kết quả mô hình</h2><small id="name"></small></div><div class="metrics" id="metrics"></div></section><section id="warrant-sensitivity" class="panel wide" hidden><h2>Độ nhạy theo giá cổ phiếu</h2><small>Giá lý thuyết tại ngày định giá. Giữ nguyên biến động và các giá đóng cửa đã chốt.</small><div id="warrant-chart" role="img" aria-label="Giá chứng quyền theo giá cổ phiếu mô phỏng"></div><p id="warrant-quote" class="pricing-note" aria-live="polite"></p><button id="simulate-warrant" type="button" class="active">Đối chiếu Monte Carlo</button><p id="simulation-result" class="pricing-note" aria-live="polite">20.000 đường mô phỏng theo lịch 5 phiên đã nhập.</p></section><footer id="pricing-footer"></footer></div><footer class="study"><a href="nghien-cuu-viet-nam.html">Nghiên cứu định lượng Việt Nam</a> · <a href="mo-hinh.html">Thư viện mô hình định giá</a> · <a href="nghien-cuu.html">Nghiên cứu thiết kế · Nền tảng quant quốc tế</a></footer></main><dialog id="searchBox" aria-labelledby="searchTitle"><div class="panelhead"><h2 id="searchTitle">Tìm mã hoặc công cụ</h2><button id="closeSearch" aria-label="Đóng">✕</button></div><input id="lookup" aria-label="Từ khóa" placeholder="Ví dụ: F1M, basis, payoff, Python…" autocomplete="off"><div id="matches"></div></dialog><script src="option-pricing.js"></script><script src="app.js"></script><script src="plotly.min.js"></script><script src="market-session.js"></script><script src="paper-ticket.js"></script><script src="portfolio-hedge.js"></script><script src="futures.js"></script><script src="options-scenarios.js"></script><script src="research-notebook.js"></script><script src="navigation.js"></script><script src="strategy-engine.js"></script><script src="strategy.js"></script><script src="option-hedge.js"></script><script src="option-plays.js"></script></html>
