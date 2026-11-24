@@ -1,0 +1,10 @@
+.notebook-context { border-top: 1px solid #2c4141; margin-top: 15px; padding-top: 14px; }
+.notebook-context h3 { margin: 0; font-size: 17px; }
+.notebook-context dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(115px,1fr)); gap: 12px; }
+.notebook-context dt, .notebook-context summary { color: #b0c2be; font-size: 14px; }
+.notebook-context dd { margin: 5px 0; font: 16px ui-monospace,monospace; }
+.notebook-context summary { cursor: pointer; width: fit-content; }
+.notebook-context pre { background: #0a0e0e; padding: 14px; border-radius: 8px; color: #b9e8de; overflow-x: auto; }
+.notebook-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 8px; }
+.notebook-actions button { border: 1px solid #3b514d; color: #f7f4ed; }
+.notebook-actions button:hover { background:#1d2b29; }

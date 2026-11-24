@@ -1,0 +1,13 @@
+.opt-scenario .panelhead{align-items:flex-start;flex-wrap:wrap}
+.scenario-days{width:min(100%,250px);margin-left:auto}
+.scenario-days label{margin:0}
+.scenario-chart{height:310px}
+.scenario-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:14px;color:#b7c7c3}
+.scenario-legend span::before{content:"";display:inline-block;border-top:2px solid #ffad75;width:18px;vertical-align:middle;margin-right:6px}
+.scenario-legend span+span::before{border-color:#5ce2d4;border-top-style:dotted}
+.scenario-readout{font-size:14px;line-height:1.55;color:#bfccc8}
+@media(max-width:760px){.scenario-days{margin-left:0}.scenario-chart{height:245px}}
+.scenario-targets{border-top:1px solid #2c4141;margin-top:14px;padding-top:10px}
+.scenario-targets summary{cursor:pointer;color:#ffad75;font-size:14px;padding:4px 0}
+.scenario-targets caption{text-align:left;padding:8px 0;color:#b0c2be;font-size:13px}
+.scenario-targets th,.scenario-targets td{padding:8px 6px}

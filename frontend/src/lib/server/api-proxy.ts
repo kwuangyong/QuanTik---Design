@@ -74,6 +74,12 @@ export async function proxy(request: Request, path: string) {
     }
     copyCookies(response, outgoing);
     const bytes = response.status === 204 ? null : await response.arrayBuffer();
+    if (path === "auth/refresh" || path === "auth/logout") {
+      const session = path === "auth/refresh" && response.ok && bytes ? JSON.parse(new TextDecoder().decode(bytes)) : null;
+      const token = typeof session?.access_token === "string" ? session.access_token : "";
+      const age = token && Number.isFinite(session.expires_in) ? Math.min(900, Math.floor(session.expires_in)) : 0;
+      outgoing.append("Set-Cookie", `quantik_desk=${encodeURIComponent(token)}; Path=/phai-sinh/desk; HttpOnly; SameSite=Strict; Max-Age=${age}${appOrigin(request).startsWith("https:") ? "; Secure" : ""}`);
+    }
     if (response.ok && /^admin\/auth\/(login|refresh)$/.test(path) && bytes) {
       const token = JSON.parse(new TextDecoder().decode(bytes));
       if (typeof token.access_token === "string" && Number.isFinite(token.expires_in)) {

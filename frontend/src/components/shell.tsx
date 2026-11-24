@@ -13,6 +13,7 @@ const navigation = [
     { href: "/screener", label: "Quét toàn sàn", icon: SlidersHorizontal },
     { href: "/analysis", label: "Phân tích Quant", icon: Sparkles },
     { href: "/portfolio", label: "Portfolio Intelligence", icon: Sparkles },
+    { href: "/phai-sinh", label: "Phòng phái sinh · Pro", icon: SlidersHorizontal },
     { href: "/plans", label: "Gói phân tích", icon: SlidersHorizontal },
     { href: "/account", label: "Tài khoản", icon: LayoutDashboard },
 ];
