@@ -16,9 +16,9 @@
   const tools = views.concat([
     {label:'Định giá quyền chọn',detail:'Black–Scholes–Merton · Black–76 · Chứng quyền mua',run(){navigate('builtin')}},
     {label:'Kịch bản payoff',detail:'Quyền chọn · P&L theo ngày',run(){navigate('builtin');document.querySelector('.opt-scenario')?.scrollIntoView({block:'start'})}},
-    {label:'Mô hình & kiểm định Futures',detail:'Ornstein–Uhlenbeck · Error correction · AR(1) · Replay CSV',run(){navigate('strategy')}},
+    {label:'Mô hình & kiểm định Futures',detail:'Ornstein–Uhlenbeck · Error correction · AR(1) · Phá biên · Hồi basis · Replay CSV',run(){navigate('strategy')}},
     {label:'Nhật ký khớp mô phỏng',detail:'Replay · Truy tín hiệu, giá khớp và phí',run(){navigate('strategy');el(el('strategy-ledger').hidden?'strategy-compare':'ledger-title').focus()}},
-    {label:'Chiến lược quyền chọn',detail:'Vertical Spread · Straddle · Butterfly · Iron Condor',run(){navigate('builtin');if(el('model').value==='warrant'){el('model').value='index';el('model').dispatchEvent(new Event('input',{bubbles:true}));}requestAnimationFrame(()=>el('option-playbooks')?.scrollIntoView({block:'start'}));}},
+    {label:'Chiến lược quyền chọn',detail:'Vertical Spread · Straddle · Butterfly · Iron Condor · Mua biến động lệch cánh',run(){navigate('builtin');if(el('model').value==='warrant'){el('model').value='index';el('model').dispatchEvent(new Event('input',{bubbles:true}));}requestAnimationFrame(()=>el('option-playbooks')?.scrollIntoView({block:'start'}));}},
     {label:'Phòng hộ Delta',detail:'Quyền chọn · kịch bản P&L trước và sau phòng hộ',run(){navigate('builtin');document.getElementById('option-hedge')?.scrollIntoView({block:'start'})}},
     {label:'Kịch bản vị thế futures',detail:'P&L trước và sau chi phí',run(){navigate('futures');el('position-ticket').scrollIntoView({block:'start'})}},
     {label:'Phòng hộ danh mục',detail:'Beta · VN30 Futures · Kịch bản biến động',run(){navigate('futures');el('portfolio-hedge').open=true;el('portfolio-summary').focus();el('portfolio-hedge').scrollIntoView({block:'start'})}},

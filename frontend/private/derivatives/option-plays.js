@@ -4,7 +4,10 @@ const optionPlaybooks = {
   straddle: {name:'Long Straddle', intent:'Cần giá dịch chuyển đủ xa theo một trong hai hướng để bù hai khoản phí quyền chọn.', legs:[[0,false,1],[0,true,1]]},
   strangle: {name:'Long Strangle', intent:'Mua Put và Call ở hai strike khác nhau để thử kịch bản biến động lớn.', legs:[[-1,true,1],[1,false,1]]},
   butterfly: {name:'Call Butterfly', intent:'P&L khi đáo hạn đạt đỉnh quanh strike giữa.', legs:[[-1,false,1],[0,false,-2],[1,false,1]]},
-  condor: {name:'Short Iron Condor', intent:'Giả định giá đáo hạn nằm trong vùng giữa hai strike bán. Hai chân mua giới hạn lỗ.', legs:[[-2,true,1],[-1,true,-1],[1,false,-1],[2,false,1]]}
+  condor: {name:'Short Iron Condor', intent:'Giả định giá đáo hạn nằm trong vùng giữa hai strike bán. Hai chân mua giới hạn lỗ.', legs:[[-2,true,1],[-1,true,-1],[1,false,-1],[2,false,1]]},
+  asymmetric: {name:'Mua biến động lệch cánh · QuanTik',
+    intent:'Mua Call và Put tại strike giữa. Bán Put cách 1 bước strike và bán Call cách 2 bước. Ở đáo hạn, phần chi trả tối đa phía tăng gấp đôi phía giảm, trước khi trừ phí quyền chọn.',
+    legs:[[-1,true,-1],[0,true,1],[0,false,1],[2,false,-1]]}
 };
 
 function optionPayoff(legs, spot) {

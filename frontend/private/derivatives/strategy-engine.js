@@ -50,8 +50,69 @@ const futuresMethods = {
     name:'Tự hồi quy AR(1) · Biến động futures',
     rule:'Ước lượng mức độ tiếp diễn hoặc đảo chiều của biến động từng nến từ dữ liệu futures. Hệ số |φ| ≥ 1 khiến mô hình không đủ điều kiện.',
     formula:'ΔF(t+1) = a + φ × ΔF(t) + ε.'
+  },
+  confirmedBreakout: {
+    name:'Phá biên có xác nhận · QuanTik',
+    rule:'Xét giá futures đóng ngoài biên của các nến trước. Trong 3 nến gần nhất, VN30 phải cùng chiều và dịch chuyển ít nhất bằng nửa mức dịch chuyển futures. Loại tín hiệu khi khoảng cách còn lại tới mục tiêu tham chiếu không đủ bù chi phí.',
+    formula:'Biên [L, U] lấy từ giá đóng trước nến tín hiệu. Long khi F > U, Δ₃F > 0 và Δ₃S ≥ max(0,1; 0,5 × Δ₃F); Short đối xứng. Mục tiêu tham chiếu cách biên bị phá một độ rộng U − L.'
+  },
+  basisReentry: {
+    name:'Hồi basis khi VN30 đi ngang · QuanTik',
+    rule:'Chờ basis lệch xa trung vị rồi bắt đầu thu hẹp. Chỉ xét khi VN30 có cập nhật giá trong 3 nến gần nhất và mức dịch chuyển ròng thấp. Nếu basis dương so với trung vị, xét Short; nếu âm, xét Long.',
+    formula:'m = median(B quá khứ); z = (B − m) / max(0,1; 1,4826 × MAD). Cần |z| ≥ 2 và basis đang thu hẹp về m. VN30 đi ngang khi |Δ₃S| ≤ max(0,1; median(|Δ₃S quá khứ|)). Biên giả định là 50% × |B − m|.'
   }
 };
+
+function median(values) {
+  const sorted = values.slice().sort((a,b)=>a-b);
+  const middle = Math.floor(sorted.length/2);
+  return sorted.length%2 ? sorted[middle] : (sorted[middle-1]+sorted[middle])/2;
+}
+
+function confirmedBreakout(bars) {
+  const latest = bars.at(-1), anchor = bars.at(-4);
+  const past = bars.slice(0,-1);
+  const high = Math.max(...past.map(bar=>bar.close));
+  const low = Math.min(...past.map(bar=>bar.close));
+  const direction = latest.close>high ? 1 : latest.close<low ? -1 : 0;
+  const futuresMove = direction*(latest.close-anchor.close);
+  const spotMove = direction*(latest.spot-anchor.spot);
+  const diagnostic = 'Biên giá đóng '+low.toFixed(2)+' – '+high.toFixed(2)+' điểm.';
+  if (!direction || high===low || futuresMove<=0 || spotMove+1e-9<Math.max(.1,futuresMove/2)) {
+    return {diagnostic:diagnostic+' Chưa có phá biên với VN30 xác nhận.'};
+  }
+  const target = direction===1 ? high+(high-low) : low-(high-low);
+  if (target<=0 || direction*(target-latest.close)<=0) {
+    return {diagnostic:diagnostic+' Giá đã vượt mục tiêu tham chiếu.'};
+  }
+  return {target,direction,diagnostic:diagnostic+' VN30 dịch chuyển cùng chiều '+spotMove.toFixed(2)+' điểm trong 3 nến.'};
+}
+
+function basisReentry(bars) {
+  const basis = bar => bar.close-bar.spot;
+  const past = bars.slice(0,-1);
+  const spreads = past.map(basis);
+  const center = median(spreads);
+  const scale = Math.max(.1, 1.4826*median(spreads.map(value=>Math.abs(value-center))));
+  const latest = bars.at(-1);
+  const gap = basis(latest)-center;
+  const previousGap = spreads.at(-1)-center;
+  const z = gap/scale;
+  const spotMoves = past.slice(3).map((bar,i)=>Math.abs(bar.spot-past[i].spot));
+  const recent = bars.slice(-4);
+  const updated = recent.some(bar=>bar.spot!==recent[0].spot);
+  const quiet = Math.abs(latest.spot-recent[0].spot)<=Math.max(.1,median(spotMoves))+1e-9;
+  const folding = gap*previousGap>0 && Math.abs(gap)<Math.abs(previousGap);
+  const diagnostic = 'Basis trung vị '+center.toFixed(2)+' điểm · z '+z.toFixed(2)+'.';
+  if (!updated || !quiet || !folding || Math.abs(z)<2-1e-9) {
+    return {diagnostic:diagnostic+' Chưa có co hẹp đủ điều kiện.'};
+  }
+  const target = latest.close-gap/2;
+  if (target<=0) return {diagnostic:diagnostic+' Mục tiêu tham chiếu ngoài miền giá.'};
+  return {target,direction:-Math.sign(gap),diagnostic};
+}
+
+const relativePriceRules = {confirmedBreakout, basisReentry};
 
 function dot(a,b) {
   return a.reduce((sum,value,i)=>sum+value*b[i],0);
@@ -158,10 +219,16 @@ function strategyState(rows,cursor,method,config) {
   const latest=bars.at(-1), cadence=latest.time-bars.at(-2).time;
   if(bars.some((bar,i)=>simulationDay(bar.time)!==simulationDay(latest.time)||
     (i && bar.time-bars[i-1].time!==cadence))) return {error:'Cửa sổ có khoảng trống hoặc đổi phiên. Cần '+window+' nến cách đều.'};
+  const cost=fee/vn30Multiplier+2*slip;
+  if (Object.hasOwn(relativePriceRules,method)) {
+    const setup=relativePriceRules[method](bars);
+    const distance=setup.target===undefined ? null : setup.target-latest.close;
+    const net=distance===null ? null : Math.abs(distance)-cost;
+    return {...setup,cadence,cost,net,side:net>1e-9 ? setup.direction : 0,latest,n:bars.length};
+  }
   const forecast=fittedForecast(bars,method,hold);
   if(forecast.error) return forecast;
   const expected=forecast.points.at(-1)-forecast.points[1];
-  const cost=fee/vn30Multiplier+2*slip;
   const side=Math.abs(expected)>cost?Math.sign(expected):0;
   return {...forecast,cadence,expected,cost,side,net:Math.abs(expected)-cost,latest,n:bars.length};
 }
@@ -179,7 +246,7 @@ function replayStrategy(rows,method,config,firstSignal=0) {
     if(pnl>0) wins++;
     if(reason==='Mốc chốt dữ liệu'||reason==='Nến đầu sau gián đoạn') forced++;
     trades.push({signalTime:position.signalTime,entryTime:position.entryTime,time:row.time,side:position.side,
-      entry:position.fill,exit:fill,gross,fee,slippageCost,pnl,reason});
+      entry:position.fill,exit:fill,gross,fee,slippageCost,pnl,reason,signalTarget:position.signalTarget});
     position=null;
   }
   for(let i=firstSignal;i<rows.length;i++) {
@@ -199,7 +266,7 @@ function replayStrategy(rows,method,config,firstSignal=0) {
       const state=strategyState(rows,i,method,config);
       if(!state.error) {
         eligible++;
-        if(state.side) pending={side:state.side,cadence:state.cadence,signalTime:row.time};
+        if(state.side) pending={side:state.side,cadence:state.cadence,signalTime:row.time,signalTarget:state.target};
       }
     } else if(position) {
       if(end) close(row,'Mốc chốt dữ liệu');

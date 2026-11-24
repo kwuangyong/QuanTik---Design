@@ -8,7 +8,7 @@
 <h1>Đề án nghiên cứu định lượng cho QuanTik</h1>
 <p>Ưu tiên kiểm chứng chiến lược VN30 futures sau chi phí và đo hiệu quả phòng hộ danh mục cổ phiếu. Quyền chọn và AI phát triển theo dữ liệu đủ dùng cho từng bài toán.</p></div>
 <div class="frame"><aside><nav aria-label="Mục lục nghiên cứu">
-<a href="#ban-lam-viec">Thiết kế bàn làm việc</a><a href="#thitruong">Thị trường và người dùng</a><a href="#quy">Bài học từ các quỹ</a><a href="#arxiv">Các bài nghiên cứu</a><a href="#thi-nghiem">Ba thí nghiệm cho VN30</a><a href="#du-lieu">Dữ liệu và kiểm định</a><a href="#lo-trinh">Thứ tự phát triển</a>
+<a href="#ban-lam-viec">Thiết kế bàn làm việc</a><a href="#thitruong">Thị trường và người dùng</a><a href="#quy">Bài học từ các quỹ</a><a href="#arxiv">Các bài nghiên cứu</a><a href="#chien-luoc-quantik">Chiến lược QuanTik</a><a href="#thi-nghiem">Ba thí nghiệm cho VN30</a><a href="#du-lieu">Dữ liệu và kiểm định</a><a href="#lo-trinh">Thứ tự phát triển</a>
 </nav></aside>
 <article>
 <section id="ban-lam-viec">
@@ -66,6 +66,18 @@
 <p>Nghiên cứu về ngày đáo hạn ở HOSE đặt ra giả thuyết rằng phiên đáo hạn có hành vi khác phiên thường. Giai đoạn nghiên cứu dùng cơ chế thanh toán trước đây. Khi chuyển sang dữ liệu mới, gắn nhãn ngày đáo hạn và kiểm tra lại theo đặc tả hiện hành. KRX vận hành từ 05/05/2025 là một mốc để phân tầng biến động, spread và chất lượng dữ liệu. <a href="https://www.mdpi.com/2227-7072/10/1/3">Expiration-Day Effects</a> · <a href="https://owa.hnx.vn/ftp/PORTALNEW/HEADER_IMAGES/20250506/20250505%20-%20HOSE%20-%20Thong%20tin%20ve%20ngay%20dau%20tien%20He%20thong%20cong%20nghe%20thong%20tin%20moi%20chinh%20thuc%20van%20hanh.docx.pdf">Thông tin vận hành KRX</a></p>
 </section>
 
+<section id="chien-luoc-quantik">
+<h2>Chiến lược QuanTik để kiểm định</h2>
+<div class="case"><h3>Phá biên có VN30 xác nhận</h3>
+<p><strong>Giả thuyết.</strong> Nếu VN30 di chuyển cùng chiều khi futures thoát khỏi vùng giá đóng cửa, cú phá biên có thể bền hơn trường hợp basis mở rộng trong khi chỉ số đứng yên. Nghiên cứu tại Học viện Ngân hàng ghi nhận quan hệ điều chỉnh giữa VN30 và futures trên dữ liệu ngày. Quy tắc QuanTik cần kiểm định ở cấp nến theo từng mã. <a href="https://jebs.hvnh.edu.vn/index.php/jebs/article/view/5209">Học viện Ngân hàng · Quan hệ giữa VN30 và futures</a></p>
+<p><strong>Quy tắc.</strong> Lấy biên <code>[L,U]</code> từ giá đóng trước nến tín hiệu. Khi vượt <code>U</code>, xét Long nếu trong ba nến futures tăng và VN30 tăng ít nhất 0,1 điểm và bằng ít nhất nửa mức tăng futures. Short đối xứng dưới <code>L</code>. Mục tiêu tham chiếu cách biên bị phá một độ rộng <code>U − L</code>. Khoảng cách từ giá tín hiệu đến mục tiêu phải lớn hơn chi phí hai chiều quy đổi ra điểm.</p></div>
+<div class="case"><h3>Hồi basis khi VN30 đi ngang</h3>
+<p><strong>Giả thuyết.</strong> Một phần lệch basis có thể thu hẹp qua futures khi chỉ số ít dịch chuyển. Basis còn chịu tác động của lãi suất, cổ tức và thời gian đến đáo hạn. Quy tắc dùng trung vị cuốn chiếu trong cùng phiên làm mốc cục bộ. <a href="https://www.cmegroup.com/education/courses/introduction-to-equity-index-products/what-is-equity-index-basis">CME Group · Basis hợp đồng chỉ số</a></p>
+<p><strong>Quy tắc.</strong> Với <code>B = F − S</code>, tính trung vị <code>m</code> và trung vị độ lệch tuyệt đối <code>MAD</code> trên các nến trước tín hiệu. Chuẩn hóa <code>z = (B − m) / max(0,1, 1,4826 × MAD)</code>. Yêu cầu <code>|z| ≥ 2</code> và độ lệch đã giảm so với nến trước, ở cùng phía của trung vị. VN30 phải đổi giá ít nhất một lần trong ba nến và biến động ròng tuyệt đối phải nằm dưới hoặc bằng ngưỡng lớn hơn giữa 0,1 điểm và trung vị biến động ba nến trước đó. Nếu biên giả định bằng nửa độ lệch basis đủ bù chi phí, xét Short phía trên trung vị và Long phía dưới.</p></div>
+<div class="case"><h3>Mua biến động lệch cánh</h3>
+<p>Biến thể lấy ý tưởng từ Long Iron Butterfly. Mua Call và Put tại <code>K</code>, bán Put tại <code>K − w</code>, bán Call tại <code>K + 2w</code>, cùng kỳ hạn. Chi trả gộp tại đáo hạn có trần <code>w</code> ở phía giảm và <code>2w</code> ở phía tăng. Trừ phí quyền chọn ròng để tìm hòa vốn và lãi/lỗ. Để đánh giá khả năng triển khai ở Việt Nam cần có báo giá bốn chân, cùng kỳ hạn và điều kiện khớp. <a href="https://www.optionseducation.org/strategies/all-strategies/long-iron-butterfly">Options Industry Council · Long Iron Butterfly</a></p></div>
+<p><strong>Điều kiện đánh giá.</strong> Hai quy tắc futures dùng mục tiêu tham chiếu để lọc theo chi phí. Replay khớp theo giá đóng nến sau và thoát theo thời gian giữ hoặc dừng lỗ. Các ngưỡng là giả thuyết cố định, chưa hiệu chỉnh trên dữ liệu thị trường. Chọn trước tham số, giữ riêng những phiên chưa xem, rồi báo số giao dịch, P&amp;L ròng và drawdown theo mã và kỳ hạn. Chạy lại với trượt giá cao hơn. Dữ liệu futures và chỉ số cần đồng bộ theo thời điểm công bố. DNSE công bố luồng giao dịch theo sự kiện và luồng chỉ số định kỳ 5 giây. Việc chỉ số đổi giá trong cửa sổ ba nến chưa xác nhận độ trễ nguồn. <a href="https://developers.dnse.com.vn/docs/guide/market-data/connect/">DNSE · Nhịp cập nhật các luồng dữ liệu</a> · <a href="https://www.nber.org/papers/w34898">NBER · Kiểm định nhiều chiến lược</a></p>
+</section>
 <section id="thi-nghiem">
 <h2>Ba thí nghiệm để quyết định tính năng</h2>
 <div class="case"><h3>Phá vùng giá · Donchian + bộ lọc spread</h3>

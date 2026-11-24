@@ -69,7 +69,7 @@ function surfaceColor(value) {
 
 function render() {
   if (el('lab').hidden) return;
-  const {spot, strike, put, vol, days, warrant, future, product, error, evaluate, fixings, ratio} = readOptionInputs();
+  const {spot, strike, put, vol, days, warrant, future, product, error, evaluate, fixings, ratio, rate, yieldRate} = readOptionInputs();
   const config = optionProducts[product];
   const fmt = (x, n = 2) => x.toLocaleString('vi-VN', {minimumFractionDigits: n, maximumFractionDigits: n});
   el('warrant-inputs').hidden = !warrant;
