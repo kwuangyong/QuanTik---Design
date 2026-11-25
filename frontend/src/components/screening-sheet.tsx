@@ -55,7 +55,7 @@ export function ScreeningSheet({ kind, title, description, items, loading, onSel
     <div className={styles.tableFrame} aria-busy={loading}>
       <div className={`${styles.scroll} ${styles.sheetScroll}`} tabIndex={0} role="region" aria-label={`${title} · cuộn ngang để xem đầy đủ`}>
         <table className={`${styles.table} ${styles.sheet}`} style={{ width: `calc(var(--screening-identity-width, 220px) + ${sheetColumns.slice(1).reduce((sum, column) => sum + (textKeys.has(column.key) ? 260 : 160), 0)}px)` }}>
-          <caption className={styles.srOnly}>{title}: {sheetColumns.length} cột theo thứ tự Google Sheet lọc cổ phiếu. Bấm tiêu đề cột để xem định nghĩa và cách tính. Giá VND, tỷ suất phần trăm, GTGD tỷ VND.</caption>
+          <caption className={styles.srOnly}>{title}: {sheetColumns.length} cột theo thứ tự bảng lọc cổ phiếu. Bấm tiêu đề cột để xem định nghĩa và cách tính. Giá VND, tỷ suất phần trăm, GTGD tỷ VND.</caption>
           <colgroup><col className={styles.identityCol}/>{sheetColumns.slice(1).map(column => <col key={column.key} className={textKeys.has(column.key) ? styles.wideCol : styles.metricCol}/>)}</colgroup>
           <thead>
             <tr className={styles.columnRow}>{sheetColumns.map(column => <th key={column.key} scope="col" data-sheet-group={sheetColumns.find(c => c.group === column.group)?.key === column.key ? column.group : undefined}><TermHint id={column.definition.id} definition={column.definition}>{column.label} <CircleHelp size={11}/></TermHint>{column.format === "price" && <span className={styles.unitNote}>VND</span>}</th>)}</tr>
@@ -68,6 +68,6 @@ export function ScreeningSheet({ kind, title, description, items, loading, onSel
       </div>
       {!items.length && <p role="status" className={styles.empty}>Chưa có mã phù hợp trong nhóm này.</p>}
     </div>
-    <div className={styles.sheetFooter}><span>{sheetColumns.length} cột · Theo thứ tự Google Sheet · Cuộn ngang để xem toàn bộ <span aria-hidden="true">↔</span></span><span><CircleHelp size={13}/> Bấm tên cột để xem định nghĩa & cách tính</span></div>
+    <div className={styles.sheetFooter}><span>{sheetColumns.length} cột · Theo thứ tự bảng lọc · Cuộn ngang để xem toàn bộ <span aria-hidden="true">↔</span></span><span><CircleHelp size={13}/> Bấm tên cột để xem định nghĩa & cách tính</span></div>
   </section>;
 }

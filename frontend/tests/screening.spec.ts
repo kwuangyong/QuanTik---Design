@@ -17,11 +17,12 @@ async function fixture(page: Page, mode = "ready") {
       if (state.mode === "unpaid") return json({ code: "SCREENING_SUBSCRIPTION_REQUIRED" },403);
       if (state.mode === "network") return json({ code: "BACKEND_UNAVAILABLE" },502);
       if (state.mode === "waiting") return json({ code: "SCREENING_NOT_READY", latest_attempt: { reason: "TASK_DEADLINE" } },503);
-      return json({ id: state.mode === "new" ? "new-run" : "ready-run", target_session: "2026-10-16", published_at: 1792123200, stale: state.mode === "stale", refresh_after_seconds: 60 });
+      return json({ id: state.mode === "new" ? "new-run" : "ready-run", target_session: "2026-10-16", published_at: 1792123200, stale: state.mode === "stale", refresh_after_seconds: 60, screening_quota: { limit: 20, used: state.results.length, remaining: Math.max(0, 20 - state.results.length) } });
     }
     const match = path.match(/^screenings\/(.+)\/results$/);
     if (match) {
       state.results.push(url.search);
+      if (state.mode === "quota") return json({ code: "SCREENING_QUOTA_EXCEEDED" },403);
       if (state.mode === "network") return json({ code: "BACKEND_UNAVAILABLE" },502);
       const group = url.searchParams.get("group");
       expect(["OVERALL", "DISTRIBUTION"]).toContain(group);
@@ -59,8 +60,8 @@ test("Screening: banner chỉ đọc kết quả sau khi kích hoạt", async ({
 
 test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ page }, testInfo) => {
   const state = await fixture(page); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
-  const best = page.getByRole("region", { name:"5 mã tốt nhất", exact:true });
-  const worst = page.getByRole("region", { name:"5 mã nên tránh nhất", exact:true });
+  const best = page.getByRole("region", { name:"5 mã xếp hạng cao nhất", exact:true });
+  const worst = page.getByRole("region", { name:"5 mã cần thận trọng", exact:true });
   await expect(best.locator("tbody tr")).toHaveCount(5);
   await expect(worst.locator("tbody tr")).toHaveCount(5);
   await expect(page.getByText("SHOULD_NOT_SHOW")).toHaveCount(0);
@@ -140,7 +141,7 @@ test("Screening sheet: giữ đúng đơn vị, điều kiện, chú giải và 
       items: group === "OVERALL" ? [enriched, item("HPG"), item("MBB"), item("SSI"), item("VNM")] : [item("BAD1")] }) });
   });
   await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
-  const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
+  const best = page.getByRole("region", { name: "5 mã xếp hạng cao nhất", exact: true });
   const row = best.locator("tbody tr").first();
   expect((await row.boundingBox())!.height).toBeLessThan(100);
   await expect(row.locator("th")).toContainText("Công ty Cổ phần FPT");
@@ -206,7 +207,7 @@ test("Screening: chờ dữ liệu không lộ nguyên nhân vận hành", async
 test("Screening: giữ ngày dữ liệu và bản cũ khi cập nhật lỗi", async ({ page }) => {
   await page.clock.install();
   const state=await fixture(page,"stale"); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
-  await expect(page.getByText("Dữ liệu ngày 16/10/2026",{ exact:true })).toBeVisible();
+  await expect(page.getByText(/^Phiên 16\/10\/2026 · Công bố /)).toBeVisible();
   await expect(page.getByText(/Đang hiển thị kết quả gần nhất/)).toBeVisible();
   await expect(page.getByRole("button",{ name:"FPT", exact:true })).toBeVisible();
   state.mode="network"; await page.clock.fastForward(61000);
@@ -219,7 +220,7 @@ test("Screening: giữ 34 cột và giá trị thiếu thật, không còn lựa
   const state = await fixture(page);
   await page.goto("/screener");
   await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
-  const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
+  const best = page.getByRole("region", { name: "5 mã xếp hạng cao nhất", exact: true });
   await expect(best.getByRole("button", { name: "Dữ liệu quét hiện có", exact: true })).toHaveCount(0);
   await expect(best.getByRole("button", { name: "Theo mẫu Google Sheet · 34 cột", exact: true })).toHaveCount(0);
   await expect(best.getByRole("navigation")).toHaveCount(0);
@@ -237,7 +238,34 @@ test("Screening: bỏ Watchlist và các tab thừa, giữ banner và hai bảng
   await expect(page.getByRole("button", { name: "Kích hoạt kết quả", exact: true })).toBeVisible();
   expect(state.calls.filter(path => path.startsWith("screenings/") || path.startsWith("analyses"))).toEqual([]);
   await page.getByRole("button", { name: "Kích hoạt kết quả", exact: true }).click();
-  for(const title of ["5 mã tốt nhất","5 mã nên tránh nhất"])await expect(page.getByRole("region",{name:title,exact:true}).locator("tbody tr")).toHaveCount(5);
+  for(const title of ["5 mã xếp hạng cao nhất","5 mã cần thận trọng"])await expect(page.getByRole("region",{name:title,exact:true}).locator("tbody tr")).toHaveCount(5);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBeTruthy();
   expect(state.mutations).toEqual([]);
+});
+
+test("Screening: chỉ /latest được thăm dò, /results không bị tính quota lại khi cùng bản công bố", async ({ page }) => {
+  await page.clock.install();
+  const state = await fixture(page); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  await expect(page.getByRole("button", { name: "FPT", exact: true })).toBeVisible();
+  expect(state.results).toHaveLength(2);
+  await expect(page.getByText(/Còn 18\/20 lượt xem hôm nay/)).toBeVisible();
+  await page.clock.fastForward(61000);
+  await expect.poll(() => state.calls.filter(path => path === "screenings/latest").length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
+  await expect(page.getByRole("button", { name: "Kiểm tra bản mới ↻" })).toBeEnabled();
+  await page.getByRole("button", { name: "Kiểm tra bản mới ↻" }).click();
+  await expect.poll(() => state.calls.filter(path => path === "screenings/latest").length, { timeout: 15000 }).toBeGreaterThanOrEqual(3);
+  expect(state.results).toHaveLength(2);
+  // Reopening a detail already read in this tab is not charged again.
+  await page.getByRole("button", { name: "FPT", exact: true }).click();
+  await expect(page.getByRole("dialog").getByText("Quan sát vùng hỗ trợ.")).toBeVisible();
+  await page.getByRole("button", { name: "Đóng", exact: true }).click();
+  await page.getByRole("button", { name: "FPT", exact: true }).click();
+  await expect(page.getByRole("dialog").getByText("Quan sát vùng hỗ trợ.")).toBeVisible();
+  expect(state.details.filter(path => path.endsWith("/FPT"))).toHaveLength(1);
+});
+
+test("Screening: hết lượt xem trong ngày không bị báo nhầm là thiếu gói", async ({ page }) => {
+  await fixture(page, "quota"); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  await expect(page.getByRole("heading", { name: "Đã dùng hết lượt xem quét hôm nay", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cần gói phân tích còn hiệu lực", exact: true })).toHaveCount(0);
 });
