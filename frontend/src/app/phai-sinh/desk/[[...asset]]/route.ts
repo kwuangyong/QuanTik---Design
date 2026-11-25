@@ -19,7 +19,8 @@ export async function GET(request: NextRequest, context: {params: Promise<{asset
     }
   } catch { return new Response("Tạm thời chưa kiểm tra được gói.",{status:503,headers}); }
   const {asset} = await context.params;
-  if (!asset?.length) return Response.redirect(new URL("/phai-sinh/desk/index.html"+request.nextUrl.search,request.url),307);
+  // Relative Location: request.url carries the server's bind host (e.g. localhost) behind a proxy or in standalone mode.
+  if (!asset?.length) return new Response(null,{status:307,headers:{...headers,Location:"/phai-sinh/desk/index.html"+request.nextUrl.search}});
   const file = asset[0];
   if (asset.length!==1 || !/^[a-z0-9-]+(?:\.min)?\.(html|css|js|jpg)$/.test(file)) return new Response(null,{status:404,headers});
   try {
