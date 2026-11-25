@@ -2,10 +2,15 @@ import type { SheetValues } from "@/content/screening-sheet";
 
 export type ScreeningSlot = "ALL" | "AM" | "PM";
 export type ScreeningGroup = "STRONG" | "ACCUMULATION" | "DISTRIBUTION";
-export type ScreeningLatest = { id: string; target_session: string; published_at: number; stale: boolean; refresh_after_seconds: number };
+export type ScreeningSessionInfo = {
+  expected_session?: string | null; expected_slot?: string | null;
+  latest_attempt?: {target_session: string; slot: string; status: string} | null;
+};
+export type ScreeningLatest = ScreeningSessionInfo & { stale_reasons?: string[]; id: string; target_session: string; published_at: number; stale: boolean; refresh_after_seconds: number };
 export type ScreeningScore = { score: number | null; met_count: number; total_count: number; unavailable_count: number };
 export type ScreeningItem = SheetValues & {
   // Optional published presentation fields. No new endpoint or computed fallback.
+  data_session?: string | null; stale_sessions?: number | null;
   name?: string | null; company_name?: string | null;
   symbol: string; exchange: string | null; price_vnd: number | null; change_ratio: number | null;
   change_5d_ratio: number | null; change_20d_ratio: number | null;
@@ -15,6 +20,7 @@ export type ScreeningItem = SheetValues & {
   status: "ELIGIBLE" | "INSUFFICIENT_DATA" | "LOW_LIQUIDITY";
 };
 export type ScreeningResults = { run_id: string; group: "OVERALL" | "DISTRIBUTION"; items: ScreeningItem[] };
+export type ScreeningBoardResult = {run_id: string; overall: ScreeningItem[]; distribution: ScreeningItem[]};
 export type ScreeningDetail = {
   run_id: string; target_session: string; published_at: number; input_mode: string; observed_at: string | null;
   item: ScreeningItem;

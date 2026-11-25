@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { ArrowUpRight, CircleHelp } from "lucide-react";
-import { visibleSheetColumns as sheetColumns, type SheetColumn } from "@/content/screening-sheet";
+import { visibleSheetColumns as allColumns, type SheetColumn } from "@/content/screening-sheet";
 import { analysisMessages } from "@/lib/api/analysis";
 import type { ScreeningItem } from "@/lib/api/screening";
 import TermHint from "./term-hint";
@@ -46,10 +46,11 @@ function Value({ item, column }: { item: ScreeningItem; column: SheetColumn }) {
   return <div data-sheet-key={column.key}><Cell item={item} column={column}/></div>;
 }
 
-export function ScreeningSheet({ kind, title, description, items, loading, onSelect }: {
-  kind: "opportunity" | "caution"; title: string; description: string; items: ScreeningItem[];
+export function ScreeningSheet({ kind, title, description, items, loading, onSelect, session }: {
+  session: string; kind: "opportunity" | "caution"; title: string; description: string; items: ScreeningItem[];
   loading: boolean; onSelect: (item: ScreeningItem) => void;
 }) {
+  const sheetColumns = allColumns.filter(col => col.key === "symbol" || items.some(item => valueOf(item, col) != null));
   return <section className={`${styles.tableSection} ${styles[kind]}`} aria-label={title}>
     <div className={styles.heading}><div><span className={styles.sheetEyebrow}>{kind === "opportunity" ? "CƠ HỘI TRONG PHIÊN" : "KIỂM SOÁT RỦI RO"}</span><h3>{title}</h3><p>{description}</p></div><span className={styles.rowCount}><b>{items.length.toString().padStart(2, "0")}</b> / 05 mã</span></div>
     <div className={styles.tableFrame} aria-busy={loading}>
@@ -61,7 +62,7 @@ export function ScreeningSheet({ kind, title, description, items, loading, onSel
             <tr className={styles.columnRow}>{sheetColumns.map(column => <th key={column.key} scope="col" data-sheet-group={sheetColumns.find(c => c.group === column.group)?.key === column.key ? column.group : undefined}><TermHint id={column.definition.id} definition={column.definition}>{column.label} <CircleHelp size={11}/></TermHint>{column.format === "price" && <span className={styles.unitNote}>VND</span>}</th>)}</tr>
           </thead>
           <tbody>{items.map((item, index) => <tr key={item.symbol}>
-            <th scope="row"><div className={styles.symbolLine}><small>{String(index + 1).padStart(2, "0")}</small><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><Link className={styles.quantAction} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`} aria-label={`Kích hoạt phân tích quant chi tiết ${item.symbol}`} title="Phân tích Quant chi tiết"><ArrowUpRight size={13}/></Link></div><span className={styles.companyName}>{item.company_name?.trim() || item.name?.trim() || ""}</span></th>
+            <th scope="row"><div className={styles.symbolLine}><small>{String(index + 1).padStart(2, "0")}</small><button className={styles.symbol} onClick={() => onSelect(item)}>{item.symbol}</button><Link className={styles.quantAction} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}&target_session=${encodeURIComponent(session)}`} aria-label={`Kích hoạt phân tích quant chi tiết ${item.symbol}`} title="Phân tích Quant chi tiết"><ArrowUpRight size={13}/></Link></div><span className={styles.companyName}>{item.company_name?.trim() || item.name?.trim() || ""}</span></th>
             {sheetColumns.slice(1).map(column => <td key={column.key} data-sheet-column={column.key} className={textKeys.has(column.key) || column.format === "text" ? styles.textCell : undefined}><Value item={item} column={column}/></td>)}
           </tr>)}</tbody>
         </table>
