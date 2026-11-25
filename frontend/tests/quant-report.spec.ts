@@ -103,3 +103,28 @@ test("Quant: chặn thiếu gói/kiểm định và không lộ report khi mất
   await expect(page.getByRole("heading", { name: "Cần đăng nhập", exact: true })).toBeVisible();
   await expect(page.getByRole("region", { name: "Yêu cầu phân tích", exact: true })).toHaveCount(0);
  });
+
+test("Quant PVS can explicitly select the previous eligible session before submitting", async ({ page }) => {
+  const state = await analysisFixture(page);
+  await page.route("**/api/v1/analyses/options*", async route => {
+    const day = new URL(route.request().url()).searchParams.get("target_session") || "2026-10-16";
+    const ready = day === "2026-10-15";
+    await route.fulfill({json: {sessions: ["2026-10-16", "2026-10-15"], selected_session: day,
+      symbols: ready ? ["PVS"] : [], ready, reason: ready ? null : "DATA_NOT_READY"}});
+  });
+  await page.route("**/api/v1/analyses/previous-session?*", async route => {
+    const params = new URL(route.request().url()).searchParams;
+    expect(params.get("symbol")).toBe("PVS");
+    expect(params.get("before")).toBe("2026-10-16");
+    await route.fulfill({json: {target_session: "2026-10-15"}});
+  });
+  await page.goto("/analysis?symbol=PVS&target_session=2026-10-16");
+  const submit = page.getByRole("button", {name: "Gửi yêu cầu Quant PVS"});
+  await expect(submit).toBeDisabled();
+  await page.getByRole("button", {name: "Chọn phiên trước gần nhất đủ dữ liệu"}).click();
+  await expect(submit).toBeEnabled();
+  expect(state.created).toBe(0);
+  await submit.click();
+  await page.getByRole("button", {name: "Xác nhận", exact: true}).click();
+  await expect.poll(() => state.payloads).toEqual([{symbol: "PVS", target_session: "2026-10-15"}]);
+});

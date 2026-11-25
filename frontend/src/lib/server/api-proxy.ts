@@ -6,7 +6,7 @@ const routes: [string, RegExp][] = [
   ["PATCH", /^me\/profile$/],
   ["GET", /^admin\/(screening\/backfill-options|scheduled-tasks\/[a-zA-Z0-9-]+)$/],
   ["POST", /^admin\/screening\/backfills$/],
-  ["GET", /^screenings\/(latest|[a-zA-Z0-9-]+\/(results|symbols\/[A-Za-z0-9]{2,16}))$/],
+  ["GET", /^screenings\/(latest|[a-zA-Z0-9-]+\/(board|results|symbols\/[A-Za-z0-9]{2,16}))$/],
   ["GET", /^(plans|me|me\/(usage|entitlements)|subscription|orders|orders\/[a-zA-Z0-9-]+|payments)$/],
   ["POST", /^(orders|orders\/[a-zA-Z0-9-]+\/cancel)$/],
   ["GET", /^auth\/google\/start$/],
