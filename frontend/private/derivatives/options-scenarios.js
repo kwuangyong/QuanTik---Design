@@ -53,8 +53,17 @@
         if (!bid.validity.valid || !ask.validity.valid || !bid.value || !ask.value || ask.valueAsNumber < bid.valueAsNumber) {
           quote.textContent = "Nhập đủ bid và ask, với ask lớn hơn hoặc bằng bid.";
         } else {
-          const diff = fair - (ask.valueAsNumber + bid.valueAsNumber) / 2;
-          quote.textContent = "Chênh giá lý thuyết so với giá giữa bid và ask tự nhập: " + fmt.format(diff) + " VND/CW.";
+          const mid = (ask.valueAsNumber + bid.valueAsNumber) / 2, diff = fair - mid;
+          const {vol, ratio} = readOptionInputs();
+          const implied = solveVolatility(v => evaluate(spot, v), mid);
+          const bump = spot * 1e-4, delta = (evaluate(spot + bump) - evaluate(spot - bump)) / (2 * bump);
+          const gearing = spot / (mid * ratio), breakeven = strike + mid * ratio;
+          quote.textContent = "Chênh giá lý thuyết so với giá giữa bid và ask tự nhập: " + fmt.format(diff) + " VND/CW. " +
+            (implied === null ? "Giá giữa nằm ngoài miền định giá của mô hình; không suy ra được biến động hàm ý. " :
+              "Biến động hàm ý từ giá giữa: " + (implied * 100).toFixed(1) + "%/năm (đang nhập " + (vol * 100).toFixed(1) + "%). ") +
+            "Đòn bẩy " + gearing.toFixed(2) + "×, đòn bẩy hiệu dụng " + (gearing * delta * ratio).toFixed(2) + "×. " +
+            "Hòa vốn khi đáo hạn: " + fmt.format(breakeven) + " VND (" + ((breakeven / spot - 1) * 100).toFixed(1) + "% so với giá hiện tại). " +
+            "Chênh bid–ask " + ((ask.valueAsNumber - bid.valueAsNumber) / mid * 100).toFixed(1) + "% giá giữa.";
         }
       }
       const axis = {gridcolor:"#2c4141", automargin:true};
