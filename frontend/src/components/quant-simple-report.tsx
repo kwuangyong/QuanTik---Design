@@ -40,16 +40,16 @@ export function SimpleQuantReport({ report, showAction, compact = false }: { rep
   const state = typeof hmm === "string" ? stateNames[hmm.toUpperCase()] : undefined;
   const horizon = metric(report, "agreement", "fcast.horizon");
   const explanation: Record<string, string> = {
-    BUY_NOW: executable ? "Báo cáo ghi nhận tín hiệu mua và các điều kiện thực hiện đã đạt. Đọc thêm vùng giá và rủi ro trước khi sử dụng kết quả." : "Có tín hiệu mua, nhưng báo cáo chưa xác nhận đủ điều kiện thực hiện. Hãy xem các điều kiện còn thiếu bên dưới.",
-    BUY_SETUP: "Đã có điều kiện đáng theo dõi. Báo cáo vẫn yêu cầu chờ điểm mua phù hợp.",
+    BUY_NOW: executable ? "Các điều kiện tích cực của mô hình đều đạt trong dữ liệu phiên này. Đây là trạng thái mô hình, chưa được kiểm chứng ngoài mẫu; đọc vùng giá và rủi ro trước khi tự ra quyết định." : "Mô hình ghi nhận điều kiện tích cực nhưng chưa đủ các điều kiện thực hiện. Xem các điều kiện còn thiếu bên dưới.",
+    BUY_SETUP: "Mô hình ghi nhận điều kiện đáng theo dõi và vẫn chờ thêm xác nhận.",
     WATCH: "Kết quả hiện tại phù hợp để theo dõi thêm. Bạn có thể xem xu hướng, vùng giá mô phỏng và các mốc cần chú ý bên dưới.",
-    AVOID: "Báo cáo đề nghị tránh mở vị thế mới ở thời điểm này. Hãy xem phần rủi ro để hiểu các điểm cần thận trọng.",
+    AVOID: "Mô hình ghi nhận rủi ro cao hơn lợi ích kỳ vọng ở thời điểm này. Xem phần rủi ro để hiểu các điểm cần thận trọng.",
   };
-  const conclusion = action === "BUY_NOW" && !executable ? "Chờ hoàn tất điều kiện" : actionNames[action] || "Chưa có kết luận đầy đủ";
+  const conclusion = action === "BUY_NOW" && !executable ? "Mô hình: chờ đủ điều kiện" : actionNames[action] || "Chưa có kết luận đầy đủ";
   const rawReasons = Array.isArray(report.decision.reason_codes) ? report.decision.reason_codes.map(String) : [];
   const reasons = [...new Set([...rawReasons, ...report.warnings].map(code => analysisMessages[code] || "Một điều kiện của báo cáo chưa được xác nhận. Xem phần chuyên sâu để biết thêm."))];
   return <div className={`${styles.report} ${compact ? styles.compact : ""}`}>
-    <section className={styles.hero} aria-label="Tổng hợp và khuyến nghị">
+    <section className={styles.hero} aria-label="Tổng hợp kết quả mô hình">
       <p className={styles.eyebrow}>HIỂU NHANH {report.symbol} · KẾT QUẢ PHÂN TÍCH</p>
       <h3>{showAction ? conclusion : `Bức tranh tổng quan của ${report.symbol}`}</h3>
       <p className={styles.intro}>{showAction ? explanation[action] || "Báo cáo chưa đưa ra kết luận đủ rõ. Chỉ những phần có dữ liệu được hiển thị bên dưới." : "Bắt đầu từ xu hướng, xem các vùng giá có thể xảy ra rồi đối chiếu với rủi ro và kế hoạch của báo cáo."}</p>
