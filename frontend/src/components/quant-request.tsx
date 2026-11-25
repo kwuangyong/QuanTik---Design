@@ -21,6 +21,8 @@ function RequestPanel({ symbol, compact = false }: { symbol: string; compact?: b
   const requested = query.get("target_session") || "";
   const session = chosenSession || (/^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : "");
   const options = useResource<AnalysisOptions>("analyses/options" + (session ? "?target_session=" + session : ""));
+  const [searching, setSearching] = useState(false);
+  const [sessionNotice, setSessionNotice] = useState("");
   const rights = useResource<Entitlement>("me/entitlements");
   const [jobId, setJobId] = useState(compact ? "" : query.get("job") || "");
   const [revision, setRevision] = useState(0), [review, setReview] = useState(false), [busy, setBusy] = useState(false);
@@ -54,6 +56,24 @@ function RequestPanel({ symbol, compact = false }: { symbol: string; compact?: b
       </>}
       {options.data && !options.data.ready && <p role="status" className="mt-3 border-l-2 border-[var(--accent)] pl-3">{symbol} · {selected || "Chưa xác định phiên"}: {analysisReason(options.data.reason)} Chưa tiếp nhận yêu cầu và chưa tính hạn mức.</p>}
       {options.data?.ready && !options.data.symbols.includes(symbol) && <p role="status">Chưa thể gửi yêu cầu cho mã {symbol} ở phiên {selected}.</p>}
+      {options.data && selected && <p>Phiên phân tích: <strong>{selected}</strong></p>}
+      {options.data && selected && (!options.data.ready || !options.data.symbols.includes(symbol)) && <>
+        <button className={accountStyles.buttonSecondary} disabled={searching} onClick={async () => {
+          setSearching(true); setSessionNotice(""); setError(null);
+          try {
+            const params = new URLSearchParams({ symbol, before: selected });
+            const previous = await api<{ target_session: string | null }>("user", `analyses/previous-session?${params}`);
+            if (previous.target_session) {
+              setSession(previous.target_session);
+              setSessionNotice(`Đã chọn phiên gần nhất đủ dữ liệu cho ${symbol}: ${previous.target_session}.`);
+            } else {
+              setSessionNotice(`Chưa có phiên trước đủ điều kiện cho ${symbol} trong 60 phiên gần đây.`);
+            }
+          } catch (err) { setError(err as Error); }
+          finally { setSearching(false); }
+        }}>{searching ? "Đang tìm phiên…" : "Chọn phiên trước gần nhất đủ dữ liệu"}</button>
+      </>}
+      {sessionNotice && <p role="status">{sessionNotice}</p>}
       {samePending && error && <p role="status">Chưa xác định được kết quả gửi. Gửi lại cùng nội dung sẽ truy hồi yêu cầu cũ, không tạo thêm yêu cầu.</p>}
       <form className="mt-4 grid gap-3" onSubmit={event => { event.preventDefault(); if (canSend) setReview(true); }}>
         <fieldset disabled={busy || review} className="grid min-w-0 gap-3">
