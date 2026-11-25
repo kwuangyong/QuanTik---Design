@@ -1,5 +1,7 @@
 /** Engine thuần: mọi giá dùng VND, lợi suất/biến động dùng số thập phân. */
-export type Asset = { symbol: string; name: string; sector: string; price: number; beta: number; color: string; returns: number[] };
+export type Asset = { symbol: string; name: string; sector: string; price: number; beta: number; color: string; returns: number[]; exchange?: string | null };
+/** Selling cost assumed for liquidation P&L: 0.1% personal income tax on sale value + 0.15% typical brokerage fee. */
+export const SELL_COST_RATE = .0025;
 export type Position = { symbol: string; quantity: number; cost: number };
 export type Portfolio = { positions: Position[]; cash: number; priceSource?: "agr" };
 const equitySymbol = /^[A-Z][A-Z0-9]{1,4}$/;
@@ -72,6 +74,8 @@ export function portfolioRisk(portfolio: Portfolio, assets: Asset[]) {
   const sectorWeights = sectors.map(sector => assets.map(a => (rows.find(h => h.symbol === a.symbol && h.sector === sector.name)?.value ?? 0) / (sector.value || 1)));
   const sectorCov = sectorWeights.map(a => sectorWeights.map(b => a.reduce((sum,w,i) => sum + w * cov[i].reduce((t,c,j) => t + c*b[j],0),0)));
   const sectorCorrelation = sectorCov.map((row,i) => row.map((v,j) => sectorCov[i][i] > 0 && sectorCov[j][j] > 0 ? Math.max(-1, Math.min(1, v / Math.sqrt(sectorCov[i][i]*sectorCov[j][j]))) : i===j ? 1 : 0));
-  return { holdings: rows, sectors, total, equity, invested, profit: equity - invested, returnPct: invested ? (equity - invested) / invested : 0, volatility: Math.sqrt(variance * 252), beta: rows.reduce((s,p) => s + p.weight * p.beta, 0), cashWeight: portfolio.cash / (total || 1), cov,
+  const weightsHeld = rows.map(p => p.weight).filter(w => w > 0), hhi = weightsHeld.reduce((s, w) => s + w*w, 0) / Math.max(1e-12, (1 - portfolio.cash / (total || 1)))**2;
+  const liquidationCost = equity * SELL_COST_RATE;
+  return { holdings: rows, sectors, total, equity, invested, profit: equity - invested, netProfit: equity - liquidationCost - invested, liquidationCost, hhi: rows.length ? hhi : 0, effectiveHoldings: rows.length && hhi > 0 ? 1 / hhi : 0, returnPct: invested ? (equity - invested) / invested : 0, volatility: Math.sqrt(variance * 252), beta: rows.reduce((s,p) => s + p.weight * p.beta, 0), cashWeight: portfolio.cash / (total || 1), cov,
     sectorCorrelation, correlation: cov.map((row,i) => row.map((v,j) => cov[i][i] > 0 && cov[j][j] > 0 ? Math.max(-1, Math.min(1, v / Math.sqrt(cov[i][i] * cov[j][j]))) : i === j ? 1 : 0)) };
 }

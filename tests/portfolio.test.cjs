@@ -59,7 +59,7 @@ test('Cú sốc thị trường, ngành, riêng mã chỉ tác động đúng đ
 });
 test('Monte Carlo cố định seed, phân vị có thứ tự, histogram đủ đường, CVaR ≥ VaR',()=>{
   const p=samples[0].portfolio,s={...sim.defaultScenario,marketShock:-.08},original=JSON.stringify(p),a=sim.simulatePortfolio(p,assets,s),b=sim.simulatePortfolio(p,assets,s);
-  assert.deepEqual(a,b);assert.equal(JSON.stringify(p),original);assert.equal(a.cone.length,21);assert.equal(a.histogram.reduce((sum,h)=>sum+h.count,0),1200);
+  assert.deepEqual(a,b);assert.equal(JSON.stringify(p),original);assert.equal(a.cone.length,21);assert.equal(a.histogram.reduce((sum,h)=>sum+h.count,0),4000);
   for(const c of a.cone)assert.ok(c.p05<=c.p25&&c.p25<=c.p50&&c.p50<=c.p75&&c.p75<=c.p95);
   assert.ok(a.cvar95>=a.var95);assert.ok(a.breachProbability>=0&&a.breachProbability<=1);assert.ok(a.lossProbability>=0&&a.lossProbability<=1);
   near(a.attribution.reduce((sum,h)=>sum+h.mean,0),a.mean-a.total,.0001);
@@ -88,4 +88,31 @@ test('Phương án hợp nhất không bán trùng, không tăng vị thế, gi�
 test('Từ chối thiết lập ngoài miền và thiếu model, không âm thầm fallback',()=>{
   for(const change of [{horizon:0},{stress:1.1},{volatility:NaN},{marketShock:-1},{sector:'BAD'},{symbol:'BAD'},{budget:0},{seed:-1},{seed:2**40}])assert.throws(()=>sim.simulatePortfolio(samples[0].portfolio,assets,{...sim.defaultScenario,...change},100));
   assert.throws(()=>sim.rebalancePreview(samples[0].portfolio,assets,{...sim.defaultLimits,stock:0},sim.defaultScenario));
+});
+
+test('Monte Carlo: biên độ sàn, Student-t, sai số VaR và làm tròn lô 100',()=>{
+  assert.equal(sim.priceLimit('HOSE'),.07);assert.equal(sim.priceLimit('HNX'),.1);assert.equal(sim.priceLimit('UPCOM'),.15);assert.equal(sim.priceLimit(undefined),.07);
+  const p=samples[0].portfolio,wild=assets.map(a=>({...a,exchange:'HOSE',returns:a.returns.map((r,i)=>r*(i%2?40:-40))}));
+  const r=sim.simulatePortfolio(p,wild,{...sim.defaultScenario,horizon:5},2000);
+  assert.ok(r.limitHitRate>0,'extreme variance must hit the ±7% band');
+  for(const point of r.cone) assert.ok(point.p05>=p.cash+(r.total-p.cash)*(.93**point.day)-1,'no path can fall faster than the daily limit');
+  assert.ok(r.var95StdErr>0&&r.var95StdErr<r.var95);
+  assert.equal(sim.lotRound(250,1000),200);assert.equal(sim.lotRound(1200,1000),1000);assert.equal(sim.lotRound(99,150),0);
+  const plan=sim.rebalancePreview(p,assets,{...sim.defaultLimits,stock:.12},sim.defaultScenario);
+  for(const c of plan.changes){const held=p.positions.find(x=>x.symbol===c.symbol).quantity;assert.ok((held-c.quantity)%100===0||held-c.quantity===0||c.quantity===held,`${c.symbol} lot`);near(c.netProceeds,c.proceeds*(1-engine.SELL_COST_RATE),1e-6);}
+});
+test('Rủi ro: HHI, lãi/lỗ sau thuế phí bán',()=>{
+  const p=samples[0].portfolio,r=engine.portfolioRisk(p,assets),w=r.holdings.map(h=>h.value/r.equity);
+  near(r.hhi,w.reduce((s,x)=>s+x*x,0),1e-9);near(r.effectiveHoldings,1/r.hhi,1e-9);near(r.netProfit,r.profit-r.equity*engine.SELL_COST_RATE,1e-6);
+});
+test('Dữ liệu thật: căn phiên chung và beta hồi quy',()=>{
+  const live=compile('portfolio-live.ts');
+  const a={symbol:'A',bars:[{session:'2026-01-02',close:10},{session:'2026-01-05',close:11},{session:'2026-01-06',close:12.1},{session:'2026-01-07',close:12.1}]};
+  const b={symbol:'B',bars:[{session:'2026-01-02',close:20},{session:'2026-01-06',close:22},{session:'2026-01-07',close:23.1}]};
+  const r=live.alignSessions([a,b]);
+  assert.deepEqual(r.sessions,['2026-01-06','2026-01-07']);near(r.returns[0][0],.21);near(r.returns[1][0],.1);near(r.returns[0][1],0);
+  const m=Array.from({length:60},(_,i)=>Math.sin(i)/100),x=m.map((v,i)=>1.5*v+(i%3-1)*1e-4);
+  near(live.regressionBeta(x,m),1.5,.02);assert.equal(live.regressionBeta([1,2],[1,2]),null);
+  const s={cash:5,positions:[{symbol:'FPT',quantity:100,cost:90000}]};
+  assert.deepEqual(live.fromServerPortfolio(live.toServerPortfolio(s)),s);
 });

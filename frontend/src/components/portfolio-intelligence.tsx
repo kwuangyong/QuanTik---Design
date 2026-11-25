@@ -4,11 +4,14 @@ import Link from "next/link";
 import { ArrowRight, Download, Plus, Pencil, Trash2, ShieldAlert, Layers3, Activity, Info, Play, RotateCcw, Wallet, TrendingUp, Gauge, Target } from "lucide-react";
 import { PositionEditor } from "./portfolio-position-editor";
 import { portfolioAssets as assets, portfolioSamples, portfolioResources, portfolioDataInfo, money, pct } from "@/lib/portfolio";
-import { addPortfolioPurchases, portfolioRisk, validatePortfolio, type Asset, type Portfolio, type Position } from "@/lib/portfolio-engine";
+import { addPortfolioPurchases, portfolioRisk, SELL_COST_RATE, validatePortfolio, type Asset, type Portfolio, type Position } from "@/lib/portfolio-engine";
 import { portfolioMarketSnapshot, portfolioValuation } from "@/lib/portfolio-market";
 import type { AgrEquitySnapshot } from "@/lib/agr-priceboard";
 import { defaultScenario, scenarioPresets, defaultLimits, simulatePortfolio, deterministicImpact, rebalancePreview, type Scenario, type Limits } from "@/lib/portfolio-simulation";
 import { quantModel } from "@/lib/portfolio-quant-adapter";
+import { loadLiveAssets, loadServerPortfolio, saveServerPortfolio, MIN_LIVE_OBSERVATIONS, type LiveAssets } from "@/lib/portfolio-live";
+import { ModelDisclaimer } from "./model-disclaimer";
+import { useSession } from "./account/session";
 import s from "./portfolio.module.css";
 
 type Simulation = ReturnType<typeof simulatePortfolio>;
@@ -18,6 +21,8 @@ const storageKey = "quantik.portfolio.v1";
 const initial = portfolioSamples[0].portfolio;
 const signedMoney = (value: number) => `${value > 0 ? "+" : ""}${money(value)}`;
 const sampleQuotes = new Map(assets.map(asset => [asset.symbol, asset]));
+/** Fixture GARCH/HMM exists only for the sample tickers; never fail the table for other symbols. */
+const sampleModel = (symbol: string) => { try { return quantModel(symbol); } catch { return null; } };
 const backupQuotes = new Map(portfolioMarketSnapshot.items.map(stock => [stock.symbol, stock]));
 
 export function PortfolioIntelligence() {
@@ -30,8 +35,24 @@ export function PortfolioIntelligence() {
   const [plan, setPlan] = useState<{ key: string; result: Plan; scenario: Scenario; limits: Limits } | null>(null);
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const [market, setMarket] = useState<AgrEquitySnapshot>(portfolioMarketSnapshot);
-  const missingModels = portfolio.positions.filter(position => !sampleQuotes.has(position.symbol));
-  const marketPricing = portfolio.priceSource === "agr" || missingModels.length > 0;
+  // Live mode: published prices and a trading year of history from quantik-server for every held symbol.
+  const session = useSession("user"), signedIn = session.state === "ready";
+  const [live, setLive] = useState<LiveAssets | null>(null), [liveNote, setLiveNote] = useState("");
+  const heldSymbols = portfolio.positions.map(p => p.symbol).sort().join(",");
+  useEffect(() => {
+    if (!loaded || !signedIn || !heldSymbols || window.location.protocol === "file:") { setLive(null); return; }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      loadLiveAssets(heldSymbols.split(",")).then(result => {
+        if (!active) return;
+        if (result.unpriced.length) { setLive(null); setLiveNote(`Chưa có giá công bố cho ${result.unpriced.join(", ")}; đang dùng dữ liệu mẫu.`); return; }
+        setLive(result); setLiveNote("");
+      }).catch(e => { if (active) { setLive(null); setLiveNote(e instanceof Error && e.message.includes("phiên") ? e.message : ""); } });
+    }, 400);
+    return () => { active = false; window.clearTimeout(timer); };
+  }, [heldSymbols, loaded, signedIn]);
+  const missingModels = live ? [] : portfolio.positions.filter(position => !sampleQuotes.has(position.symbol));
+  const marketPricing = !live && (portfolio.priceSource === "agr" || missingModels.length > 0);
   const needsMarket = marketPricing || editor !== null;
   useEffect(() => {
     if (!needsMarket || window.location.protocol === "file:") return;
@@ -53,14 +74,19 @@ export function PortfolioIntelligence() {
     }
     return entries;
   }, [marketQuotes]);
-  const quotes = marketPricing ? marketQuotes : sampleQuotes;
+  const liveQuotes = useMemo(() => new Map((live?.assets ?? []).map(asset => [asset.symbol, asset])), [live]);
+  const quotes = live ? liveQuotes : marketPricing ? marketQuotes : sampleQuotes;
   const valuation = portfolioValuation(portfolio, quotes);
-  const modeledAssets = useMemo(() => marketPricing ? assets.map(asset => ({ ...asset, price: marketQuotes.get(asset.symbol)?.price ?? asset.price })) : assets, [marketPricing, marketQuotes]);
+  const modeledAssets = useMemo(() => live ? live.assets : marketPricing ? assets.map(asset => ({ ...asset, price: marketQuotes.get(asset.symbol)?.price ?? asset.price })) : assets, [live, marketPricing, marketQuotes]);
   const canModel = missingModels.length === 0 && valuation.total !== null;
   const risk = useMemo(() => canModel ? portfolioRisk(portfolio, modeledAssets) : null, [canModel, portfolio, modeledAssets]);
+  // Scenario targets must exist in the modeled universe (live universe = held symbols).
+  const activeScenario = useMemo(() => ({ ...scenario,
+    symbol: modeledAssets.some(a => a.symbol === scenario.symbol) ? scenario.symbol : modeledAssets[0]?.symbol ?? scenario.symbol,
+    sector: modeledAssets.some(a => a.sector === scenario.sector) ? scenario.sector : modeledAssets[0]?.sector ?? scenario.sector }), [scenario, modeledAssets]);
   const prices = valuation.holdings.map(holding => holding.price);
-  const simulationKey = JSON.stringify({portfolio,scenario,prices});
-  const planKey = JSON.stringify({portfolio,scenario,limits,prices});
+  const simulationKey = JSON.stringify({portfolio,scenario:activeScenario,prices,live:live?.asOf});
+  const planKey = JSON.stringify({portfolio,scenario:activeScenario,limits,prices,live:live?.asOf});
   const largest = risk && [...risk.holdings].sort((a,b)=>b.weight-a.weight)[0];
   const biggestRisk = risk && [...risk.holdings].sort((a,b)=>b.riskContribution-a.riskContribution)[0];
   const concentrated = largest && largest.weight > limits.stock;
@@ -84,9 +110,9 @@ export function PortfolioIntelligence() {
     // Cho trình duyệt vẽ trạng thái chạy trước phép tính đồng bộ có giới hạn.
     window.setTimeout(() => {
       try {
-        if(kind==="scenario") setRun({key:simulationKey,result:simulatePortfolio(portfolio,modeledAssets,scenario),portfolio,assets:modeledAssets});
-        else setPlan({key:planKey,result:rebalancePreview(portfolio,modeledAssets,limits,scenario),scenario:{...scenario},limits:{...limits}});
-        setStatus(kind==="scenario" ? "Đã chạy 1.200 đường mô phỏng." : "Đã kiểm chứng phương án bằng cùng seed và giả định.");
+        if(kind==="scenario") setRun({key:simulationKey,result:simulatePortfolio(portfolio,modeledAssets,activeScenario),portfolio,assets:modeledAssets});
+        else setPlan({key:planKey,result:rebalancePreview(portfolio,modeledAssets,limits,activeScenario),scenario:{...activeScenario},limits:{...limits}});
+        setStatus(kind==="scenario" ? "Đã chạy 4.000 đường mô phỏng Student-t có biên độ giá theo sàn." : "Đã kiểm chứng phương án bằng cùng seed và giả định.");
       } catch (e) { setError(e instanceof Error ? e.message : "Không thể tính kết quả."); }
       finally { setBusy(false); }
     },40);
@@ -101,7 +127,9 @@ export function PortfolioIntelligence() {
       <div><p className={s.eyebrow}>QUANTIK / PORTFOLIO LAB</p><h1>Portfolio Intelligence</h1><p className={s.muted}>Hiểu <strong>nguồn rủi ro</strong>. Kiểm chứng <strong>kịch bản</strong>. Chủ động với <strong>danh mục</strong>.</p></div>
       <div className={s.actions}><button className={s.button} onClick={exportCsv}><Download size={15}/>Xuất CSV</button><button className={`${s.button} ${s.primary}`} onClick={()=>setEditor("new")}><Plus size={16}/>Thêm vị thế</button></div>
     </header>
-    <div className={s.notice}><Info size={16}/><span>{marketPricing ? `Giá AGR phiên ${market.tradingDate} · Giá khớp gần nhất hoặc giá tham chiếu.` : "Giá và mô hình Quant minh họa dùng chung với các module gốc."}</span></div>
+    <div className={s.notice}><Info size={16}/><span>{live ? `Dữ liệu thật QuanTik: giá công bố phiên ${live.asOf}, ${live.observations} phiên lịch sử${live.benchmark ? `, beta hồi quy theo ${live.benchmark}` : ", beta giả định 1 (chưa có chuỗi chỉ số)"}.` : marketPricing ? `Giá AGR phiên ${market.tradingDate} · Giá khớp gần nhất hoặc giá tham chiếu. Rủi ro dùng nến mẫu.` : `Giá và chuỗi lợi suất mẫu. Đăng nhập để dùng giá công bố và tối thiểu ${MIN_LIVE_OBSERVATIONS} phiên lịch sử thật.`}{liveNote && ` ${liveNote}`}</span></div>
+    {signedIn && <div className={s.actions}><button className={s.button} onClick={()=>{setStatus("Đang tải danh mục từ tài khoản…");loadServerPortfolio().then(next=>{if(!next.positions.length&&!next.cash){setStatus("Tài khoản chưa có danh mục đã lưu.");return;}update(next);setStatus("Đã tải danh mục từ tài khoản.");}).catch(()=>setStatus("Chưa tải được danh mục tài khoản. Đăng nhập rồi thử lại."));}}>Tải từ tài khoản</button><button className={s.button} onClick={()=>{setStatus("Đang lưu danh mục…");saveServerPortfolio(portfolio).then(()=>setStatus("Đã lưu danh mục vào tài khoản.")).catch(()=>setStatus("Chưa lưu được danh mục. Thử lại sau."));}}>Lưu vào tài khoản</button></div>}
+    <ModelDisclaimer kind="portfolio"/>
     <div className={s.toolbar}>
       <label className={s.field}>Danh mục đang xem<select aria-label="Danh mục mẫu" value={sample} onChange={e=>{const index=Number(e.target.value); setPortfolio(structuredClone(portfolioSamples[index].portfolio));setSample(String(index));setUndo(null);setStatus(`Đã nạp ${portfolioSamples[index].name.toLowerCase()}.`);}}><option value="custom" disabled>Danh mục của bạn</option>{portfolioSamples.map((item,i)=><option key={item.name} value={i}>{item.name}</option>)}</select></label>
       <span className={s.muted}>Đơn vị: VND · {valuation.holdings.length} mã</span>
@@ -116,9 +144,10 @@ export function PortfolioIntelligence() {
       {tab===0 && <>
         <div className={s.stats}>
           <Stat kind="capital" label="Tổng tài sản" value={valuation.total===null?"—":money(valuation.total)} note={valuation.total===null?"Chưa đủ giá để định giá danh mục":"Cổ phiếu + tiền mặt · VND"}/>
-          <Stat kind="return" label="Lãi / lỗ chưa thực hiện" value={valuation.profit===null?"—":signedMoney(valuation.profit)} note={valuation.profit===null?"Chưa đủ giá thị trường":`${pct(valuation.invested ? valuation.profit/valuation.invested : 0)} trên giá vốn cổ phiếu`} tone={valuation.profit===null?"":valuation.profit>=0?s.positive:s.negative}/>
+          <Stat kind="return" label="Lãi / lỗ chưa thực hiện" value={valuation.profit===null?"—":signedMoney(valuation.profit)} note={valuation.profit===null?"Chưa đủ giá thị trường":`${pct(valuation.invested ? valuation.profit/valuation.invested : 0)} trên giá vốn · nếu bán hết sau thuế phí ~0,25%: ${signedMoney(valuation.profit - (valuation.total!==null ? (valuation.total-portfolio.cash)*SELL_COST_RATE : 0))}`} tone={valuation.profit===null?"":valuation.profit>=0?s.positive:s.negative}/>
           {risk && <>
-            <Stat kind="risk" label="Biến động năm" value={pct(risk.volatility)} note={`${portfolioDataInfo.observations} phiên lợi suất từ ${portfolioDataInfo.candles} nến mẫu dùng chung`}/>
+            <Stat kind="risk" label="Độ tập trung (HHI)" value={risk.hhi.toFixed(2)} note={`Tương đương ${risk.effectiveHoldings.toFixed(1)} mã tỉ trọng bằng nhau`}/>
+            <Stat kind="risk" label="Biến động năm" value={pct(risk.volatility)} note={live ? `${live.observations} phiên lợi suất thực đến ${live.asOf}` : `${portfolioDataInfo.observations} phiên lợi suất từ ${portfolioDataInfo.candles} nến mẫu dùng chung`}/>
             <Stat label="Beta danh mục" value={risk.beta.toFixed(2)} note="Theo giả định beta từng mã, gồm tiền mặt"/>
           </>}
         </div>
@@ -154,12 +183,12 @@ export function PortfolioIntelligence() {
           <Panel title="Đóng góp rủi ro" subtitle="Tỉ lệ phương sai danh mục; tổng bằng 100% khi có cổ phiếu.">{[...risk.holdings].sort((a,b)=>b.riskContribution-a.riskContribution).map(h=><div key={h.symbol}><div className={s.row}><span>{h.symbol}<small className={s.muted}> · vốn {pct(h.weight)}</small></span><span>{pct(h.riskContribution)}</span></div><div className={s.bar}><span style={{width:`${Math.min(100,Math.max(0,h.riskContribution*100))}%`}}/></div></div>)}<p className={s.muted}>Đóng góp có thể âm với vị thế có tác dụng phòng vệ. Phần thanh chỉ hiển thị giá trị dương.</p></Panel>
         </div>
         <Panel title="Tương quan giữa các ngành" subtitle="Lợi suất ngành được gộp từ các mã đang nắm giữ, theo tỉ trọng giá trị cố định. Không đại diện chỉ số ngành toàn thị trường.">{risk.sectors.length ? <Matrix labels={risk.sectors.map(a=>a.name)} values={sectorCorrelation(risk)}/> : <p className={s.empty}>Chưa có ngành để so sánh.</p>}</Panel>
-        <Panel title="Hồ sơ từng mã & bối cảnh Quant" subtitle="Volatility là biến động năm của chuỗi tổng hợp. HMM là xác suất trạng thái mẫu từng mã, không phải xác suất thắng."><div className={s.scroll}><table className={s.table}><thead><tr><th>Mã</th><th>Biến động năm</th><th>Beta mẫu</th><th>Đóng góp rủi ro</th><th>HMM tăng / ngang / giảm</th><th>GARCH σ phiên đầu</th></tr></thead><tbody>{risk.holdings.map(h=>{const model=quantModel(h.symbol);return <tr key={h.symbol}><td>{h.symbol}</td><td>{pct(h.volatility)}</td><td>{h.beta.toFixed(2)}</td><td>{pct(h.riskContribution)}</td><td>{pct(model.hmm.bull,0)} / {pct(model.hmm.sideways,0)} / {pct(model.hmm.bear,0)}</td><td>{pct(Math.sqrt(model.variance),2)}</td></tr>;})}</tbody></table></div></Panel>
+        <Panel title="Hồ sơ từng mã & bối cảnh Quant" subtitle="Biến động năm và đóng góp rủi ro dùng cùng chuỗi lợi suất với Monte Carlo. Beta hồi quy theo VN-Index khi có dữ liệu thật. Cột HMM/GARCH là tham số minh họa của mã mẫu, không dùng trong mô phỏng."><div className={s.scroll}><table className={s.table}><thead><tr><th>Mã</th><th>Biến động năm</th><th>Beta</th><th>Đóng góp rủi ro</th><th>HMM tăng / ngang / giảm</th><th>GARCH σ minh họa</th></tr></thead><tbody>{risk.holdings.map(h=>{const model=sampleModel(h.symbol);return <tr key={h.symbol}><td>{h.symbol}</td><td>{pct(h.volatility)}</td><td>{h.beta.toFixed(2)}</td><td>{pct(h.riskContribution)}</td><td>{model ? `${pct(model.hmm.bull,0)} / ${pct(model.hmm.sideways,0)} / ${pct(model.hmm.bear,0)}` : "—"}</td><td>{model ? pct(Math.sqrt(model.variance),2) : "—"}</td></tr>;})}</tbody></table></div></Panel>
       </>}
       {tab===2 && risk && <div className={s.scenarioGrid}>
         <section className={`${s.panel} ${s.settings}`}><div className={s.sectionHeading}><div><h2>Thiết lập kịch bản</h2><p className={s.muted}>Cú sốc cộng dồn trong cả kỳ.</p></div></div>
           <div className={s.presets}>{scenarioPresets.map(p=><button key={p.name} className={s.button} aria-pressed={Object.entries(p.settings).every(([k,v])=>scenario[k as keyof Scenario]===v)} onClick={()=>setScenario({...scenario,...p.settings})}>{p.name}</button>)}</div>
-          <ScenarioControls scenario={scenario} setScenario={setScenario}/>
+          <ScenarioControls scenario={activeScenario} setScenario={setScenario} assets={modeledAssets}/>
           <div className={s.actions}><button className={`${s.button} ${s.primary}`} disabled={busy} onClick={()=>execute("scenario")}><Play size={15}/>{busy ? "Đang tính…" : "Chạy mô phỏng"}</button></div><p className={s.muted}>1.200 đường · seed 42 · Gaussian có tương quan · phương sai kỳ vọng GARCH. Thay thiết lập rồi bấm chạy để cập nhật kết quả.</p>
         </section>
         <div className={s.result} aria-busy={busy}>{!run ? <Panel title="Kiểm chứng trước khi ra quyết định"><div className={s.empty}><Activity size={32} style={{margin:"0 auto 18px"}}/><h3>Chọn giả định. Chạy. Đọc khoảng bất định.</h3><p className={s.muted}>Bạn sẽ thấy dải phân vị, tổn thất đuôi, xác suất lỗ và nguồn tác động theo mã/ngành.</p></div></Panel> : <>
@@ -236,7 +265,7 @@ function Allocation({risk}:{risk:ReturnType<typeof portfolioRisk>}) {
 }
 function Matrix({labels,values}:{labels:string[];values:number[][]}) { return <div className={s.scroll}><table className={`${s.table} ${s.matrix}`}><thead><tr><th aria-label="Cặp tương quan"/>{labels.map(l=><th key={l}>{l}</th>)}</tr></thead><tbody>{values.map((row,i)=><tr key={labels[i]}><th scope="row">{labels[i]}</th>{row.map((v,j)=><td key={labels[j]} className={i===j?s.diagonal:""} style={i===j?undefined:{background:`color-mix(in srgb, ${v>=0?"var(--info)":"#b49adf"} ${Math.round(Math.abs(v)*38+5)}%, var(--surface))`}}>{v.toFixed(2)}</td>)}</tr>)}</tbody></table></div>; }
 function sectorCorrelation(risk:ReturnType<typeof portfolioRisk>) { return risk.sectorCorrelation; }
-function ScenarioControls({scenario,setScenario}:{scenario:Scenario;setScenario:(s:Scenario)=>void}) {
+function ScenarioControls({scenario,setScenario,assets}:{scenario:Scenario;setScenario:(s:Scenario)=>void;assets:Asset[]}) {
   const field=(key:keyof Scenario,value:string)=>setScenario({...scenario,[key]:Number(value)});
   return <div className={s.controls}><label className={s.field}>Kỳ mô phỏng<select value={scenario.horizon} onChange={e=>field("horizon",e.target.value)}>{[5,20,60].map(v=><option key={v} value={v}>{v} phiên</option>)}</select></label><label className={s.field}>Ngân sách lỗ<select value={scenario.budget} onChange={e=>field("budget",e.target.value)}>{[.05,.1,.15,.2].map(v=><option key={v} value={v}>{pct(v,0)}</option>)}</select></label>
     <Range label="Cú sốc thị trường" value={scenario.marketShock*100} min={-50} max={50} step={1} display={pct(scenario.marketShock,0)} onChange={v=>field("marketShock",String(v/100))}/>

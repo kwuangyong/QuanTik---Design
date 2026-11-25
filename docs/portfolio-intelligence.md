@@ -29,11 +29,11 @@ Các module engine có thể được import từ quét toàn sàn hoặc trang 
 - Giá vốn của danh mục người dùng lưu được giữ nguyên khi đổi nguồn giá. Chỉ giá vốn của các danh mục mẫu mới được đặt theo tỉ lệ giá snapshot.
 - Covariance chia `n−1`; volatility năm = `sqrt(wᵀΣw × 252)`; đóng góp phương sai = `wᵢ(Σw)ᵢ / (wᵀΣw)`. Tỉ trọng tính trên tổng tài sản gồm tiền mặt.
 - Tương quan ngành gộp các mã đang nắm giữ theo tỉ trọng giá trị cố định. Không thay thế tương quan các chỉ số ngành toàn thị trường.
-- GARCH lấy alpha/beta/omega và volatility cuối cùng trong `backend/mock/analysis-visuals.json`. `valuePct / 100`, `omega / 10000`. Phương sai kỳ vọng theo kỳ: `h[t+1] = omega + (alpha+beta) × h[t]`.
-- Đây là lognormal Gaussian với phương sai kỳ vọng GARCH; không phải GARCH–t, cũng không phải mô phỏng phương sai đường đi đầy đủ. Tham số Quant và cửa sổ nến mẫu chưa được hiệu chỉnh cùng nhau.
+- **Một nguồn biến động** (từ 11/2026): Monte Carlo dùng đúng phương sai ngày `Σᵢᵢ` của chuỗi lợi suất đã tính biến động năm, đóng góp rủi ro và giới hạn biến động. Tham số GARCH/HMM trong `analysis-visuals.json` chỉ hiển thị ở bảng hồ sơ với nhãn "minh họa" và không đi vào mô phỏng. Trước đây hai nguồn lệch khoảng 8%/năm so với 36–46%/năm.
+- Nhiễu ngày là Student-t đa biến `ν = 5`, chuẩn hóa phương sai đơn vị (một biến trộn chi-bình phương mỗi phiên, giữ tương quan). Mỗi bước giá bị chặn theo biên độ sàn: HOSE ±7%, HNX ±10%, UPCOM ±15% (không rõ sàn: ±7%). Tỉ lệ bước chạm biên được trả về `limitHitRate`.
 - Ma trận tương quan = `(1−stress) × (0,98 × R + 0,02 × I) + stress × J`. I là ma trận đơn vị, J toàn số 1. Co về I và trộn J giữ PSD; Cholesky có kiểm tra pivot.
 - Cú sốc tổng kỳ cộng theo log: `beta × log(1+shock thị trường) + log(1+shock ngành) + log(1+shock mã)` khi đúng đối tượng. Chia đều qua số phiên. Drift log cơ sở `−variance/2` giữ kỳ vọng giá cơ sở không tăng/giảm.
-- 1.200 đường chung cho toàn bộ sáu mã; seed mặc định 42. Trước–sau luôn giữ cùng thứ tự universe và nhiễu, kể cả mã đã bán hết. Tiền mặt không có biến động/lãi suất.
+- 4.000 đường chung cho toàn bộ universe đang mô hình; seed mặc định 42. VaR 95% kèm sai số chuẩn batch-means 20 nhóm (`var95StdErr`). Trước–sau luôn giữ cùng thứ tự universe và nhiễu, kể cả mã đã bán hết. Tiền mặt không có biến động/lãi suất.
 - Phân vị P05/P25/P50/P75/P95 lấy trực tiếp từ tổng giá trị mỗi đường tại từng phiên, không cộng phân vị từng mã. Phân vị cắt ngang không phải một đường giá dự đoán duy nhất.
 - VaR 95%: phân vị 95% của tổn thất cuối kỳ. CVaR 95%: trung bình 5% đường tổn thất lớn nhất. Hai chỉ số chặn dưới ở 0. Xác suất lỗ cuối kỳ và xác suất có ít nhất một phiên chạm ngân sách là hai chỉ số khác nhau.
 - Phân rã tác động theo mã/ngành có cả cú sốc thuần và thay đổi giá trị kỳ vọng Monte Carlo. Bảng nhạy thay thị trường × ngành, giữ cú sốc riêng mã, chỉ báo tác động thuần.
@@ -41,7 +41,7 @@ Các module engine có thể được import từ quét toàn sàn hoặc trang 
 
 ## Phương án Action
 
-Thứ tự: trần từng mã → trần ngành → giảm đồng đều nếu vượt volatility → giảm đồng đều nếu VaR 95% vượt ngân sách. Mọi phần giảm chuyển sang tiền mặt và giữ nguyên tổng tài sản tại thời điểm giả lập. Trần luôn tính trên tổng tài sản gốc. Lượng giữ lại làm tròn xuống số nguyên, tương đương lượng giảm làm tròn lên một cổ phiếu. Mỗi mã chỉ có một dòng giảm cuối cùng.
+Thứ tự: trần từng mã → trần ngành → giảm đồng đều nếu vượt volatility → giảm đồng đều nếu VaR 95% vượt ngân sách. Mọi phần giảm chuyển sang tiền mặt và giữ nguyên tổng tài sản tại thời điểm giả lập. Trần luôn tính trên tổng tài sản gốc. Lượng giữ lại làm tròn xuống theo lô 100 cổ phiếu (lô lẻ đang nắm được bán cả phần lẻ). Tiền thu về hiển thị cả giá trị sau thuế bán 0,1% và phí ~0,15% (`SELL_COST_RATE = 0,25%`). Mỗi mã chỉ có một dòng giảm cuối cùng.
 
 Sau làm tròn, chạy lại và kiểm tra giới hạn; nếu chưa đạt sẽ gắn nhãn cần rà soát. Phương án là một heuristic giảm vị thế, không phải tối ưu hóa lợi nhuận hoặc nghiệm tối ưu toàn cục. VaR không phải mức lỗ tối đa; ngân sách VaR không bảo đảm xác suất chạm ngân sách bằng 0. Phí, thuế, thanh khoản, trượt giá, quy tắc lô và giới hạn giao dịch chưa tính.
 
@@ -74,3 +74,19 @@ Unit test bao gồm phép tính tay covariance, đơn vị GARCH, đóng góp ph
 ## Ranh giới kết nối kết quả công bố
 
 `publishedPortfolioEvidence` nhận hợp đồng `ScreeningLatest`/`ScreeningResults` và `AnalysisReport` sẵn có của hai module. Adapter phân biệt thiếu, sai mã/phiên/ca, ca cũ và không có mã trong tập công bố; chỉ đọc section AVAILABLE. Quyết định/executable và lý do được giữ từ nguồn, không suy từ điểm. Adapter này chưa gọi API, chưa thay mode mẫu của Site và không âm thầm fallback sang demo khi báo cáo thực thiếu. Điểm/hồ sơ nhân tố dùng để đối chiếu, chưa đưa forecast mẫu vào drift hoặc tự tạo lượng mua/bán.
+
+
+## Dữ liệu thật từ quantik-server (11/2026)
+
+Khi người dùng đã đăng nhập, trang gọi các endpoint đã có trong `quantik-server/backend/src/service/portfolio_api.py` qua proxy cố định:
+
+| Endpoint | Dùng cho |
+|---|---|
+| `GET /api/v1/market/latest` | Giá công bố (`price_vnd`), sàn, ngành của bản screening đã công bố |
+| `GET /api/v1/market/candles?symbol=&limit=260` | Lịch sử phiên cho covariance; `VNINDEX`/`VN30` nếu manifest có để hồi quy beta |
+| `GET` / `PUT /api/v1/portfolio` | Tải/lưu danh mục theo tài khoản (`cash_vnd`, `positions[{symbol, quantity, cost_vnd}]`) |
+
+- Cần tối thiểu 120 phiên chung; thiếu giá hoặc lịch sử thì quay về dữ liệu mẫu và ghi rõ lý do.
+- Beta là OLS theo chuỗi chỉ số có trong manifest; nếu không có, beta = 1 và giao diện ghi "beta giả định".
+- Chưa đăng nhập: giữ nguyên chế độ mẫu, không gọi API người dùng.
+- Không thay đổi backend, không thêm endpoint mới.
