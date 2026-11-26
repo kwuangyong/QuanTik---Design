@@ -23,6 +23,6 @@ export function AnalysisPage() {
       </form>
     </PageHeading>
     {error && <p role="alert" className="mb-4 text-[var(--negative)]">{error}</p>}
-    <QuantPanel key={symbol} symbol={symbol}/>
+    <QuantPanel key={symbol + (query.get("target_session") || "")} symbol={symbol}/>
   </>;
 }
