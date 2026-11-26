@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api/client";
 import { money } from "@/lib/api/contracts";
-import type { ScreeningDetail, ScreeningGroup, ScreeningItem, ScreeningLatest, ScreeningResults, ScreeningScore } from "@/lib/api/screening";
+import { screeningReason, type ScreeningBoardResult, type ScreeningDetail, type ScreeningGroup, type ScreeningItem, type ScreeningLatest, type ScreeningResults, type ScreeningScore, type ScreeningSessionInfo } from "@/lib/api/screening";
 import { Guard } from "./account/session";
 import { ErrorNotice } from "./account/common";
 import { Modal, PageHeading } from "./ui";
@@ -68,6 +68,36 @@ function storeResults(runId: string, value: { best: ScreeningItem[]; worst: Scre
   resultCache.set(runId, value);
   try { sessionStorage.setItem(cacheKey(runId), JSON.stringify(value)); } catch { /* storage unavailable */ }
 }
+/** One metered /board read (quantik-server ≥ 1493277). Older servers answer an unknown route with a
+ * 404 that carries no NOT_FOUND code; then fall back to the two metered /results reads. */
+let boardRoute: boolean | undefined;
+export const routeMissing = (error: unknown) => error instanceof ApiError && error.status === 404 && error.code !== "NOT_FOUND";
+async function readBoard(runId: string): Promise<{ value: { best: ScreeningItem[]; worst: ScreeningItem[] }; charged: number }> {
+  const id = encodeURIComponent(runId);
+  if (boardRoute !== false) {
+    try {
+      const board = await api<ScreeningBoardResult>("user", `screenings/${id}/board`);
+      if (board.run_id !== runId) throw new Error("Kết quả không khớp phiên dữ liệu. Vui lòng tải lại.");
+      boardRoute = true;
+      return { value: { best: board.overall.slice(0, 5), worst: board.distribution.slice(0, 5) }, charged: 1 };
+    } catch (error) {
+      if (!routeMissing(error)) throw error;
+      boardRoute = false;
+    }
+  }
+  const groups = ["OVERALL", "DISTRIBUTION"] as const;
+  const pages = await Promise.all(groups.map(group => api<ScreeningResults>("user", `screenings/${id}/results?group=${group}`)));
+  if (pages.some((page, index) => page.run_id !== runId || page.group !== groups[index])) throw new Error("Kết quả không khớp phiên dữ liệu. Vui lòng tải lại.");
+  return { value: { best: pages[0].items.slice(0, 5), worst: pages[1].items.slice(0, 5) }, charged: groups.length };
+}
+const slotNames: Record<string, string> = { AM: "ca sáng", PM: "ca chiều", ALL: "cả ngày" };
+const attemptNames: Record<string, string> = { WAITING_DATA: "đang chờ dữ liệu", RUNNING: "đang xử lý", FAILED: "xử lý chưa thành công", READY: "đã xử lý" };
+export function sessionMessage(info?: ScreeningSessionInfo | null) {
+  const parts: string[] = [], attempt = info?.latest_attempt;
+  if (info?.expected_session) parts.push(`Phiên dự kiến: ${date(info.expected_session)}${info.expected_slot ? ` (${slotNames[info.expected_slot] || info.expected_slot})` : ""}.`);
+  if (attempt?.target_session) parts.push(`Lần quét ${slotNames[attempt.slot] || attempt.slot} ngày ${date(attempt.target_session)}: ${attemptNames[attempt.status] || "chưa công bố"}.`);
+  return parts.join(" ");
+}
 const clock = (seconds: number) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(seconds * 1000));
 export const quotaExceeded = (error: unknown) => error instanceof ApiError && error.code === "SCREENING_QUOTA_EXCEEDED";
 export const subscriptionRequired = (error: unknown) => error instanceof ApiError && error.status === 403 && !quotaExceeded(error);
@@ -77,7 +107,8 @@ function ScreeningBoard({ onReset }: { onReset: () => void }) {
   useEffect(() => { board.current?.focus(); }, []);
   const [version, setVersion] = useState(0);
   const [publication, setPublication] = useState<{ latest: ScreeningLatest; best: ScreeningItem[]; worst: ScreeningItem[] }>();
-  const shown = useRef<string>(undefined);
+  const shown = useRef<string>(undefined), forceRun = useRef<string>(undefined);
+  const [boardAvailable, setBoardAvailable] = useState(false);
   const [error, setError] = useState<Error>(), [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{ run: ScreeningLatest; item: ScreeningItem }>();
   const onDenied = useCallback((error: Error) => { setError(error); if (!quotaExceeded(error)) { setPublication(undefined); setSelected(undefined); } }, []);
@@ -89,18 +120,18 @@ function ScreeningBoard({ onReset }: { onReset: () => void }) {
     void (async () => {
       const latest = await api<ScreeningLatest>("user", "screenings/latest");
       // Same run already on screen or cached in this tab: refresh the header only, no quota charge.
-      const known = shown.current === latest.id ? undefined : cachedResults(latest.id);
-      if (shown.current === latest.id || known) {
+      const forced = forceRun.current === latest.id;
+      forceRun.current = undefined;
+      const known = forced || shown.current === latest.id ? undefined : cachedResults(latest.id);
+      if (!forced && (shown.current === latest.id || known)) {
         if (active) { setPublication(previous => ({ latest, ...(known ?? { best: previous!.best, worst: previous!.worst }) })); shown.current = latest.id; setError(undefined); }
         return;
       }
-      const groups = ["OVERALL", "DISTRIBUTION"] as const;
-      const pages = await Promise.all(groups.map(group => api<ScreeningResults>("user", `screenings/${encodeURIComponent(latest.id)}/results?group=${group}`)));
-      if (pages.some((page, index) => page.run_id !== latest.id || page.group !== groups[index])) throw new Error("Kết quả không khớp phiên dữ liệu. Vui lòng tải lại.");
-      const value = { best: pages[0].items.slice(0, 5), worst: pages[1].items.slice(0, 5) };
+      const { value, charged: reads } = await readBoard(latest.id);
       storeResults(latest.id, value);
-      // /latest reports quota before these two charged reads; reflect them until the next poll.
-      const quota = latest.screening_quota, charged = quota ? { ...latest, screening_quota: { ...quota, used: quota.used + groups.length, remaining: Math.max(0, quota.remaining - groups.length) } } : latest;
+      // /latest reports quota before these charged reads; reflect them until the next poll.
+      const quota = latest.screening_quota, charged = quota ? { ...latest, screening_quota: { ...quota, used: quota.used + reads, remaining: Math.max(0, quota.remaining - reads) } } : latest;
+      setBoardAvailable(boardRoute === true);
       if (active) { shown.current = latest.id; setPublication({ latest: charged, ...value }); setError(undefined); }
     })().catch(error => {
       if (!active) return;
@@ -126,17 +157,18 @@ function ScreeningBoard({ onReset }: { onReset: () => void }) {
     <div className={styles.toolbar}><button className={styles.button} onClick={onReset}>← Xem lại banner</button><button className={styles.button} onClick={() => setVersion(v => v+1)} disabled={loading || forbidden}>{loading ? 'Đang cập nhật…' : 'Kiểm tra bản mới ↻'}</button></div>
     {forbidden ? <section className={styles.empty}><h2>Cần gói phân tích còn hiệu lực</h2><p>Kích hoạt gói để xem kết quả quét.</p><Link href="/plans">Xem các gói phân tích</Link></section>
       : outOfQuota && !publication ? <section className={styles.empty} role="status"><h2>Đã dùng hết lượt xem quét hôm nay</h2><p>Hạn mức đặt lại lúc 00:00 giờ Việt Nam. Nâng gói để có thêm lượt xem.</p><Link href="/plans">Xem các gói phân tích</Link></section>
-      : !publication ? notReady ? <section className={styles.empty} role="status"><h2>Chưa có kết quả được công bố</h2><p>Kết quả sẽ xuất hiện tại đây khi dữ liệu sẵn sàng.</p></section>
+      : !publication ? notReady ? <section className={styles.empty} role="status"><h2>Chưa có kết quả được công bố</h2><p>{sessionMessage((error as ApiError).payload as ScreeningSessionInfo | undefined) || "Kết quả sẽ xuất hiện tại đây khi dữ liệu sẵn sàng."}</p></section>
       : error ? <><ErrorNotice error={error}/><button className={styles.button} onClick={() => setVersion(v => v+1)}>Thử lại</button></>
       : <p role="status">Đang tải kết quả công bố mới nhất…</p> : null}
     {publication && <>
       <div className={styles.heading}><div><span className={styles.tag}>PHÂN TÍCH TOÀN SÀN</span><h2>5 mã xếp hạng cao nhất · <em>5 mã cần thận trọng</em></h2><p>Phiên {date(publication.latest.target_session)} · Công bố {clock(publication.latest.published_at)} (giờ Việt Nam){quota ? ` · Còn ${quota.remaining}/${quota.limit} lượt xem hôm nay` : ""}</p></div><span className={styles.hint}>Chọn mã để xem screening · Mở Quant để phân tích chuyên sâu</span></div>
       {outOfQuota && <p role="status" className={styles.notice}>Đã dùng hết lượt xem quét hôm nay. Đang giữ kết quả đã tải; hạn mức đặt lại lúc 00:00 giờ Việt Nam.</p>}
-      {!outOfQuota && (publication.latest.stale || error) && <p role="status" className={styles.notice}>Đang hiển thị kết quả gần nhất. Kết quả mới sẽ tự cập nhật khi sẵn sàng.</p>}
+      {!outOfQuota && (publication.latest.stale || error) && <p role="status" className={styles.notice}>Đang hiển thị kết quả gần nhất. {[sessionMessage(publication.latest), ...(publication.latest.stale_reasons ?? []).map(screeningReason)].filter(Boolean).join(" · ") || "Kết quả mới sẽ tự cập nhật khi sẵn sàng."}</p>}
+      {boardAvailable && !outOfQuota && <p className={styles.sheetNotice}>Cột Quant lấy từ báo cáo Quant của bạn trên đúng bộ dữ liệu của phiên quét. <button className={styles.button} disabled={loading} onClick={() => { forceRun.current = publication.latest.id; setVersion(v => v+1); }}>Cập nhật cột Quant · dùng 1 lượt xem</button></p>}
       {error && !outOfQuota && <button className={styles.button} onClick={() => setVersion(v => v+1)}>Thử lại</button>}
       <p className={styles.sheetNotice}>Giá: VND · GTGD: tỷ VND · Thời gian: phiên. <span>Ô — là chỉ số chưa có trong bản công bố. Xếp hạng screening không thay cho kết quả Quant.</span></p>
-      <ScreeningSheet kind="opportunity" title="5 mã xếp hạng cao nhất" description="Xếp hạng tổng hợp theo bộ tiêu chí của bản quét phiên. Thứ hạng cao không phải cam kết tăng giá." items={publication.best} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
-      <ScreeningSheet kind="caution" title="5 mã cần thận trọng" description="5 mã có điểm nhóm PHÂN PHỐI cao nhất: dấu hiệu áp lực bán/phân phối, không phải danh sách mã kém chất lượng nhất. Đối chiếu với kết quả Quant của từng mã." items={publication.worst} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
+      <ScreeningSheet kind="opportunity" title="5 mã xếp hạng cao nhất" description="Xếp hạng tổng hợp theo bộ tiêu chí của bản quét phiên. Thứ hạng cao không phải cam kết tăng giá." session={publication.latest.target_session} items={publication.best} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
+      <ScreeningSheet kind="caution" title="5 mã cần thận trọng" description="5 mã có điểm nhóm PHÂN PHỐI cao nhất: dấu hiệu áp lực bán/phân phối, không phải danh sách mã kém chất lượng nhất. Đối chiếu với kết quả Quant của từng mã." session={publication.latest.target_session} items={publication.worst} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
       <ModelDisclaimer kind="screening"/>
     </>}
     {selected && <StockDetail key={`${selected.run.id}:${selected.item.symbol}`} run={selected.run} item={selected.item} onClose={() => setSelected(undefined)} onDenied={onDenied}/>}
@@ -169,7 +201,7 @@ function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; i
   const assessment = data?.assessment, market = data?.market;
   return <Modal title={`${item.symbol} · Chi tiết screening`} onClose={onClose} className={styles.dialog}>
     <div className={styles.detailBody}>
-      <div className={styles.heading}><div><p>{item.exchange} · Dữ liệu ngày {date(run.target_session)}</p><h3>{item.price_vnd == null ? "—" : money(item.price_vnd)} <Change value={item.change_ratio}/></h3></div><span className={styles.status}>{statusLabels[item.status]}</span></div>
+      <div className={styles.heading}><div><p>{item.exchange} · Phiên quét {date(run.target_session)}{item.data_session && item.data_session !== run.target_session ? ` · Giá ngày ${date(item.data_session)}${item.stale_sessions ? ` (trễ ${item.stale_sessions} phiên)` : ""}` : ""}</p><h3>{item.price_vnd == null ? "—" : money(item.price_vnd)} <Change value={item.change_ratio}/></h3></div><span className={styles.status}>{statusLabels[item.status]}</span></div>
       {error ? <><ErrorNotice error={error}/><button className={styles.button} onClick={() => setRetry(v => v+1)}>Thử lại</button></> : !data ? <p role="status">Đang tải đánh giá chi tiết…</p> : <>
         <p className={styles.hint}>{data.input_mode === "PROVISIONAL_DAILY" ? "Dữ liệu tạm tính trong phiên; khối lượng chưa phải cả ngày." : "Dữ liệu phiên đã hoàn tất."}{data.observed_at && ` Cập nhật lúc ${new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(data.observed_at))} (giờ Việt Nam).`}</p>
         <section className={styles.detailSection}><h3>Đánh giá tổng quan</h3><dl className={styles.metrics}>
@@ -182,7 +214,7 @@ function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; i
         </dl></section>
         <div className={styles.notes}><Note title="Ghi chú nhà đầu tư" text={assessment?.investor_note}/><Note title="Ghi chú môi giới" text={assessment?.broker_note}/><Note title="Chiến lược theo thị trường · Nhà đầu tư" text={market?.investor_strategy}/><Note title="Chiến lược theo thị trường · Môi giới" text={market?.broker_strategy}/></div>
       </>}
-      <div className={styles.actions}><Link className={styles.button} href={`/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange || "")}`}>Xem biểu đồ ↗</Link><Link className={styles.primary} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}`}>Phân tích Quant ↗</Link></div>
+      <div className={styles.actions}><Link className={styles.button} href={`/charts?symbol=${encodeURIComponent(item.symbol)}&exchange=${encodeURIComponent(item.exchange || "")}`}>Xem biểu đồ ↗</Link><Link className={styles.primary} href={`/analysis?symbol=${encodeURIComponent(item.symbol)}&target_session=${encodeURIComponent(run.target_session)}`}>Phân tích Quant ↗</Link></div>
     </div>
   </Modal>;
 }

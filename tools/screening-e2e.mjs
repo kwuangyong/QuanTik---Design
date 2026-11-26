@@ -10,7 +10,7 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const server = path.resolve(root, "../quantik-server");
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), "quantik-screening-e2e-"));
-const python = path.join(os.homedir(), ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
+const python = process.env.SCREENING_E2E_PYTHON || path.join(os.homedir(), ".venv", process.platform === "win32" ? "Scripts/python.exe" : "bin/python");
 const children = [];
 const port = Number(process.env.SCREENING_E2E_PORT || 18317);
 const origin = `http://127.0.0.1:${port}`;
@@ -42,17 +42,18 @@ try {
     ...process.env, QUANTIK_API_URL: apiOrigin, QUANTIK_UPSTREAM_ORIGIN: origin, QUANTIK_APP_ORIGIN: origin,
   });
   await ready(`${origin}/screener`);
-  browser = await chromium.launch();
+  browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH });
   for (const viewport of [{ width: 1440, height: 1000 }, { width: 390, height: 844 }]) {
     const context = await browser.newContext({ viewport });
     await context.addCookies([{ name: "quantik_user_refresh", value: state.refresh_cookie, domain: "127.0.0.1", path: "/api/v1/auth", httpOnly: true, sameSite: "Strict" }]);
     const page = await context.newPage(), errors = [], results = [];
     page.on("pageerror", error => errors.push(error.message));
-    page.on("response", response => { if (/\/screenings\/[^/]+\/results/.test(response.url())) results.push(response); });
+    page.on("response", response => { if (/\/screenings\/[^/]+\/(board$|results)/.test(response.url())) results.push(response); });
     await page.goto(`${origin}/screener`);
     assert.equal(await page.getByRole("button", { name: /Kích hoạt quét|Quét lại/ }).count(), 0);
+    await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
     await page.getByRole("button", { name: "FPT", exact: true }).first().waitFor();
-    const best = page.getByRole("region", { name: "5 mã tốt nhất", exact: true });
+    const best = page.getByRole("region", { name: "5 mã xếp hạng cao nhất", exact: true });
     const worst = page.getByRole("region", { name: "5 mã cần thận trọng", exact: true });
     assert.equal(await best.locator("tbody tr").count(), 5);
     assert.equal(await worst.locator("tbody tr").count(), 5);
@@ -61,13 +62,17 @@ try {
     assert.equal(await page.getByText("Xem tiêu chí và lý do", { exact: true }).count(), 0);
     assert.equal(await page.getByLabel("Ca công bố", { exact: true }).count(), 0);
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1));
-    assert(results.length >= 2);
-    for (const response of results) {
+    // One metered /board read, or two /results reads on a server without /board (its 404 is not counted).
+    const served = results.filter(response => response.status() !== 404);
+    assert(served.length === 1 || served.length === 2, `unexpected screening reads: ${served.length}`);
+    for (const response of served) {
       assert.equal(response.status(), 200);
       const payload = await response.json();
       assert.equal(payload.run_id, state.run_id);
-      assert(payload.items.length === 5 && ["OVERALL", "DISTRIBUTION"].includes(payload.group));
-      assert(payload.items.every(item => item.groups && !item.policy_version && !item.groups.STRONG.criteria));
+      const items = payload.overall ? [...payload.overall, ...payload.distribution] : payload.items;
+      if (payload.overall) assert(payload.overall.length === 5 && payload.distribution.length === 5);
+      else assert(payload.items.length === 5 && ["OVERALL", "DISTRIBUTION"].includes(payload.group));
+      assert(items.every(item => item.groups && !item.policy_version && !item.groups.STRONG.criteria));
     }
     fs.mkdirSync(path.join(root, "frontend/test-results/screening"), { recursive: true });
     await page.screenshot({ path: path.join(root, `frontend/test-results/screening/backend-${viewport.width}.png`), fullPage: true });
@@ -90,7 +95,7 @@ try {
     });
     assert.deepEqual(entitlement, { status: 200, created: 0, remaining: 20 });
     assert.deepEqual(errors, []);
-    console.log(`Fixture API browser ${viewport.width}px: two top-five tables from 80 symbols, detail modal, cookie/proxy authorization, no quota charge, no overflow/errors PASS`);
+    console.log(`Fixture API browser ${viewport.width}px: two top-five tables from 80 symbols via ${served.length === 1 ? "/board" : "/results fallback"}, detail modal, cookie/proxy authorization, analysis quota unchanged, no overflow/errors PASS`);
     // Rotation changed the cookie; preserve it for the next independent viewport.
     state.refresh_cookie = (await context.cookies()).find(cookie => cookie.name === "quantik_user_refresh").value;
     await context.close();

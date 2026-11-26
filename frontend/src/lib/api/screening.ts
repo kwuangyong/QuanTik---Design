@@ -2,13 +2,20 @@ import type { SheetValues } from "@/content/screening-sheet";
 
 export type ScreeningSlot = "ALL" | "AM" | "PM";
 export type ScreeningGroup = "STRONG" | "ACCUMULATION" | "DISTRIBUTION";
-export type ScreeningLatest = { id: string; target_session: string; published_at: number; stale: boolean; refresh_after_seconds: number;
+/** Customer-facing session status served by /screenings/latest and the SCREENING_NOT_READY payload. */
+export type ScreeningSessionInfo = {
+  expected_session?: string | null; expected_slot?: string | null;
+  latest_attempt?: { target_session: string; slot: string; status: string } | null;
+};
+export type ScreeningLatest = ScreeningSessionInfo & { stale_reasons?: string[]; id: string; target_session: string; published_at: number; stale: boolean; refresh_after_seconds: number;
   /** Today's screening view quota; null for demo or unmetered accounts. */
   screening_quota?: { limit: number; used: number; remaining: number } | null };
 export type ScreeningScore = { score: number | null; met_count: number; total_count: number; unavailable_count: number };
 export type ScreeningItem = SheetValues & {
   // Optional published presentation fields. No new endpoint or computed fallback.
   name?: string | null; company_name?: string | null;
+  /** Session of the price used for this row and how many sessions it trails the scan. */
+  data_session?: string | null; stale_sessions?: number | null;
   symbol: string; exchange: string | null; price_vnd: number | null; change_ratio: number | null;
   change_5d_ratio: number | null; change_20d_ratio: number | null;
   volume_shares: number | null; average_volume_20_shares: number | null;
@@ -16,6 +23,8 @@ export type ScreeningItem = SheetValues & {
   groups: Record<ScreeningGroup, ScreeningScore>; eligible: boolean;
   status: "ELIGIBLE" | "INSUFFICIENT_DATA" | "LOW_LIQUIDITY";
 };
+/** GET /screenings/{run_id}/board: both top-five lists in one metered read, with the viewer's matching Quant columns. */
+export type ScreeningBoardResult = { run_id: string; overall: ScreeningItem[]; distribution: ScreeningItem[] };
 export type ScreeningResults = { run_id: string; group: "OVERALL" | "DISTRIBUTION"; items: ScreeningItem[] };
 export type ScreeningDetail = {
   run_id: string; target_session: string; published_at: number; input_mode: string; observed_at: string | null;
