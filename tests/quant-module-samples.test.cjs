@@ -91,6 +91,6 @@ test('Missing section stays visible and factual zero/false remain usable',()=>{
 test('Upstream alternate reader still renders its overview and four evidence cards',()=>{
  const report=completeQuantReport(),before=JSON.stringify(report);
  const html=renderToStaticMarkup(React.createElement(SimpleQuantReport,{report,showAction:true}));
- for(const label of ['Tổng hợp và khuyến nghị','Xu hướng dễ hiểu','Kịch bản giá dễ hiểu','Rủi ro dễ hiểu','Kế hoạch giao dịch']) assert.ok(html.includes(`aria-label="${label}"`),label);
+ for(const label of ['Tổng hợp kết quả mô hình','Xu hướng dễ hiểu','Kịch bản giá dễ hiểu','Rủi ro dễ hiểu','Kế hoạch giao dịch']) assert.ok(html.includes(`aria-label="${label}"`),label);
  assert.doesNotMatch(text(html),/undefined|NaN|Infinity/);assert.equal(JSON.stringify(report),before);
 });

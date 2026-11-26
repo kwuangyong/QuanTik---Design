@@ -1,9 +1,38 @@
+// Cumulative standard normal, West (2005) double-precision Hart algorithm (|error| < 1e-14).
 function normal(x) {
   const a = Math.abs(x);
-  const t = 1 / (1 + 0.2316419 * a);
-  const p = Math.exp(-a * a / 2) / Math.sqrt(2 * Math.PI) * t *
-    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
-  return x >= 0 ? 1 - p : p;
+  let c;
+  if (a > 37) c = 0;
+  else {
+    const e = Math.exp(-a * a / 2);
+    if (a < 7.07106781186547) {
+      let b = 3.52624965998911e-02 * a + 0.700383064443688;
+      b = b * a + 6.37396220353165; b = b * a + 33.912866078383; b = b * a + 112.079291497871;
+      b = b * a + 221.213596169931; b = b * a + 220.206867912376;
+      c = e * b;
+      b = 8.83883476483184e-02 * a + 1.75566716318264;
+      b = b * a + 16.064177579207; b = b * a + 86.7807322029461; b = b * a + 296.564248779674;
+      b = b * a + 637.333633378831; b = b * a + 793.826512519948; b = b * a + 440.413735824752;
+      c /= b;
+    } else {
+      let b = a + 0.65; b = a + 4 / b; b = a + 3 / b; b = a + 2 / b; b = a + 1 / b;
+      c = e / b / 2.506628274631;
+    }
+  }
+  return x > 0 ? 1 - c : c;
+}
+
+// Implied volatility by bracketed bisection on a price that increases with volatility.
+// Returns null when the target lies outside the no-arbitrage range of the model.
+function solveVolatility(priceAt, target, low = 1e-4, high = 5) {
+  if (!(target > 0) || !Number.isFinite(target)) return null;
+  let lo = low, hi = high, flo = priceAt(lo) - target, fhi = priceAt(hi) - target;
+  if (!(flo <= 0 && fhi >= 0)) return null;
+  for (let i = 0; i < 100 && hi - lo > 1e-7; i++) {
+    const mid = (lo + hi) / 2, f = priceAt(mid) - target;
+    if (f > 0) hi = mid; else lo = mid;
+  }
+  return (lo + hi) / 2;
 }
 
 function blackPrice(forward, strike, totalVol, discount, put) {

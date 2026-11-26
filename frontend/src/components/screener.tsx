@@ -10,6 +10,7 @@ import { Modal, PageHeading } from "./ui";
 import styles from "./screener.module.css";
 import { ScreeningSheet } from "./screening-sheet";
 import { visibleSheetColumns } from "@/content/screening-sheet";
+import { ModelDisclaimer } from "./model-disclaimer";
 
 const number = (value: number | null | undefined, digits = 1) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value) : "—";
 const percent = (value: number | null | undefined) => typeof value === "number" ? new Intl.NumberFormat("vi-VN", { style: "percent", maximumFractionDigits: 2, signDisplay: "exceptZero" }).format(value) : "—";
@@ -19,7 +20,7 @@ const groupLabels: Record<ScreeningGroup, string> = { STRONG: "MẠNH", ACCUMULA
 const groupNames = Object.keys(groupLabels) as ScreeningGroup[];
 
 export function Screener() {
-  return <><PageHeading title="Quét toàn sàn" description={`5 mã tốt nhất và 5 mã nên tránh của phiên, ${visibleSheetColumns.length} cột theo sheet lọc cổ phiếu.`}/><Guard><ScreeningExperience/></Guard></>;
+  return <><PageHeading title="Quét toàn sàn" description={`5 mã xếp hạng cao nhất và 5 mã cần thận trọng của phiên, ${visibleSheetColumns.length} cột theo sheet lọc cổ phiếu.`}/><Guard><ScreeningExperience/></Guard></>;
 }
 function ScreeningExperience() {
   const [activated, setActivated] = useState(false);
@@ -43,59 +44,100 @@ function ScanActivation({ onActivate }: { onActivate: () => void }) {
         <circle cx="292" cy="122" r="55" stroke="#7be8b7" strokeOpacity=".6"/><path d="m330 163 45 44" stroke="#ff792b" strokeWidth="8"/>
         <path d="M292 43V60M292 184V201M213 122H230M354 122H371" stroke="#7be8b7"/>
       </svg>
-      <span>KHÔNG CÓ NGÀY MAI,<br/>CHỈ CÓ <b>XÁC SUẤT.</b></span>
+      <span>DỮ LIỆU CÔNG BỐ,<br/>KHÔNG PHẢI <b>LỜI KHUYÊN.</b></span>
     </div>
     <div className={styles.gateFeatures}><div><b>01 / TOÀN THỊ TRƯỜNG</b><span>Tổng hợp theo sàn và doanh nghiệp</span></div><div><b>02 / CƠ HỘI & RỦI RO</b><span>So sánh các mã nổi bật và cần thận trọng</span></div><div><b>03 / TỪNG CỔ PHIẾU</b><span>Mở chi tiết đánh giá cho mã bạn chọn</span></div></div>
   </section>;
 }
+/** Each /results and /symbols read is charged against the daily screening quota on the
+ * backend (screening_access.consume_view). Only /latest is free, so it is the only call
+ * that polls; results are re-read once per new run id and kept for this tab. */
+const resultCache = new Map<string, { best: ScreeningItem[]; worst: ScreeningItem[] }>();
+const detailCache = new Map<string, ScreeningDetail>();
+const cacheKey = (runId: string) => `quantik.screening.${runId}`;
+function cachedResults(runId: string) {
+  const hit = resultCache.get(runId);
+  if (hit) return hit;
+  try {
+    const stored = sessionStorage.getItem(cacheKey(runId));
+    if (stored) { const value = JSON.parse(stored); resultCache.set(runId, value); return value as { best: ScreeningItem[]; worst: ScreeningItem[] }; }
+  } catch { /* storage unavailable */ }
+  return undefined;
+}
+function storeResults(runId: string, value: { best: ScreeningItem[]; worst: ScreeningItem[] }) {
+  resultCache.set(runId, value);
+  try { sessionStorage.setItem(cacheKey(runId), JSON.stringify(value)); } catch { /* storage unavailable */ }
+}
+const clock = (seconds: number) => new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Ho_Chi_Minh" }).format(new Date(seconds * 1000));
+export const quotaExceeded = (error: unknown) => error instanceof ApiError && error.code === "SCREENING_QUOTA_EXCEEDED";
+export const subscriptionRequired = (error: unknown) => error instanceof ApiError && error.status === 403 && !quotaExceeded(error);
+
 function ScreeningBoard({ onReset }: { onReset: () => void }) {
   const board = useRef<HTMLDivElement>(null);
   useEffect(() => { board.current?.focus(); }, []);
   const [version, setVersion] = useState(0);
   const [publication, setPublication] = useState<{ latest: ScreeningLatest; best: ScreeningItem[]; worst: ScreeningItem[] }>();
+  const shown = useRef<string>(undefined);
   const [error, setError] = useState<Error>(), [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<{ run: ScreeningLatest; item: ScreeningItem }>();
-  const onDenied = useCallback((error: Error) => { setError(error); setPublication(undefined); setSelected(undefined); }, []);
-  const forbidden = error instanceof ApiError && error.status === 403;
+  const onDenied = useCallback((error: Error) => { setError(error); if (!quotaExceeded(error)) { setPublication(undefined); setSelected(undefined); } }, []);
+  const forbidden = subscriptionRequired(error);
+  const outOfQuota = quotaExceeded(error);
   const notReady = error instanceof ApiError && error.code === "SCREENING_NOT_READY";
   useEffect(() => {
     let active = true; setLoading(true);
     void (async () => {
       const latest = await api<ScreeningLatest>("user", "screenings/latest");
+      // Same run already on screen or cached in this tab: refresh the header only, no quota charge.
+      const known = shown.current === latest.id ? undefined : cachedResults(latest.id);
+      if (shown.current === latest.id || known) {
+        if (active) { setPublication(previous => ({ latest, ...(known ?? { best: previous!.best, worst: previous!.worst }) })); shown.current = latest.id; setError(undefined); }
+        return;
+      }
       const groups = ["OVERALL", "DISTRIBUTION"] as const;
       const pages = await Promise.all(groups.map(group => api<ScreeningResults>("user", `screenings/${encodeURIComponent(latest.id)}/results?group=${group}`)));
       if (pages.some((page, index) => page.run_id !== latest.id || page.group !== groups[index])) throw new Error("Kết quả không khớp phiên dữ liệu. Vui lòng tải lại.");
-      if (active) {
-        setPublication({ latest, best: pages[0].items.slice(0, 5), worst: pages[1].items.slice(0, 5) });
-        setError(undefined);
-      }
+      const value = { best: pages[0].items.slice(0, 5), worst: pages[1].items.slice(0, 5) };
+      storeResults(latest.id, value);
+      // /latest reports quota before these two charged reads; reflect them until the next poll.
+      const quota = latest.screening_quota, charged = quota ? { ...latest, screening_quota: { ...quota, used: quota.used + groups.length, remaining: Math.max(0, quota.remaining - groups.length) } } : latest;
+      if (active) { shown.current = latest.id; setPublication({ latest: charged, ...value }); setError(undefined); }
     })().catch(error => {
       if (!active) return;
       setError(error);
-      if (error instanceof ApiError && [401,403].includes(error.status)) { setPublication(undefined); setSelected(undefined); }
+      // Out of quota keeps whatever was already shown; other denials clear paid content.
+      if (error instanceof ApiError && (error.status === 401 || subscriptionRequired(error))) { setPublication(undefined); setSelected(undefined); shown.current = undefined; }
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [version]);
+  const refreshAfter = Math.max(30, publication?.latest.refresh_after_seconds ?? 60);
   useEffect(() => {
-    if (forbidden) return;
-    const refresh = () => { if (document.visibilityState === "visible") setVersion(v => v+1); };
-    const timer = setTimeout(refresh, 60000);
-    document.addEventListener("visibilitychange", refresh);
-    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", refresh); };
-  }, [version, forbidden]);
+    if (forbidden || outOfQuota) return;
+    let last = Date.now();
+    const refresh = () => { if (document.visibilityState === "visible") { last = Date.now(); setVersion(v => v+1); } };
+    const timer = setTimeout(refresh, refreshAfter * 1000);
+    // Returning to the tab only re-checks /latest, and at most once per refresh interval.
+    const onVisible = () => { if (Date.now() - last >= refreshAfter * 1000) refresh(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", onVisible); };
+  }, [version, forbidden, outOfQuota, refreshAfter]);
+  const quota = publication?.latest.screening_quota;
   return <div className={styles.board} ref={board} tabIndex={-1} aria-label="Kết quả quét toàn sàn">
-    <div className={styles.toolbar}><button className={styles.button} onClick={onReset}>← Xem lại banner</button><button className={styles.button} onClick={() => setVersion(v => v+1)} disabled={loading || forbidden}>{loading ? 'Đang cập nhật…' : 'Cập nhật kết quả ↻'}</button></div>
+    <div className={styles.toolbar}><button className={styles.button} onClick={onReset}>← Xem lại banner</button><button className={styles.button} onClick={() => setVersion(v => v+1)} disabled={loading || forbidden}>{loading ? 'Đang cập nhật…' : 'Kiểm tra bản mới ↻'}</button></div>
     {forbidden ? <section className={styles.empty}><h2>Cần gói phân tích còn hiệu lực</h2><p>Kích hoạt gói để xem kết quả quét.</p><Link href="/plans">Xem các gói phân tích</Link></section>
+      : outOfQuota && !publication ? <section className={styles.empty} role="status"><h2>Đã dùng hết lượt xem quét hôm nay</h2><p>Hạn mức đặt lại lúc 00:00 giờ Việt Nam. Nâng gói để có thêm lượt xem.</p><Link href="/plans">Xem các gói phân tích</Link></section>
       : !publication ? notReady ? <section className={styles.empty} role="status"><h2>Chưa có kết quả được công bố</h2><p>Kết quả sẽ xuất hiện tại đây khi dữ liệu sẵn sàng.</p></section>
       : error ? <><ErrorNotice error={error}/><button className={styles.button} onClick={() => setVersion(v => v+1)}>Thử lại</button></>
       : <p role="status">Đang tải kết quả công bố mới nhất…</p> : null}
     {publication && <>
-      <div className={styles.heading}><div><span className={styles.tag}>PHÂN TÍCH TOÀN SÀN</span><h2>5 mã tốt nhất · <em>5 mã nên tránh</em></h2><p>Dữ liệu ngày {date(publication.latest.target_session)}</p></div><span className={styles.hint}>Chọn mã để xem screening · Mở Quant để phân tích chuyên sâu</span></div>
-      {(publication.latest.stale || error) && <p role="status" className={styles.notice}>Đang hiển thị kết quả gần nhất. Kết quả mới sẽ tự cập nhật khi sẵn sàng.</p>}
-      {error && <button className={styles.button} onClick={() => setVersion(v => v+1)}>Thử lại</button>}
-      <p className={styles.sheetNotice}>Giá: VND · GTGD: tỷ VND · Thời gian: phiên. <span>Ô — là chỉ số chưa có trong bản công bố. Xếp hạng screening không thay cho khuyến nghị Quant.</span></p>
-      <ScreeningSheet kind="opportunity" title="5 mã tốt nhất" description="Xếp hạng tổng hợp từ bản quét của phiên." items={publication.best} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
-      <ScreeningSheet kind="caution" title="5 mã nên tránh nhất" description="5 mã có điểm phân phối cao nhất trong bản quét của phiên." items={publication.worst} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
+      <div className={styles.heading}><div><span className={styles.tag}>PHÂN TÍCH TOÀN SÀN</span><h2>5 mã xếp hạng cao nhất · <em>5 mã cần thận trọng</em></h2><p>Phiên {date(publication.latest.target_session)} · Công bố {clock(publication.latest.published_at)} (giờ Việt Nam){quota ? ` · Còn ${quota.remaining}/${quota.limit} lượt xem hôm nay` : ""}</p></div><span className={styles.hint}>Chọn mã để xem screening · Mở Quant để phân tích chuyên sâu</span></div>
+      {outOfQuota && <p role="status" className={styles.notice}>Đã dùng hết lượt xem quét hôm nay. Đang giữ kết quả đã tải; hạn mức đặt lại lúc 00:00 giờ Việt Nam.</p>}
+      {!outOfQuota && (publication.latest.stale || error) && <p role="status" className={styles.notice}>Đang hiển thị kết quả gần nhất. Kết quả mới sẽ tự cập nhật khi sẵn sàng.</p>}
+      {error && !outOfQuota && <button className={styles.button} onClick={() => setVersion(v => v+1)}>Thử lại</button>}
+      <p className={styles.sheetNotice}>Giá: VND · GTGD: tỷ VND · Thời gian: phiên. <span>Ô — là chỉ số chưa có trong bản công bố. Xếp hạng screening không thay cho kết quả Quant.</span></p>
+      <ScreeningSheet kind="opportunity" title="5 mã xếp hạng cao nhất" description="Xếp hạng tổng hợp theo bộ tiêu chí của bản quét phiên. Thứ hạng cao không phải cam kết tăng giá." items={publication.best} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
+      <ScreeningSheet kind="caution" title="5 mã cần thận trọng" description="5 mã có điểm nhóm PHÂN PHỐI cao nhất: dấu hiệu áp lực bán/phân phối, không phải danh sách mã kém chất lượng nhất. Đối chiếu với kết quả Quant của từng mã." items={publication.worst} loading={loading} onSelect={item => setSelected({ run: publication.latest, item })}/>
+      <ModelDisclaimer kind="screening"/>
     </>}
     {selected && <StockDetail key={`${selected.run.id}:${selected.item.symbol}`} run={selected.run} item={selected.item} onClose={() => setSelected(undefined)} onDenied={onDenied}/>}
   </div>;
@@ -113,8 +155,12 @@ function StockDetail({ run, item, onClose, onDenied }: { run: ScreeningLatest; i
   const [data, setData] = useState<ScreeningDetail>(), [error, setError] = useState<Error>(), [retry, setRetry] = useState(0);
   useEffect(() => {
     let active = true; setError(undefined);
+    // Each detail read is charged against the daily quota; reopen from memory.
+    const key = `${run.id}:${item.symbol}`, hit = detailCache.get(key);
+    if (hit) { setData(hit); return () => { active = false; }; }
     void api<ScreeningDetail>("user", `screenings/${encodeURIComponent(run.id)}/symbols/${encodeURIComponent(item.symbol)}`).then(next => {
       if (next.run_id !== run.id || next.item.symbol !== item.symbol) throw new Error("Chi tiết không khớp phiên dữ liệu.");
+      detailCache.set(key, next);
       if (active) setData(next);
     }).catch(error => { if (active) { setError(error); if (error instanceof ApiError && [401,403].includes(error.status)) onDenied(error); } });
     return () => { active = false; };

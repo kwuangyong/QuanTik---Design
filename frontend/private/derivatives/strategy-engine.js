@@ -61,6 +61,11 @@ const futuresMethods = {
     rule:'Xét giá futures đóng ngoài biên của các nến trước. Trong 3 nến gần nhất, VN30 phải cùng chiều và dịch chuyển ít nhất bằng nửa mức dịch chuyển futures. Loại tín hiệu khi khoảng cách còn lại tới mục tiêu tham chiếu không đủ bù chi phí.',
     formula:'Biên [L, U] lấy từ giá đóng trước nến tín hiệu. Long khi F > U, Δ₃F > 0 và Δ₃S ≥ max(0,1; 0,5 × Δ₃F); Short đối xứng. Mục tiêu tham chiếu cách biên bị phá một độ rộng U − L.'
   },
+  orb: {
+    name:'Phá biên mở cửa 15 phút · Đã kiểm định',
+    rule:'Biên mở cửa là cao/thấp của 09:00–09:15. Nến đóng trên biên trên thì Long, dưới biên dưới thì Short, khớp ở nến kế tiếp; tối đa một lệnh mỗi phiên, không vào sau 14:15. Thoát khi giá đóng quay qua cạnh đối diện của biên, hoặc đóng hết lúc 14:25, không giữ qua ATC. Kiểm định ngoài mẫu trên VN30F1M 2018–2026 (nến 5 phút, sau phí và trượt 1 bước): Sharpe ≈ 1,5–1,7, t ≈ 3,8–5, tỉ lệ thắng ≈ 41%. Edge đang suy giảm (2024: Sharpe ≈ 0,5): tạm dừng khi t 250 phiên < 1 hoặc kỳ vọng < 0,3 điểm/lệnh.',
+    formula:'H, L = max(high), min(low) của 09:00–09:15. Long khi Cₜ > H, Short khi Cₜ < L. Dừng khi Cₜ < L (Long) hoặc Cₜ > H (Short). P&L = (thoát − vào) × hướng × 100.000 − phí − 2 × trượt.'
+  },
   basisReentry: {
     name:'Hồi basis khi VN30 đi ngang · QuanTik',
     rule:'Chờ basis lệch xa trung vị rồi bắt đầu thu hẹp. Chỉ xét khi VN30 có cập nhật giá trong 3 nến gần nhất và mức dịch chuyển ròng thấp. Nếu basis dương so với trung vị, xét Short; nếu âm, xét Long.',
@@ -251,7 +256,77 @@ function fittedForecast(bars, method, horizon) {
   return {points,diagnostic,rmse};
 }
 
+const ORB_RANGE_START = 9*60, ORB_RANGE_MINUTES = 15, ORB_LAST_ENTRY = 14*60+15, ORB_FLAT = 14*60+25;
+/** Minutes after midnight in Vietnam time (UTC+7, no DST). */
+function ictMinutes(time) { return ((Math.floor(time/60000)+7*60)%1440+1440)%1440; }
+function sessionRows(rows,cursor) {
+  const day = simulationDay(rows[cursor].time);
+  let start = cursor;
+  while (start>0 && simulationDay(rows[start-1].time)===day) start--;
+  return rows.slice(start,cursor+1);
+}
+function openingRange(bars) {
+  const range = bars.filter(bar => { const m = ictMinutes(bar.time); return m>=ORB_RANGE_START && m<ORB_RANGE_START+ORB_RANGE_MINUTES; });
+  if (!range.length) return null;
+  return {high:Math.max(...range.map(bar=>bar.high ?? bar.close)), low:Math.min(...range.map(bar=>bar.low ?? bar.close))};
+}
+function orbState(rows,cursor,config) {
+  const bars = sessionRows(rows,cursor), latest = rows[cursor], minute = ictMinutes(latest.time);
+  const cadence = bars.length>1 ? latest.time-bars.at(-2).time : null;
+  const range = openingRange(bars);
+  const cost = config.fee/vn30Multiplier+2*config.slip;
+  if (!range || minute<ORB_RANGE_START+ORB_RANGE_MINUTES) return {error:'Chờ đủ biên mở cửa 09:00–09:15 của phiên.'};
+  const diagnostic = 'Biên mở cửa '+range.low.toFixed(1)+' – '+range.high.toFixed(1)+' điểm.';
+  const side = minute>ORB_LAST_ENTRY ? 0 : latest.close>range.high ? 1 : latest.close<range.low ? -1 : 0;
+  return {diagnostic:diagnostic+(side ? '' : ' Chưa có nến đóng ngoài biên trong giờ được vào lệnh.'),direction:side,side,cost,cadence,latest,n:bars.length,
+    target:side ? latest.close+side*(range.high-range.low) : undefined,net:side ? range.high-range.low-cost : null,range};
+}
+/** Faithful replay of the validated opening-range rule; fills at the next bar close with slippage. */
+function replayOpeningRange(rows,config,firstSignal=0) {
+  const {fee,slip}=config;
+  let net=0,wins=0,peak=0,drawdown=0,forced=0,eligible=0;
+  const trades=[],equity=[];
+  let day=null,range=null,position=null,pending=null,traded=false;
+  const settle=(row,reason)=>{
+    const gross=Math.round((row.close-position.entryQuote)*position.side*vn30Multiplier);
+    const slippageCost=2*slip*vn30Multiplier, pnl=gross-slippageCost-fee;
+    net+=pnl; if(pnl>0) wins++; if(reason==='Mốc chốt dữ liệu') forced++;
+    trades.push({signalTime:position.signalTime,entryTime:position.entryTime,time:row.time,side:position.side,entry:position.fill,
+      exit:row.close-position.side*slip,gross,fee,slippageCost,pnl,reason,signalTarget:null});
+    position=null;
+  };
+  for(let i=0;i<rows.length;i++) {
+    const row=rows[i], minute=ictMinutes(row.time), today=simulationDay(row.time);
+    if(today!==day) {
+      if(position) settle(rows[i-1],'Đóng cuối phiên');
+      day=today; range=null; pending=null; traded=false;
+    }
+    if(i>=firstSignal) {
+      if(pending && !position) { position={...pending,fill:row.close+pending.side*slip,entryQuote:row.close,entryTime:row.time}; pending=null; traded=true; }
+      else if(pending==='exit' && position) { settle(row,'Đóng qua cạnh đối diện'); pending=null; }
+    }
+    if(minute>=ORB_RANGE_START && minute<ORB_RANGE_START+ORB_RANGE_MINUTES) {
+      range=range||{high:-Infinity,low:Infinity};
+      range.high=Math.max(range.high,row.high ?? row.close); range.low=Math.min(range.low,row.low ?? row.close);
+    } else if(range && i>=firstSignal && minute>=ORB_RANGE_START+ORB_RANGE_MINUTES) {
+      const next=rows[i+1], sameDayNext=next && simulationDay(next.time)===today;
+      if(position && (minute>=ORB_FLAT || !sameDayNext)) settle(row, sameDayNext||next ? 'Đóng trước ATC' : 'Mốc chốt dữ liệu');
+      else if(position && pending!=='exit' && ((position.side===1 && row.close<range.low) || (position.side===-1 && row.close>range.high))) pending='exit';
+      else if(!position && !pending && !traded && minute<=ORB_LAST_ENTRY && sameDayNext) {
+        eligible++;
+        const side=row.close>range.high ? 1 : row.close<range.low ? -1 : 0;
+        if(side) pending={side,signalTime:row.time};
+      }
+    }
+    const marked=position?net+Math.round((row.close-position.entryQuote)*position.side*vn30Multiplier)-2*slip*vn30Multiplier-fee:net;
+    peak=Math.max(peak,marked); drawdown=Math.max(drawdown,peak-marked); equity.push(marked);
+  }
+  if(position) settle(rows.at(-1),'Mốc chốt dữ liệu');
+  return {net,wins,drawdown,trades,equity,forced,eligible};
+}
+
 function strategyState(rows,cursor,method,config) {
+  if (method==='orb') return rows[cursor] ? orbState(rows,cursor,config) : {error:'Chưa có dữ liệu.'};
   const {window,hold,fee,slip}=config;
   if(!rows[cursor]||cursor<window-1) return {error:'Cần '+window+' nến liên tiếp cùng ngày để ước lượng.'};
   const bars=rows.slice(cursor-window+1,cursor+1);
@@ -273,6 +348,7 @@ function strategyState(rows,cursor,method,config) {
 }
 
 function replayStrategy(rows,method,config,firstSignal=0) {
+  if (method==='orb') return replayOpeningRange(rows,config,firstSignal);
   const {hold,stop,fee,slip,trailingStop=false}=config;
   let position=null,pending=null,pendingExit='',net=0,wins=0,peak=0,drawdown=0,forced=0,eligible=0;
   const equity=[],trades=[];

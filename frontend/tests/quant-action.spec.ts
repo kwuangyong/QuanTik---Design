@@ -26,7 +26,7 @@ test("Quant action: ưu tiên kế hoạch, giữ nguyên quyết định và Ke
   await open();
   await expect(card).toBeVisible();
   await expect(page.locator(".quant-report > :first-child")).toHaveAttribute("aria-label", "Hành động thực thi");
-  await expect(card.getByRole("heading", { name: "HÀNH ĐỘNG · Theo dõi", exact: true })).toBeVisible();
+  await expect(card.getByRole("heading", { name: "HÀNH ĐỘNG · Mô hình: theo dõi", exact: true })).toBeVisible();
   await expect(card.getByText("Chưa đủ điều kiện thời điểm vào lệnh.", { exact: true })).toBeVisible();
   for (const [id, text] of Object.entries({ entry: "100.000", sl: "97.000", tp1: "105.000", tp2: "110.000", forecast: "4,1%", "forecast-net": "3,5%", agreement: "75%", "rr-net": "1,92x", "risk-nav": "1%", "lock-drawdown": "-4%", "lock-loss": "8%", shares: "1.000", allocation: "33,33%", "kelly-full": "—", "kelly-half": "—" })) {
     await expect(value(id)).toHaveText(text);

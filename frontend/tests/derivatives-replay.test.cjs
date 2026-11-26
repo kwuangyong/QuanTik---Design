@@ -153,3 +153,50 @@ test('Merton prices converge to BSM without jumps and agree with a reference val
   const parity = extreme.spot*Math.exp(-extreme.yieldRate)-extreme.strike*Math.exp(-extreme.rate);
   assert.ok(Math.abs(call-put-parity)<1e-8);
 });
+
+test('normal CDF is double precision and implied volatility inverts both vanilla and CW prices', () => {
+  const pricing = readFileSync(resolve(__dirname, '../private/derivatives/option-pricing.js'), 'utf8');
+  const context = vm.createContext({});
+  vm.runInContext(pricing, context);
+  for (const [x, expected] of [[1, 0.8413447460685429], [-3, 0.0013498980316301], [2.5, 0.9937903346742238], [-6, 9.865876450377e-10]]) {
+    assert.ok(Math.abs(vm.runInContext(`normal(${x})`, context) - expected) < 1e-14, String(x));
+  }
+  const vanilla = vm.runInContext(`solveVolatility(v => price(1300, 1310, v, .25, false, true, .04, .01), price(1300, 1310, .31, .25, false, true, .04, .01))`, context);
+  assert.ok(Math.abs(vanilla - .31) < 1e-6);
+  const warrant = vm.runInContext(`(() => { const fixings = [1,2,3,4,5].map(i => ({time: (85 + i) / 365, close: 0}));
+    return solveVolatility(v => warrantPrice(27600, 27000, v, 90 / 365, .04, 0, 2, fixings), warrantPrice(27600, 27000, .37, 90 / 365, .04, 0, 2, fixings)); })()`, context);
+  assert.ok(Math.abs(warrant - .37) < 1e-6);
+  assert.equal(vm.runInContext('solveVolatility(v => price(1300, 1310, v, .25, false, false, .04, .01), 1e9)', context), null);
+});
+
+test('coverage flags closes outside the ±7% band of the previous session', () => {
+  const context = vm.createContext({});
+  vm.runInContext(market, context);
+  const day = Date.parse('2026-11-20T09:15:00+07:00'), next = Date.parse('2026-11-23T09:15:00+07:00');
+  const rows = [{time: day, close: 1300}, {time: day + cadence, close: 1301}, {time: next, close: 1301 * 1.08}, {time: next + cadence, close: 1301 * 1.05}];
+  context.rows = rows;
+  const coverage = vm.runInContext('replayCoverage(rows)', context);
+  assert.equal(coverage.limitBreaks, 1);
+});
+
+test('opening-range breakout replays the validated rule: one trade a day, opposite-side exit, flat before ATC', () => {
+  const context = vm.createContext({});
+  vm.runInContext(market, context);
+  vm.runInContext(engine, context);
+  const bar = (day, hhmm, close) => ({ time: Date.parse(`2026-11-${day}T${hhmm}:00+07:00`), close, spot: close });
+  const times = ['09:00','09:05','09:10','09:15','09:20','09:25','09:30','09:35'];
+  // Day 1: range 1300–1302, breakout long at 09:20, reversal below 1300 at 09:35 → exit next bar.
+  const day1 = [1300, 1302, 1301, 1301.5, 1303, 1305, 1304, 1299.5].map((c, i) => bar('20', times[i], c)).concat([bar('20', '09:40', 1299), bar('20', '14:25', 1310), bar('20', '14:30', 1311)]);
+  // Day 2: breakout short at 09:15, never reverses → flat at 14:25 bar close, ATC bar ignored.
+  const day2 = [1300, 1302, 1301, 1298, 1296, 1295].map((c, i) => bar('23', times[i], c)).concat([bar('23', '14:25', 1290), bar('23', '14:30', 1280)]);
+  context.rows = [...day1, ...day2];
+  const result = vm.runInContext(`replayStrategy(rows, 'orb', { fee: 0, slip: 0, window: 10, hold: 5, stop: 5 })`, context);
+  assert.equal(result.trades.length, 2);
+  const [long, short] = result.trades;
+  assert.equal(long.side, 1); assert.equal(long.entry, 1305); assert.equal(long.exit, 1299); assert.equal(long.reason, 'Đóng qua cạnh đối diện');
+  assert.equal(short.side, -1); assert.equal(short.entry, 1296); assert.equal(short.exit, 1290); assert.equal(short.reason, 'Đóng trước ATC');
+  assert.equal(result.net, (1299 - 1305) * 100000 + (1296 - 1290) * 100000);
+  const costly = vm.runInContext(`replayStrategy(rows, 'orb', { fee: 30000, slip: 0.1, window: 10, hold: 5, stop: 5 })`, context);
+  assert.equal(costly.net, result.net - 2 * (30000 + 2 * 0.1 * 100000));
+  assert.equal(vm.runInContext(`ictMinutes(Date.parse('2026-11-20T14:25:00+07:00'))`, context), 14 * 60 + 25);
+});

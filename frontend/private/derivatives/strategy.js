@@ -56,7 +56,7 @@
           <summary>Phí, trượt giá và ký quỹ</summary>
           <label>Phí hai chiều mỗi HĐ (VND)<input id="strategy-fee" type="number" min="0" step="any" value="30000"></label>
           <label>Trượt giá mỗi chiều (điểm)<input id="strategy-slip" type="number" min="0" step="any" value="0.2"></label>
-          <label>Ký quỹ một HĐ (VND, tùy chọn)<input id="strategy-margin" type="number" min="0" step="any" value="0"></label>
+          <label>Ký quỹ một HĐ (VND, 0 = ước tính 17% giá trị HĐ)<input id="strategy-margin" type="number" min="0" step="any" value="0"></label>
           <label>Vốn khả dụng dành cho ký quỹ (VND)<input id="strategy-capital" type="number" min="0" step="any" value="0"></label>
         </details>
         <div id="strategy-size" class="strategy-result"></div>
@@ -124,7 +124,8 @@
     const minutes = coverage.cadence ? number(coverage.cadence/60000, coverage.cadence%60000 ? 2 : 0)+' phút' : 'chưa xác định';
     el('strategy-coverage').textContent = rows.length+' nến · '+coverage.days+' ngày · Nhịp phổ biến '+minutes+
       ' · Chuỗi đều dài nhất '+coverage.longest+' nến · '+coverage.interruptions+' lần lệch nhịp trong ngày (gồm nghỉ giữa phiên).'+
-      (coverage.offTick ? ' Có '+coverage.offTick+' giá futures lệch bước 0,1 điểm. Replay dùng giá gốc đã nhập.' : '');
+      (coverage.offTick ? ' Có '+coverage.offTick+' giá futures lệch bước 0,1 điểm. Replay dùng giá gốc đã nhập.' : '') +
+      (coverage.limitBreaks ? ' Có '+coverage.limitBreaks+' nến vượt biên độ ±7% so với phiên trước: kiểm tra dữ liệu hoặc ngày đáo hạn/roll.' : '');
     status.textContent = '';
     invalidateReport();
     draw();
@@ -143,7 +144,7 @@
     const cutoff=Math.max(0,index-119);
     const displayed=displayBars(rows.slice(cutoff,index+1),dataset.coverage.cadence);
     const x=displayed.map(row=>chartTime(row.time));
-    const isRule=Object.hasOwn(relativePriceRules,strategy);
+    const isRule=Object.hasOwn(relativePriceRules,strategy)||strategy==='orb';
     const signal=state.error?'Chưa đủ dữ liệu':state.side>0?'Kịch bản Long':state.side<0?'Kịch bản Short':
       state.net===null?'Chưa đủ điều kiện vào lệnh':isRule?'Biên tham chiếu chưa vượt phí':'Biên kỳ vọng chưa vượt phí';
     el('strategy-chart-title').textContent=isRule?'Futures và mục tiêu tham chiếu':'Futures và quỹ đạo dự phóng';
@@ -185,10 +186,12 @@
       legend:{orientation:'h',y:-.35},font:{color:'#b5c6c2'},xaxis:{...axis,type:'date',tickformat:'%H:%M',hoverformat:'%d/%m %H:%M',title:{text:'Giờ Việt Nam (ICT)'}},yaxis:{...axis,title:{text:'Điểm'}},hovermode:'x unified'
     },{responsive:true,displayModeBar:false});
     const sized = keys.slice(2).every(k=>Number.isFinite(values[k])&&el('strategy-'+k).validity.valid)
-      ? strategySize(values.budget,values.stop,values.fee,values.slip,values.margin,values.capital) : null;
+      ? strategySize(values.budget,values.stop,values.fee,values.slip,values.margin > 0 ? values.margin : latest.close*vn30Multiplier*vn30MarginRate,values.capital > 0 ? values.capital : Infinity) : null;
+    const estimatedMargin = !(values.margin > 0);
     const stop = sized && state.side && state.points ? state.points[1] - state.side * values.stop : null;
     el('strategy-size').textContent = sized ? 'Lỗ ước tính mỗi HĐ ' + money.format(sized.loss) + ' ₫. Tối đa ' + money.format(sized.count) +
-      ' HĐ' + (sized.marginLimit === null ? ' theo ngân sách lỗ, chưa tính sức mua.' : ' theo ngân sách lỗ và ký quỹ đã nhập.') +
+      ' HĐ' + (!(values.capital > 0) ? ' theo ngân sách lỗ, chưa tính sức mua.' : estimatedMargin ? ' theo ngân sách lỗ và ký quỹ ước tính 17% giá trị HĐ.' : ' theo ngân sách lỗ và ký quỹ đã nhập.') +
+      ' Ký quỹ ' + (estimatedMargin ? 'ước tính ' : '') + money.format(values.margin > 0 ? values.margin : latest.close*vn30Multiplier*vn30MarginRate) + ' ₫/HĐ.' +
       (stop !== null ? ' Mức dừng giả định ' + number(stop,2) + ' điểm tính từ giá khớp dự phóng.' : '') +
       ' Mức lỗ có thể vượt giả định nếu giá nhảy qua điểm dừng.' : 'Kiểm tra ngân sách, khoảng dừng, phí và ký quỹ.';
     lastBrief = {symbol,source:source.startsWith('CSV')?'CSV do người dùng cung cấp':source,as_of:new Date(latest.time).toISOString(),method:method.value,signal,stats:state,assumptions:{...values,trailingStop:el('strategy-trailing-stop').checked},position_size:sized,stop};

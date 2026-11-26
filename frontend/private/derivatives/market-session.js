@@ -1,4 +1,8 @@
 const vn30Multiplier = 100000;
+/** HNX daily price band for VN30 index futures. */
+const vn30DailyLimit = .07;
+/** Indicative initial margin rate (VSDC minimum is 17% of notional; brokers often ask more). */
+const vn30MarginRate = .17;
 const spotClose = 1822.3;
 const contracts = [
   {alias:'F1M', code:'41I1GC000', expiry:'17/12/2026', days:27,  last:1824.6},
@@ -43,7 +47,13 @@ function replayCoverage(rows) {
     longest = Math.max(longest, run);
   }
   const offTick = rows.filter(row => Math.abs(row.close*10 - Math.round(row.close*10)) > 1e-7).length;
-  return {cadence, days:days.size, interruptions, longest, offTick};
+  // VN30F daily band: ±7% of the previous session's reference (approximated by its last close).
+  let reference = null, limitBreaks = 0;
+  for (let i = 0; i < rows.length; i++) {
+    if (i && simulationDay(rows[i-1].time) !== simulationDay(rows[i].time)) reference = rows[i-1].close;
+    if (reference && Math.abs(rows[i].close / reference - 1) > vn30DailyLimit + 1e-9) limitBreaks++;
+  }
+  return {cadence, days:days.size, interruptions, longest, offTick, limitBreaks};
 }
 
 function displayBars(rows, cadence) {

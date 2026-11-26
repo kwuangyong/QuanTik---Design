@@ -34,7 +34,7 @@ test('Final summary keeps the source decision and omits unavailable or failed ev
  report.sections.hmm.status='UNAVAILABLE';report.sections.hmm.metrics={hmm:{current:'BULL'}};
  report.sections.technical.metrics={flow:{available:false,cmf:999}};
  const before=JSON.stringify(report),summary=quantSummary(report),text=summary.map(p=>p.join(': ')).join(' ');
- assert.equal(summary.length,4);assert.match(text,/Theo dõi/);assert.match(text,/sau phí 0%/);assert.doesNotMatch(text,/999|nhận diện pha tăng/);assert.equal(JSON.stringify(report),before);
+ assert.equal(summary.length,4);assert.match(text,/Mô hình: theo dõi/);assert.match(text,/sau phí 0%/);assert.doesNotMatch(text,/999|nhận diện pha tăng/);assert.equal(JSON.stringify(report),before);
 });
 
 const {moduleAnalysis}=load('frontend/src/lib/quant-interpretation.ts');

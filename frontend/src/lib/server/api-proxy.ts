@@ -4,6 +4,9 @@ const routes: [string, RegExp][] = [
   ["GET", /^(analyses|analyses\/options|analyses\/[a-zA-Z0-9-]+|reports\/[a-zA-Z0-9-]+)$/],
   ["POST", /^analyses$/],
   ["PATCH", /^me\/profile$/],
+  // Portfolio Intelligence: quantik-server portfolio_api.py
+  ["GET", /^(market\/(latest|candles)|portfolio)$/],
+  ["PUT", /^portfolio$/],
   ["GET", /^admin\/(screening\/backfill-options|scheduled-tasks\/[a-zA-Z0-9-]+)$/],
   ["POST", /^admin\/screening\/backfills$/],
   ["GET", /^screenings\/(latest|[a-zA-Z0-9-]+\/(results|symbols\/[A-Za-z0-9]{2,16}))$/],
