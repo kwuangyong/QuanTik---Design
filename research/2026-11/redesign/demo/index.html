@@ -1,0 +1,741 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuanTik - Báo cáo Quant (bản xem thử thiết kế G2)</title>
+<meta name="description" content="Bản xem thử thiết kế báo cáo Quant ba lớp đọc. Dữ liệu mẫu từ fixture complete, không phải dữ liệu thị trường thật.">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#080d0b;--surface:#0d1913;--raised:#17271f;--border:#294337;--line:#557766;
+  --text:#edf4ef;--muted:#a6b9ad;--accent:#ff914d;--on-accent:#1a0e05;
+  --up:#67d6a5;--down:#f08088;--ref:#e3c16c;
+  --s-ok:#6cb6ff;--s-neutral:#b7c3cb;--s-caution:#f2b04a;--s-risk:#f08cd4;--s-nodata:#9fb0a6;
+  --band:#8c9bd8;--shadow:0 1px 0 rgba(255,255,255,.03),0 8px 24px rgba(0,0,0,.28);
+  --sans:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --ease:cubic-bezier(.2,.7,.2,1);
+}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){
+  color-scheme:light;
+  --bg:#f2f5f6;--surface:#ffffff;--raised:#edf4ef;--border:#d7e0e3;--line:#74897e;
+  --text:#18292f;--muted:#526b74;--accent:#b94b0a;--on-accent:#ffffff;
+  --up:#167554;--down:#ba354b;--ref:#7a5700;
+  --s-ok:#0b5cad;--s-neutral:#4a5a63;--s-caution:#8a5200;--s-risk:#a3166f;--s-nodata:#56655e;
+  --band:#4c5fb0;--shadow:0 1px 2px rgba(24,41,47,.06),0 6px 18px rgba(24,41,47,.08);
+}}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f2f5f6;--surface:#ffffff;--raised:#edf4ef;--border:#d7e0e3;--line:#74897e;
+  --text:#18292f;--muted:#526b74;--accent:#b94b0a;--on-accent:#ffffff;
+  --up:#167554;--down:#ba354b;--ref:#7a5700;
+  --s-ok:#0b5cad;--s-neutral:#4a5a63;--s-caution:#8a5200;--s-risk:#a3166f;--s-nodata:#56655e;
+  --band:#4c5fb0;--shadow:0 1px 2px rgba(24,41,47,.06),0 6px 18px rgba(24,41,47,.08);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;touch-action:manipulation}
+a{color:var(--accent)}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:4px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+:target,[id],[data-tour]{scroll-margin-top:84px}
+.skip{position:absolute;left:8px;top:-60px;background:var(--accent);color:var(--on-accent);padding:10px 14px;border-radius:6px;z-index:100;font-weight:600}
+.skip:focus{top:8px}
+.wrap{max-width:1120px;margin:0 auto;padding:0 16px}
+@media(min-width:768px){.wrap{padding:0 24px}}
+
+/* sample banner + header */
+.sample{background:var(--raised);border-bottom:1px solid var(--border);font-size:14px;line-height:1.5;color:var(--muted)}
+.sample .wrap{padding-top:8px;padding-bottom:8px}
+.sample strong{color:var(--text)}
+header.top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)}
+.top .wrap{display:flex;align-items:center;gap:12px;min-height:56px;flex-wrap:wrap;padding-top:6px;padding-bottom:6px}
+.brand{font-weight:700;letter-spacing:.01em;font-size:18px}
+.brand b{color:var(--accent)}
+.nav{display:none;gap:4px;margin-left:12px}
+.nav a{color:var(--muted);text-decoration:none;padding:8px 10px;border-radius:6px;font-size:14px;font-weight:500}
+.nav a[aria-current="page"]{color:var(--text);background:var(--raised)}
+@media(min-width:900px){.nav{display:flex}}
+.tools{margin-left:auto;display:flex;gap:8px;align-items:center}
+.btn{min-height:44px;min-width:44px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:transparent;font-size:14px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover{background:var(--raised)}
+.btn[aria-pressed="true"]{background:var(--raised);border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent);font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.btn .lbl{display:none}
+@media(min-width:640px){.btn .lbl{display:inline}}
+
+/* context */
+.ctx{padding:16px 0 8px}
+.crumb{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px;color:var(--muted)}
+.crumb a{color:var(--text)}
+h1{font-size:28px;line-height:1.2;margin:8px 0 4px;font-weight:650;letter-spacing:-.01em}
+@media(min-width:768px){h1{font-size:32px}}
+.sub{color:var(--muted);font-size:14px;margin:0}
+.headrow{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end;justify-content:space-between}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px;background:var(--surface);max-width:100%}
+.seg button{border:0;background:transparent;border-radius:7px;min-height:44px;padding:0 12px;font-size:14px;font-weight:500;color:var(--muted);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent)}
+@media(max-width:420px){.seg button{padding:0 9px}}
+
+/* cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:var(--shadow);min-width:0}
+@media(min-width:768px){.card{padding:24px}}
+.eyebrow{font-size:14px;font-weight:600;letter-spacing:.04em;color:var(--muted);margin:0 0 6px}
+h2{font-size:22px;line-height:1.3;margin:0;font-weight:650}
+h3{font-size:18px;line-height:1.35;margin:0;font-weight:650}
+.chip{--c:var(--s-neutral);font-family:var(--sans);display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:2px 10px 2px 8px;border-radius:999px;font-size:14px;font-weight:600;line-height:1.3;color:var(--c);background:color-mix(in srgb,var(--c) 11%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 55%,var(--surface));white-space:nowrap}
+.chip svg{width:14px;height:14px;flex:none}
+.chip.ok{--c:var(--s-ok)}.chip.neutral{--c:var(--s-neutral)}.chip.caution{--c:var(--s-caution)}.chip.risk{--c:var(--s-risk)}.chip.nodata{--c:var(--s-nodata)}
+.badge{display:inline-block;font-size:14px;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:1px 8px;line-height:1.4}
+
+/* layer 1 */
+.l1{display:grid;gap:16px;margin-top:16px}
+@media(min-width:900px){.l1{grid-template-columns:minmax(0,1.65fr) minmax(0,1fr)}}
+.verdict{border-left:4px solid var(--s-caution)}
+.verdict h2{font-size:28px;margin:6px 0 4px}
+.verdict .lead{font-size:17px;margin:0 0 12px;max-width:62ch}
+.risk-line{display:grid;gap:4px;margin:12px 0;padding:12px 14px;border-radius:8px;background:var(--raised);border:1px solid var(--border)}
+.risk-line b{font-weight:600}
+.kv{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:14px 0 4px}
+.kv div{min-width:0}
+.kv dt{font-size:14px;color:var(--muted);line-height:1.35}
+.kv dd{margin:2px 0 0;font-family:var(--mono);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.2}
+.kv small{display:block;font-family:var(--sans);font-size:14px;color:var(--muted);font-weight:400;margin-top:2px;line-height:1.35}
+@media(max-width:520px){.kv{grid-template-columns:1fr 1fr}.kv dd{font-size:22px}}
+.cta{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.disc{font-size:14px;color:var(--muted);margin:14px 0 0;line-height:1.5}
+.trust h3{margin-bottom:4px}
+.trust ul{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:10px}
+.trust li{display:flex;gap:10px;justify-content:space-between;align-items:center;font-size:15px;border-top:1px solid var(--border);padding-top:10px}
+.trust li:first-child{border-top:0;padding-top:0}
+.trust .v{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right}
+.groups{display:grid;gap:12px;margin-top:16px}
+@media(min-width:768px){.groups{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1100px){.groups{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.gcard{display:flex;flex-direction:column;gap:8px;text-decoration:none;color:inherit;border-top:3px solid var(--c,var(--s-neutral));padding:16px}
+.gcard.caution{--c:var(--s-caution)}.gcard.neutral{--c:var(--s-neutral)}.gcard.ok{--c:var(--s-ok)}.gcard.risk{--c:var(--s-risk)}.gcard.nodata{--c:var(--s-nodata)}
+.gcard:hover{border-color:var(--line)}
+.gcard .gh{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
+.gcard .q{font-weight:650;font-size:17px;line-height:1.3}
+.gcard p{margin:0;font-size:15px;line-height:1.5}
+.gcard .big{font-family:var(--mono);font-size:26px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.1}
+.gcard .more{margin-top:auto;font-size:14px;color:var(--muted)}
+.order{font-family:var(--mono);color:var(--muted);font-size:14px}
+
+/* layer 2/3 */
+.layer{margin-top:32px}
+.layer>header{display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline;margin-bottom:12px}
+.layer>header p{margin:0;color:var(--muted);font-size:15px}
+.grp{margin-top:20px;border:1px solid var(--border);border-radius:10px;background:color-mix(in srgb,var(--surface) 55%,var(--bg))}
+.grp>summary{list-style:none;display:flex;gap:12px;align-items:center;min-height:56px;padding:10px 16px;cursor:pointer;border-radius:10px}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary .gt{font-weight:650;font-size:20px;line-height:1.3}
+.grp>summary .gq{color:var(--muted);font-size:15px;margin-left:4px}
+.grp>summary .car{margin-left:auto;transition:transform .2s var(--ease);flex:none}
+.grp[open]>summary .car{transform:rotate(180deg)}
+.grp .grid{display:grid;align-items:start;gap:12px;padding:0 12px 12px}
+@media(min-width:768px){.grp .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:0 16px 16px}.grp>summary{padding:10px 20px}}
+.mod{display:flex;flex-direction:column;gap:10px;border-left:4px solid var(--c,var(--s-neutral));padding:16px}
+.mod.ok{--c:var(--s-ok)}.mod.neutral{--c:var(--s-neutral)}.mod.caution{--c:var(--s-caution)}.mod.risk{--c:var(--s-risk)}.mod.nodata{--c:var(--s-nodata)}
+.mod .mh{display:flex;gap:8px 10px;align-items:center;flex-wrap:wrap}
+.mod .no{margin-left:auto;font-family:var(--mono);font-size:14px;color:var(--muted)}
+.mod h3 small{display:block;font-size:14px;font-weight:400;color:var(--muted)}
+.mod .verdict-line{font-size:17px;font-weight:600;line-height:1.45;margin:0;max-width:60ch}
+.mod .why,.mod .caut{margin:0;font-size:16px;line-height:1.6;max-width:68ch}
+.mod .caut{color:var(--muted);font-size:15px;border-top:1px dashed var(--border);padding-top:8px}
+.lab{font-weight:600;color:var(--muted);font-size:14px;margin-right:6px}
+.nums{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:2px 0}
+.nums div{min-width:0;background:var(--raised);border-radius:8px;padding:10px 10px 8px}
+.nums dt{font-size:14px;color:var(--muted);line-height:1.3;min-height:2.6em}
+.nums dd{margin:2px 0 0;font-family:var(--mono);font-size:20px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.25;overflow-wrap:anywhere}
+.nums dd.long{font-size:17px}
+.nums .ref{display:block;font-family:var(--sans);font-size:14px;color:var(--muted);font-weight:400;line-height:1.3;margin-top:2px}
+@media(max-width:520px){.nums{grid-template-columns:1fr}.nums dt{min-height:0}}
+.vis{margin:2px 0}
+.vis svg{display:block;width:100%;height:auto;overflow:visible}
+.vis:not(.fan) svg{max-width:420px}
+.vis figcaption{font-size:14px;color:var(--muted);margin-top:6px;line-height:1.45}
+.modfoot{font-size:14px;color:var(--muted)}
+.modfoot a{color:var(--muted)}
+
+/* glossary term */
+.term{all:unset;cursor:help;border-bottom:1.5px dashed var(--accent);color:inherit;border-radius:2px}
+.term:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+#tip{position:fixed;z-index:60;background:var(--raised);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:14px 16px;max-width:340px;box-shadow:0 12px 36px rgba(0,0,0,.35);font-size:15px;line-height:1.5;display:none}
+#tip.open{display:block}
+#tip h4{margin:0 0 4px;font-size:16px}
+#tip p{margin:0 0 6px}
+#tip .ex{color:var(--muted);font-size:14px}
+#tip .x{position:absolute;right:6px;top:6px;border:0;background:transparent;min-width:44px;min-height:44px;font-size:20px;line-height:1;color:var(--muted)}
+#tip h4{padding-right:36px}
+#scrim{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.45);display:none}
+#scrim.open{display:block}
+@media(max-width:767px){
+  #tip{left:0!important;right:0;bottom:0;top:auto!important;max-width:none;border-radius:16px 16px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom));animation:sheet .22s var(--ease)}
+}
+@keyframes sheet{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+
+/* tour */
+.tour-target{outline:3px solid var(--accent);outline-offset:4px;border-radius:10px;position:relative;z-index:2}
+#tour{position:fixed;z-index:70;background:var(--surface);color:var(--text);border:2px solid var(--accent);border-radius:12px;padding:16px;width:min(360px,calc(100vw - 32px));box-shadow:0 16px 40px rgba(0,0,0,.4);display:none}
+#tour.open{display:block}
+#tour .st{font-size:14px;color:var(--muted);margin:0 0 4px}
+#tour h4{margin:0 0 6px;font-size:18px}
+#tour p.tx{margin:0 0 12px}
+#tour .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+#tour .row .sp{margin-left:auto}
+@media(max-width:767px){#tour{left:16px!important;right:16px;bottom:16px;top:auto!important;width:auto}}
+
+/* charts */
+.axis text,.cap{font-family:var(--sans);font-size:14px;fill:var(--muted)}
+.axis .big{font-size:14px}
+.vis:not(.fan) .axis text{font-size:15px}.vis:not(.fan) .axis text.big{font-size:16px}
+.dotgrid{display:grid;grid-template-columns:repeat(10,1fr);gap:clamp(4px,1.2vw,8px);max-width:320px}
+.dotgrid i{aspect-ratio:1;border-radius:50%;display:block;background:var(--band);opacity:1}
+.dotgrid i.b{background:var(--s-nodata);opacity:.55}
+.dotgrid i.r{background:transparent;border:2px solid var(--s-nodata);opacity:.9}
+.dotgrid i.c{background:var(--surface);border:2px solid var(--band)}
+.dotgrid.anim i{opacity:0;transform:scale(.6)}
+.dotgrid.anim.in i{animation:pop .24s var(--ease) forwards;animation-delay:calc(var(--row)*55ms)}
+@keyframes pop{to{opacity:1;transform:none}}
+.dotgrid.anim.in i.b{--o:.55}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0 0;padding:0;list-style:none;font-size:14px;color:var(--text)}
+.legend li{display:flex;align-items:center;gap:8px}
+.legend i{width:14px;height:14px;border-radius:50%;display:inline-block;flex:none}
+.legend i.a{background:var(--band)}.legend i.b{background:var(--s-nodata);opacity:.55}.legend i.r{border:2px solid var(--s-nodata)}.legend i.c{border:2px solid var(--band)}
+.reveal-rect{transform-box:fill-box;transform-origin:left center}
+.fan.anim .reveal-rect{transform:scaleX(0)}
+.fan.anim.in .reveal-rect{animation:wipe .65s var(--ease) forwards}
+@keyframes wipe{to{transform:scaleX(1)}}
+.barfill{transition:transform .25s var(--ease)}
+.slide.anim .barfill{transform:scaleX(0);transform-box:fill-box;transform-origin:left center}
+.slide.anim.in .barfill{transform:none}
+.mc-layout{display:grid;gap:20px}
+@media(min-width:900px){.mc-layout{grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);align-items:start}}
+.readout{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:var(--raised);font-size:15px;min-height:2.9em}
+.readout b{font-family:var(--mono);font-weight:500}
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl caption{text-align:left;color:var(--muted);font-size:14px;padding:0 0 6px}
+.tbl th,.tbl td{padding:8px 10px;border-top:1px solid var(--border);text-align:right}
+.tbl th:first-child,.tbl td:first-child{text-align:left}
+.tbl td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl th{font-weight:600;color:var(--muted);font-size:14px}
+.scroll-x{overflow-x:auto}
+details.alt{margin-top:12px}
+details.alt summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-size:15px;color:var(--muted)}
+.deep-grid{display:grid;gap:16px;margin-top:12px}
+.note{border:1px dashed var(--line);border-radius:8px;padding:12px 14px;color:var(--muted);font-size:15px;margin-top:16px}
+footer{margin:40px 0 64px;color:var(--muted);font-size:14px}
+footer p{max-width:70ch}
+
+/* level visibility */
+[data-lv="2"],[data-lv="3"]{display:none}
+body[data-level="2"] [data-lv="2"],body[data-level="3"] [data-lv="2"],body[data-level="3"] [data-lv="3"]{display:block}
+body[data-level="1"] .more-cta{display:block}
+body[data-level="2"] .more-cta,body[data-level="3"] .more-cta{display:none}
+.more-cta{margin-top:20px;text-align:center}
+.lvfade{animation:fadein .22s var(--ease)}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* reduced motion: OS setting or in-app toggle */
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none!important;transition:none!important}
+  .dotgrid.anim i{opacity:1!important;transform:none!important}
+  .fan.anim .reveal-rect{transform:none!important}
+  .slide.anim .barfill{transform:none!important}
+}
+html.calm{scroll-behavior:auto}
+html.calm *,html.calm *::before,html.calm *::after{animation:none!important;transition:none!important}
+html.calm .dotgrid.anim i{opacity:1!important;transform:none!important}
+html.calm .fan.anim .reveal-rect{transform:none!important}
+html.calm .slide.anim .barfill{transform:none!important}
+@media print{header.top,.sample .btn,#tip,#tour,.cta{display:none}}
+</style>
+</head>
+<body data-level="1">
+<a class="skip" href="#main">Bỏ qua tới nội dung báo cáo</a>
+<div class="sample" role="note"><div class="wrap"><strong>Bản xem thử thiết kế (dữ liệu mẫu).</strong> Số liệu lấy từ fixture <code>complete</code> của dự án, không phải dữ liệu thị trường thật. Không phải lời khuyên đầu tư. Nội dung pháp lý để placeholder <span class="badge">[chờ Haiku xác minh]</span> và miễn trừ <span class="badge">[chờ rà soát pháp lý VN]</span>.</div></div>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Quan<b>Tik</b></div>
+    <nav class="nav" aria-label="Chính"><a href="#" onclick="return false">Dashboard</a><a href="#" onclick="return false">Quét toàn sàn</a><a href="#" aria-current="page" onclick="return false">Phân tích Quant</a></nav>
+    <div class="tools">
+      <button class="btn" id="calm" type="button" aria-pressed="false" title="Giảm hiệu ứng chuyển động"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 2a7 7 0 0 0 0 14z" fill="currentColor"/></svg><span class="lbl">Giảm hiệu ứng</span><span class="sr"> (bật/tắt)</span></button>
+      <button class="btn" id="howto" type="button" data-tour-start aria-label="Cách đọc báo cáo"><span aria-hidden="true">?</span><span class="lbl">Cách đọc</span></button>
+      <button class="btn" id="theme" type="button" aria-label="Đổi chủ đề sáng tối"><span aria-hidden="true" id="themeIcon" style="display:inline-flex"></span><span class="lbl" id="themeLbl">Tối</span></button>
+    </div>
+  </div>
+</header>
+
+<main id="main" class="wrap" tabindex="-1">
+  <section class="ctx" aria-label="Ngữ cảnh báo cáo">
+    <div class="crumb"><span>Từ <a href="#" onclick="return false">Quét toàn sàn</a> · phiên 2026-10-16</span><a href="#" onclick="return false">‹ Quay lại bảng quét</a></div>
+    <div class="headrow">
+      <div><h1>FPT · Báo cáo Quant</h1><p class="sub">Dữ liệu đến 2026-10-16 · đánh giá lúc 2026-10-17 08:00 (UTC)</p></div>
+      <div class="seg" role="group" aria-label="Mức đọc" data-tour="level">
+        <button type="button" data-level="1" aria-pressed="true">Tóm tắt</button>
+        <button type="button" data-level="2" aria-pressed="false">Hiểu vì sao</button>
+        <button type="button" data-level="3" aria-pressed="false">Chuyên sâu</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- LỚP 1: 30 giây -->
+  <section aria-label="Tóm tắt 30 giây" id="l1">
+    <div class="l1">
+      <article class="card verdict" data-tour="verdict" aria-labelledby="vh">
+        <p class="eyebrow">KẾT LUẬN HÔM NAY · FPT</p>
+        <span class="chip caution" id="vchip"></span>
+        <h2 id="vh">Mô hình: theo dõi</h2>
+        <p class="lead">Chờ hoàn tất điều kiện. Lý do của mô hình: chưa đủ điều kiện thời điểm vào lệnh. Đây là nhãn của mô hình, không phải lệnh mua hay bán.</p>
+        <div class="risk-line" data-tour-risk><span><span class="lab">Rủi ro lớn nhất</span> Trong 100 lần mô phỏng, có <b>8</b> lần lỗ hơn 3% khi chờ cổ phiếu về <span class="badge">[chờ Haiku xác minh: T+]</span>. Lịch sử từng giảm tới 12% từ đỉnh.</span></div>
+        <dl class="kv">
+          <div><dt>Điểm Quant</dt><dd>72/100<small>Điểm xếp hạng, không phải xác suất lãi</small></dd></div>
+          <div><dt>Lỗ ước tính nếu kế hoạch sai</dt><dd>3 triệu<small>trên vốn mẫu 100 triệu đồng</small></dd></div>
+          <div><dt>Giá đóng cửa gần nhất</dt><dd>102.000<small>VND, phiên 2026-10-16</small></dd></div>
+        </dl>
+        <div class="cta">
+          <button class="btn primary" type="button" id="toPlan">Xem kế hoạch có điều kiện</button>
+          <button class="btn" type="button" id="toWhy">Vì sao có kết luận này</button>
+        </div>
+        <p class="disc">Thông tin phân tích tham khảo từ mô hình, không phải lời khuyên đầu tư. Quyết định và rủi ro thuộc về bạn. <span class="badge">[chờ rà soát pháp lý VN]</span></p>
+      </article>
+
+      <aside class="card trust" data-tour="trust" aria-labelledby="th">
+        <p class="eyebrow">DẢI TIN CẬY</p>
+        <h3 id="th">Có tin được báo cáo không?</h3>
+        <ul>
+          <li><span>Chất lượng dữ liệu</span><span class="v"><span class="chip ok" data-chip="ok">Đạt</span> 95/100</span></li>
+          <li><span>Mô hình tham gia dự báo</span><span class="v"><span class="chip caution" data-chip="caution">Thận trọng</span> 80%</span></li>
+          <li><span>Cảnh báo của báo cáo</span><span class="v">0</span></li>
+          <li><span>Dữ liệu đến</span><span class="v">2026-10-16</span></li>
+        </ul>
+        <p class="disc">Độ phủ 80% nghĩa là còn mô hình chưa tham gia, nên kết luận kém chắc hơn. Chi tiết ở nhóm Mua bán và mục Dữ liệu.</p>
+      </aside>
+    </div>
+
+    <h2 class="sr">Bốn nhóm câu hỏi, thứ tự đọc: Rủi ro, Hiện trạng, Triển vọng, Mua bán</h2>
+    <div class="groups" id="groups"></div>
+    <p class="more-cta"><button class="btn" type="button" id="more">Đọc tiếp: Hiểu vì sao (3 phút)</button></p>
+  </section>
+
+  <!-- LỚP 2: 3 phút -->
+  <section class="layer" data-lv="2" id="l2" aria-label="Hiểu vì sao, 3 phút">
+    <header><h2>Hiểu vì sao</h2><p>Đọc theo thứ tự C, A, B, D: rủi ro trước, hành động sau.</p></header>
+    <div id="l2groups"></div>
+  </section>
+
+  <!-- LỚP 3: chuyên sâu -->
+  <section class="layer" data-lv="3" id="l3" aria-label="Phân tích chuyên sâu">
+    <header><h2>Chuyên sâu</h2><p>Hai module mẫu. Trong sản phẩm, lớp này giữ nguyên 16 module hiện có.</p></header>
+
+    <article class="card" aria-labelledby="mch">
+      <p class="eyebrow">10 · MONTE CARLO</p>
+      <h3 id="mch">Giá sau 3 phiên có thể nằm đâu?</h3>
+      <p style="margin:6px 0 14px;max-width:68ch">Trong 100 lần mô phỏng, 62 lần giá cao hơn hôm nay và 38 lần thấp hơn hoặc bằng. <span id="p9">Chín trong mười lần, giá nằm trong dải P05 đến P95.</span> Đây là kịch bản mô phỏng, không phải lời hứa.</p>
+      <div class="mc-layout">
+        <figure class="vis fan anim" id="fan" style="margin:0">
+          <div id="fanbox"></div>
+          <div class="readout" id="readout" aria-live="polite">Rê chuột hoặc chọn một cột phiên để xem số của từng phân vị.</div>
+          <figcaption>Dải ngoài là P05 đến P95 (9 trong 10 lần). Dải trong là P25 đến P75 (1 nửa số lần). Đường liền là P50. Điểm gốc là giá đóng cửa gần nhất. Trục ngang là số phiên sau hôm nay.</figcaption>
+        </figure>
+        <div>
+          <p class="lab" style="margin:0 0 8px">62 trong 100 lần mô phỏng</p>
+          <div class="dotgrid anim" id="dots100" role="img" aria-label="Lưới 100 chấm: 62 chấm đặc là giá cao hơn hôm nay, 38 chấm rỗng là giá thấp hơn hoặc bằng"></div>
+          <ul class="legend"><li><i class="a"></i>62: giá cao hơn hôm nay</li><li><i class="c"></i>38: thấp hơn hoặc bằng</li></ul>
+          <dl class="nums" style="grid-template-columns:1fr 1fr;margin-top:14px">
+            <div><dt>Lỗ tối đa khi chờ cổ phiếu về</dt><dd>-4%</dd></div>
+            <div><dt>Lỗ trên 3% khi chờ</dt><dd>8/100</dd></div>
+          </dl>
+        </div>
+      </div>
+      <details class="alt"><summary>Bảng số thay thế cho biểu đồ</summary>
+        <div class="scroll-x"><table class="tbl"><caption>Phân vị giá mô phỏng (VND). Phiên 0 là giá đóng cửa gần nhất.</caption>
+        <thead><tr><th scope="col">Phiên</th><th scope="col">P05</th><th scope="col">P25</th><th scope="col">P50</th><th scope="col">P75</th><th scope="col">P95</th></tr></thead><tbody id="tbody"></tbody></table></div>
+      </details>
+      <p class="caut" style="margin:12px 0 0;color:var(--muted);font-size:15px"><span class="lab">Lưu ý</span> Mô phỏng dùng biến động GARCH-t và giả định từ quá khứ. Giá thật có thể ra ngoài dải. Xác suất cuối kỳ không trả lời câu hỏi chạm mục tiêu hay cắt lỗ trước.</p>
+    </article>
+
+    <article class="card" style="margin-top:16px" aria-labelledby="gh2">
+      <p class="eyebrow">04 · GARCH</p>
+      <h3 id="gh2">Độ rung lắc của giá và cú sốc kéo dài bao lâu</h3>
+      <p style="margin:6px 0 14px;max-width:68ch">Giá đang dao động khoảng 2% mỗi phiên. Chỉ số dai dẳng 0,96 nằm trên mốc tham khảo 0,9, nên cú sốc có thể kéo dài. Đây là độ lớn dao động, không cho biết giá lên hay xuống.</p>
+      <div class="deep-grid" style="grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))">
+        <figure class="vis slide anim" id="volbars" style="margin:0"><div id="volbox"></div><figcaption>Biến động dự báo mỗi phiên (%) so với hiện tại. Trục bắt đầu từ 0.</figcaption></figure>
+        <figure class="vis slide anim" id="persist" style="margin:0"><div id="pbox"></div><figcaption>Thang dai dẳng α+β từ 0 đến 1,2. Vạch 0,9 và 1 là mốc tham khảo đọc, không phải cổng hành động.</figcaption></figure>
+      </div>
+      <dl class="nums" style="margin-top:14px">
+        <div><dt>Biến động hiện tại</dt><dd>2 %/phiên</dd></div>
+        <div><dt>α (cú sốc mới) và β (phương sai trước)</dt><dd>0,09 và 0,87</dd></div>
+        <div><dt>Chu kỳ bán rã</dt><dd>17 phiên<span class="ref">của biến động, không phải của giá</span></dd></div>
+      </dl>
+      <p class="note" style="margin-top:14px">Phần "volatility cone" (phân vị lịch sử theo horizon) chưa có trong API nên không được vẽ ở đây. Xem G2-ux-spec mục 11.</p>
+    </article>
+  </section>
+
+  <footer>
+    <p>Trang này là bản dựng thiết kế cho Gate 2. Toàn bộ số liệu là dữ liệu mẫu từ fixture <code>complete</code>. Không có kết nối API. Các câu chữ sinh theo ngưỡng trong <code>quant-interpretation-thresholds.ts</code>; quy tắc và khung đầy đủ nằm trong G2-ux-spec.md.</p>
+  </footer>
+</main>
+
+<div id="scrim"></div>
+<div id="tip" role="dialog" aria-labelledby="tipT" aria-modal="false"><button class="x" type="button" aria-label="Đóng giải thích">×</button><h4 id="tipT"></h4><p id="tipB"></p><p class="ex" id="tipE"></p></div>
+<div id="tour" role="dialog" aria-modal="false" aria-labelledby="tourT"><p class="st" id="tourS"></p><h4 id="tourT"></h4><p class="tx" id="tourX"></p><div class="row"><button class="btn ghost" type="button" id="tSkip">Bỏ qua</button><span class="sp"></span><button class="btn" type="button" id="tBack">Quay lại</button><button class="btn primary" type="button" id="tNext">Tiếp</button></div></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- dữ liệu mẫu: fixture complete ---------- */
+var D={
+  close:[100000,101000,99500,102000,100500,103000,102000], today:102000,
+  cone:[{s:1,p05:99000,p25:100500,p50:103000,p75:104500,p95:106000},{s:2,p05:98000,p25:100000,p50:104000,p75:106000,p95:108000},{s:3,p05:97000,p25:99500,p50:105000,p75:107500,p95:110000}],
+  probUp:62, hmm:{BULL:67,SIDEWAY:24,BEAR:9},
+  garch:{vol:2,alpha:.09,beta:.87,pers:.96,half:17,fv:[2,2.05,2.1]},
+  plan:{sl:97000,entry:100000,tp1:105000,tp2:110000},
+  costs:{gross:4.1,rt:.6,net:3.5}
+};
+var $=function(s,r){return (r||document).querySelector(s)},$$=function(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s))};
+function safe(f){try{return f()}catch(e){return null}}
+function fmt(n,d){d=d==null?0:d;var s=Math.abs(n).toFixed(d),p=s.split('.');p[0]=p[0].replace(/\B(?=(\d{3})+(?!\d))/g,'.');return (n<0?'-':'')+p.join(',')}
+var reduce=function(){return document.documentElement.classList.contains('calm')||matchMedia('(prefers-reduced-motion: reduce)').matches};
+
+/* ---------- từ điển (rút gọn từ G2 mục 7.1) ---------- */
+var G={
+ sharpe:['Sharpe: lợi nhuận trên mỗi đơn vị rủi ro','Lợi suất vượt mức tham chiếu chia cho độ dao động. Mốc đọc: 1 là khá, 2 là rất tốt.','Trong báo cáo này: 1,2.'],
+ dd:['Sụt giảm tối đa: mức giảm sâu nhất từ đỉnh','Từ đỉnh cao nhất đến đáy sau đó trong cửa sổ quan sát. Đã xảy ra, không phải mức lỗ được giới hạn cho tương lai.','Trong báo cáo này: -12%.'],
+ kurt:['Độ nhọn dư: độ dày của đuôi','Trên 0 nghĩa là các cú tăng giảm lớn xảy ra nhiều hơn phân phối chuẩn.','Trong báo cáo này: 2,44.'],
+ skew:['Độ lệch: đuôi nào dài hơn','Âm: phía giảm có đuôi dài hơn. Dương: phía tăng dài hơn.','Trong báo cáo này: -0,49.'],
+ adf:['ADF p-value: kiểm tra chuỗi có ổn định không','Dưới 0,05 thì ủng hộ chuỗi ổn định. Không phải xác suất mô hình đúng.','Trong báo cáo này: 0,012.'],
+ garch:['GARCH: dự báo độ rung lắc giá','Độ dao động hôm nay phụ thuộc vào cú sốc mới và độ dao động hôm qua.',''],
+ pers:['Độ dai dẳng α+β: cú sốc kéo dài bao lâu','Từ 0,9 là kéo dài; từ 1 là không có mức dài hạn ổn định.','Trong báo cáo này: 0,96.'],
+ half:['Chu kỳ bán rã: số phiên để cú sốc giảm một nửa','Của độ dao động, không phải của giá.','Trong báo cáo này: 17 phiên.'],
+ hmm:['HMM: trạng thái thị trường ẩn','Mô hình đoán thị trường đang ở pha tăng, đi ngang hay giảm.',''],
+ filt:['Xác suất lọc: độ chắc của nhãn trạng thái','Chỉ dùng dữ liệu đến phiên cuối. Không phải xác suất lãi và không dùng để ra lệnh.','Trong báo cáo này: pha tăng 67%.'],
+ cmf:['CMF: dòng tiền ước lượng','Tính từ vị trí đóng cửa và khối lượng. Trên 0 là nghiêng về bên mua. Không phải tiền nạp rút thật.','Trong báo cáo này: 0,21.'],
+ er:['ER: hiệu quả xu hướng','Từ 0,3 trở xuống là đường giá nhiều nhiễu.','Trong báo cáo này: 0,58.'],
+ rs20:['RS20: sức mạnh 20 phiên so với VN-Index','Dương nghĩa là lợi suất 20 phiên vượt VN-Index.','Trong báo cáo này: +4,2%.'],
+ corr:['Tương quan: hai mã có cùng chiều không','Từ -1 đến +1. Gần 0 không chứng minh độc lập.','Trong báo cáo này: 0,64.'],
+ mom:['Momentum: đà giá gần đây','Điểm có dấu để mô tả. Không phải tín hiệu mua bán.','Trong báo cáo này: 0,4.'],
+ hurst:['Hurst: xu hướng duy trì hay đảo chiều','Trên 0,5 gợi ý duy trì, dưới 0,5 gợi ý đảo chiều. Ước lượng có sai số khi mẫu ngắn.','Trong báo cáo này: 0,61.'],
+ cover:['Độ phủ: bao nhiêu mô hình tham gia','100% là đầy đủ theo cách tính của báo cáo.','Trong báo cáo này: 80%.'],
+ agree:['Đồng thuận: mức nhất trí giữa các mô hình','Không phải xác suất lãi. Các mô hình dùng chung dữ liệu nên chưa phải bằng chứng độc lập.','Trong báo cáo này: 75%.'],
+ mc:['Monte Carlo: mô phỏng nhiều kịch bản giá','Chạy nhiều đường giá ngẫu nhiên theo giả định về dao động quá khứ.',''],
+ pct:['P05 / P50 / P95: 5, 50, 95 trong 100','P05: 5 trong 100 kịch bản thấp hơn mức này. P95 thì ngược lại. P50 là mức giữa.',''],
+ tplus:['T+ (thời gian chờ cổ phiếu về)','[chờ Haiku xác minh]',''],
+ rt:['Chi phí hai chiều: phí mua cộng phí bán','Giả định của báo cáo. Mức phí và thuế thực tế theo công ty chứng khoán [chờ Haiku xác minh].','Trong báo cáo này: 0,6%.'],
+ sl:['Cắt lỗ và mục tiêu: các mức giá của kế hoạch','Điều kiện của kế hoạch, không phải dự báo giá sẽ chạm. Biên độ giá [chờ Haiku xác minh].',''],
+ rr:['Tỷ lệ lãi/lỗ (R:R)','So lãi tới mục tiêu với lỗ nếu sai. Không nói xác suất chạm mức nào.','Trong báo cáo này: 3,33, còn 1,92 sau chi phí.'],
+ adv:['Giá trị giao dịch TB 20 phiên','Thước đo độ dễ vào ra. Giao dịch nhiều không có nghĩa là tiền đang vào ròng.','Trong báo cáo này: 120 tỷ VND.'],
+ gate:['Cổng điều kiện','Các điều kiện phải đạt trước khi hành động. Điểm cao vẫn có thể bị chặn.',''],
+ score:['Điểm Quant: điểm xếp hạng','Xếp hạng chất lượng theo hệ thống, không phải xác suất lãi.','Trong báo cáo này: 72/100.']
+};
+function T(id,txt){return '<button type="button" class="term" data-term="'+id+'" aria-haspopup="dialog">'+txt+'</button>'}
+function tm(s){return s.replace(/\{\{(\w+)\|([^}]+)\}\}/g,function(_,i,t){return T(i,t)})}
+
+/* ---------- chip ---------- */
+var ICON={
+ ok:'<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 7.5l3 3 6-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+ neutral:'<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+ caution:'<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1.8L13 12H1z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 5.6v3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+ risk:'<svg viewBox="0 0 14 14" aria-hidden="true"><path d="M7 1l6 6-6 6-6-6z" fill="currentColor"/></svg>',
+ nodata:'<svg viewBox="0 0 14 14" aria-hidden="true"><circle cx="7" cy="7" r="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.4 5.6c.2-1 1-1.5 1.8-1.4.9.1 1.4.8 1.2 1.5-.2.8-1.3.9-1.3 1.9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="7.1" cy="10.3" r=".9" fill="currentColor"/></svg>'
+};
+var TONEWORD={ok:'Ổn theo mốc',neutral:'Mô tả',caution:'Thận trọng',risk:'Rủi ro cao',nodata:'Chưa đủ dữ liệu'};
+function chip(tone,text){return '<span class="chip '+tone+'">'+ICON[tone]+'<span><span class="sr">Trạng thái: </span>'+(text||TONEWORD[tone])+'</span></span>'}
+$$('[data-chip]').forEach(function(e){var t=e.getAttribute('data-chip');e.innerHTML=ICON[t]+'<span><span class="sr">Trạng thái: </span>'+e.textContent+'</span>'});
+$('#vchip').innerHTML=ICON.caution+'<span><span class="sr">Trạng thái: </span>Chờ hoàn tất điều kiện</span>';
+
+/* ---------- hình nhỏ ---------- */
+function dots(cats,anim){ // cats: [{n,cls}] gom nhóm theo hàng, không rải ngẫu nhiên
+  var html='',i=0;cats.forEach(function(c){for(var k=0;k<c.n;k++){html+='<i class="'+c.cls+'" style="--row:'+Math.floor(i/10)+'"></i>';i++}});
+  return '<div class="dotgrid'+(anim?' anim':'')+'">'+html+'</div>';
+}
+function legend(items){return '<ul class="legend">'+items.map(function(x){return '<li><i class="'+x[0]+'"></i>'+x[1]+'</li>'}).join('')+'</ul>'}
+function scaleBar(min,max,val,marks,opts){
+  opts=opts||{};var W=320,H=opts.h||64,pl=8,pr=8,x=function(v){return pl+(v-min)/(max-min)*(W-pl-pr)};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+opts.label+'"><g class="axis">';
+  s+='<line x1="'+x(min)+'" x2="'+x(max)+'" y1="30" y2="30" stroke="var(--line)" stroke-width="2"/>';
+  (opts.zones||[]).forEach(function(z){s+='<rect x="'+x(z[0])+'" y="24" width="'+(x(z[1])-x(z[0]))+'" height="12" fill="'+z[2]+'" opacity="'+(z[3]||.28)+'"/>'});
+  marks.forEach(function(m){s+='<line x1="'+x(m[0])+'" x2="'+x(m[0])+'" y1="20" y2="40" stroke="var(--muted)" stroke-width="1.5"/><text x="'+x(m[0])+'" y="56" text-anchor="'+(m[2]||'middle')+'">'+m[1]+'</text>'});
+  s+='</g><g class="barfill"><path d="M'+x(val)+' 12 l-8 -9 h16z" fill="var(--text)"/><line x1="'+x(val)+'" x2="'+x(val)+'" y1="12" y2="40" stroke="var(--text)" stroke-width="2.5"/></g>';
+  return s+'</svg>';
+}
+function ladder(){
+  var p=D.plan,min=95000,max=112000,W=320,H=104,pl=10,pr=10,x=function(v){return pl+(v-min)/(max-min)*(W-pl-pr)};
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Thang giá của kế hoạch: cắt lỗ 97.000, giá vào 100.000, mục tiêu 1 105.000, mục tiêu 2 110.000"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="none"/><line x1="0" y1="0" x2="0" y2="6" stroke="var(--s-risk)" stroke-width="2.5"/></pattern></defs><g class="axis">';
+  s+='<rect x="'+x(p.sl)+'" y="34" width="'+(x(p.entry)-x(p.sl))+'" height="18" fill="url(#hatch)" opacity=".9"/><rect x="'+x(p.entry)+'" y="34" width="'+(x(p.tp2)-x(p.entry))+'" height="18" fill="var(--band)" opacity=".35"/>';
+  s+='<line x1="'+x(min)+'" x2="'+x(max)+'" y1="43" y2="43" stroke="var(--line)"/>';
+  [['Cắt lỗ',p.sl,'end'],['Vào',p.entry,'middle'],['MT1',p.tp1,'middle'],['MT2',p.tp2,'middle']].forEach(function(m,i){
+    var up=i%2===0;s+='<line x1="'+x(m[1])+'" x2="'+x(m[1])+'" y1="30" y2="56" stroke="var(--text)" stroke-width="2"/>';
+    s+='<text x="'+x(m[1])+'" y="'+(up?24:76)+'" text-anchor="'+(i===0?'middle':'middle')+'" class="big" style="fill:var(--text);font-weight:600">'+m[0]+'</text><text x="'+x(m[1])+'" y="'+(up?12:92)+'" text-anchor="middle" style="font-family:var(--mono)">'+fmt(m[1])+'</text>';
+  });
+  return s+'</g></svg>';
+}
+function bars(rows,max,unit){
+  var W=320,rh=34,H=rows.length*rh+8,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+rows.map(function(r){return r[0]+' '+fmt(r[1],1)+unit}).join(', ')+'"><g class="axis">';
+  rows.forEach(function(r,i){var y=i*rh+4,w=Math.abs(r[1])/max*(W-150);s+='<text x="0" y="'+(y+20)+'" class="big" style="fill:var(--text)">'+r[0]+'</text><rect x="120" y="'+(y+4)+'" width="'+w+'" height="20" rx="3" fill="'+r[2]+'" opacity="'+(r[3]||.9)+'" class="barfill"/><text x="'+(124+w)+'" y="'+(y+20)+'" style="font-family:var(--mono);fill:var(--text)" class="big">'+(r[1]>0&&r[4]?'+':'')+fmt(r[1],1)+unit+'</text>'});
+  return s+'</g></svg>';
+}
+
+/* ---------- thẻ module ---------- */
+var M=[
+ {g:'C',no:'04',id:'garch',tone:'caution',name:'Dự báo độ rung lắc giá',tech:'GARCH',
+  v:'Giá đang dao động khoảng 2% mỗi phiên và cú sốc có thể kéo dài.',
+  why:'Chỉ số {{pers|dai dẳng α+β}} là 0,96, trên mốc tham khảo 0,9. Nghĩa là dao động cao hôm nay còn ảnh hưởng nhiều phiên sau.',
+  nums:[['Biến động hiện tại','2 %/phiên',''],['Dai dẳng α+β','0,96','mốc 0,9 và 1'],['{{half|Chu kỳ bán rã}}','17 phiên','của dao động']],
+  caut:'Đây là độ lớn dao động, không cho biết giá lên hay xuống.',
+  vis:function(){return scaleBar(0,1.2,.96,[[0,'0','start'],[.9,'0,9'],[1,'1'],[1.2,'1,2','end']],{label:'Dai dẳng 0,96 trên thang 0 đến 1,2, mốc 0,9 và 1',zones:[[.9,1,'var(--s-caution)',.35],[1,1.2,'var(--s-risk)',.35]]})},
+  cap:'Vùng vàng 0,9 đến 1: cú sốc kéo dài. Vùng sau 1: không có mức dài hạn ổn định.',slide:true},
+ {g:'C',no:'10',id:'mc',tone:'caution',name:'Mô phỏng nhiều kịch bản giá',tech:'Monte Carlo',
+  v:'Trong 100 lần mô phỏng, 62 lần giá sau 3 phiên cao hơn hôm nay, 38 lần thấp hơn hoặc bằng.',
+  why:'Mô phỏng dùng biến động GARCH-t. Có 8 trong 100 lần lỗ hơn 3% khi chờ cổ phiếu về {{tplus|[chờ Haiku xác minh]}}.',
+  nums:[['Giá cuối kỳ cao hơn','62/100','mốc 50'],['Lỗ tối đa khi chờ','-4%',''],['Lỗ trên 3% khi chờ','8/100','']],
+  caut:'{{mc|Mô phỏng}} dựa trên giả định từ quá khứ, không phải lời hứa. Giá thật có thể ra ngoài dải.',
+  vis:function(){return dots([{n:62,cls:'a'},{n:38,cls:'c'}],true)+legend([['a','62 cao hơn hôm nay'],['c','38 thấp hơn hoặc bằng']])},
+  cap:'Mỗi chấm là một lần mô phỏng, gom nhóm theo hàng. Biểu đồ dải giá ở lớp Chuyên sâu.',deep:true},
+ {g:'C',no:'02',id:'distribution',tone:'caution',name:'Hình dạng lợi suất lịch sử',tech:'Phân phối',
+  v:'Lợi suất quá khứ có đuôi dày: cú tăng giảm lớn xảy ra nhiều hơn mức bình thường.',
+  why:'{{kurt|Độ nhọn dư}} 2,44, trên mốc 0 của phân phối chuẩn. {{skew|Độ lệch}} -0,49 nghĩa là phía giảm có đuôi dài hơn.',
+  nums:[['Độ nhọn dư','2,44','mốc 0'],['Độ lệch','-0,49','mốc 0'],['Giống phân phối chuẩn?','Không','']],
+  caut:'Báo cáo chưa có VaR/CVaR lịch sử nên chưa đo được mức lỗ ở đuôi.',
+  vis:function(){return histo()},cap:'Phân bố lợi suất trong mẫu: 3 nhóm (20%, 50%, 30%). Không tô theo dấu.'},
+ {g:'C',no:'13',id:'liquidity',tone:'ok',name:'Dễ mua bán nhanh',tech:'Thanh khoản',
+  v:'Cổ phiếu đạt điều kiện thanh khoản của báo cáo.',
+  why:'{{adv|Giá trị giao dịch}} trung bình 20 phiên khoảng 120 tỷ đồng. Nhịp gần đây cao hơn nền 1,2 lần (mốc 1).',
+  nums:[['Giao dịch TB 20 phiên','120 tỷ','VND'],['Tỷ lệ 5/20 phiên','1,2x','mốc 1'],['Sức chứa tham chiếu','20.000','cổ phiếu']],
+  caut:'Giao dịch nhiều không có nghĩa tiền đang vào ròng. Lệnh lớn vẫn có thể trượt giá.'},
+ {g:'A',no:'01',id:'statistics',tone:'neutral',name:'Lợi nhuận trên mỗi đơn vị rủi ro',tech:'Hiệu suất',
+  v:'Năm qua cổ phiếu sinh lời khá so với mức dao động đã chịu.',
+  why:'{{sharpe|Sharpe}} 1,2, giữa mốc khá (1) và rất tốt (2). {{dd|Sụt giảm sâu nhất}} là -12%: 100 triệu đồng từng còn khoảng 88 triệu ở đáy.',
+  nums:[['Lợi suất quy đổi năm','24,5%',''],['Sụt giảm tối đa','-12%',''],['Sharpe','1,2','mốc 1 và 2']],
+  caut:'Đây là quá khứ, không đảm bảo năm tới.',
+  vis:function(){return scaleBar(0,3,1.2,[[0,'0','start'],[1,'1'],[2,'2'],[3,'3','end']],{label:'Sharpe 1,2 trên thang 0 đến 3, mốc 1 và 2'})},cap:'Mốc 1 và 2 chỉ để đọc, không phải ngưỡng mua bán.',slide:true},
+ {g:'A',no:'06',id:'technical',tone:'neutral',badge:'Chưa kiểm chứng ngoài mẫu',name:'Dòng tiền và chất lượng xu hướng',tech:'Kỹ thuật',
+  v:'Dòng tiền gần đây nghiêng về bên mua và đường giá khá rõ hướng.',
+  why:'{{cmf|CMF}} 0,21, trên 0. {{er|ER}} 0,58, trên mốc nhiễu 0,3. Đây là mô tả, không phải tín hiệu.',
+  nums:[['Dòng tiền CMF','0,21','mốc 0'],['Hiệu quả xu hướng ER','0,58','mốc 0,3'],['{{rs20|Sức mạnh 20 phiên}} so VN-Index','+4,2%','']],
+  caut:'CMF ước lượng từ giá và khối lượng, không phải tiền thật. Không dùng riêng làm tín hiệu.'},
+ {g:'A',no:'05',id:'hmm',tone:'neutral',name:'Trạng thái thị trường đang là gì',tech:'HMM',
+  v:'Mô hình nhận ra pha tăng ở phiên cuối, với xác suất lọc 67%.',
+  why:'{{filt|Xác suất lọc}} chỉ dùng dữ liệu đến phiên cuối. 67% vượt một nửa (mốc 50%); đi ngang 24%, giảm 9%.',
+  nums:[['Pha tăng','67%',''],['Đi ngang','24%',''],['Pha giảm','9%','']],
+  caut:'Đây là độ chắc của việc gọi tên trạng thái, không phải xác suất lãi và không dùng để ra lệnh.',
+  vis:function(){return dots([{n:67,cls:'a'},{n:24,cls:'b'},{n:9,cls:'r'}],true)+legend([['a','67 pha tăng'],['b','24 đi ngang'],['r','9 pha giảm']])},cap:'100 chấm theo tỷ lệ xác suất lọc, thứ tự cố định.'},
+ {g:'A',no:'08',id:'context',tone:'neutral',name:'So với ngành và thị trường',tech:'Thị trường & ngành',
+  v:'Ngành Công nghệ đang ở xu hướng tăng, và các mã trong ngành khá cùng chiều.',
+  why:'{{corr|Tương quan}} trung bình giữa các mã là 0,64, trên mốc 0. Ngành tăng 3,1% trong 20 phiên.',
+  nums:[['Ngành','Công nghệ',''],['Xu hướng ngành','Tăng',''],['Tương quan TB','0,64','mốc 0']],
+  caut:'Tương quan cao nghĩa là ngành lên xuống cùng nhau, nên đa dạng hóa trong ngành giúp ít.',
+  vis:function(){return scaleBar(-1,1,.64,[[-1,'-1','start'],[0,'0'],[1,'+1','end']],{label:'Tương quan 0,64 trên thang -1 đến +1'})},cap:'Thang -1 (ngược chiều) đến +1 (cùng chiều).',slide:true},
+ {g:'B',no:'03',id:'arima',tone:'ok',name:'Kiểm tra giá có ổn định hay không',tech:'ARIMA',
+  v:'Chuỗi lợi suất đủ ổn định để mô hình ARIMA đọc được.',
+  why:'{{adf|ADF p-value}} 0,012, dưới mốc 0,05. Mô hình chọn cấu hình (1, 0, 1).',
+  nums:[['ADF p-value','0,012','mốc 0,05'],['Cấu hình','(1, 0, 1)',''],['Dự báo 3 phiên','102.200 đến 102.600','VND']],
+  caut:'ARIMA là chẩn đoán tham khảo; đường dự báo không phải giá sẽ đi theo. AIC thấp không có nghĩa mô hình đúng.',
+  vis:function(){return arimaLine()},cap:'Điểm gốc là giá đóng cửa gần nhất 102.000; 3 điểm là dự báo công bố.'},
+ {g:'B',no:'07',id:'directional_alpha',tone:'neutral',badge:'Chưa kiểm chứng ngoài mẫu',name:'Đà giá và so sánh trong rổ',tech:'Alpha có hướng',
+  v:'Đà gần đây nghiêng về tăng, nhưng bằng chứng ngoài mẫu còn yếu.',
+  why:'Điểm {{mom|động lượng}} 0,4 trên mốc 0. {{hurst|Hurst}} 0,61 trên mốc 0,5, gợi ý xu hướng có tính duy trì.',
+  nums:[['Điểm động lượng','0,4','mốc 0'],['Hurst','0,61','mốc 0,5'],['Thứ hạng trong rổ','80%','không phải xác suất lãi']],
+  caut:'Hồi quy phần dư chưa kích hoạt nên không được tính như một phiếu xác nhận.'},
+ {g:'B',no:'09',id:'agreement',tone:'caution',name:'Các mô hình có nhất trí không',tech:'Đồng thuận',
+  v:'Các mô hình khá nhất trí, nhưng mới 80% mô hình tham gia.',
+  why:'Dự báo tổng hợp +4,1% trong 3 phiên, {{agree|đồng thuận}} 75%. {{cover|Độ phủ}} 80% nghĩa là còn mô hình chưa tham gia.',
+  nums:[['Dự báo tổng hợp','+4,1%','3 phiên'],['Đồng thuận','75%',''],['Độ phủ','80%','mốc 100']],
+  caut:'Nhất trí không phải xác suất lãi. Các mô hình dùng chung dữ liệu nên bằng chứng không độc lập.'},
+ {g:'D',no:'12',id:'trade_plan',tone:'neutral',name:'Các mức giá của kế hoạch có điều kiện',tech:'Kế hoạch vị thế',
+  v:'Nếu vào ở 100.000 và kế hoạch sai, lỗ ước tính 3 triệu đồng.',
+  why:'{{sl|Cắt lỗ}} 97.000, mục tiêu 105.000 và 110.000. {{rr|Tỷ lệ lãi/lỗ}} tới mục tiêu 2 là 3,33, còn 1,92 sau chi phí.',
+  nums:[['Lỗ ước tính tại cắt lỗ','3.000.000','VND, 1% tài sản'],['Giá vào','100.000','VND'],['Mục tiêu 1 và 2','105.000 / 110.000','VND']],
+  caut:'Cắt lỗ không đảm bảo bán được đúng giá khi giá nhảy hoặc thanh khoản thấp. Biên độ giá và thời gian chờ về {{tplus|[chờ Haiku xác minh]}}.',
+  vis:function(){return ladder()},cap:'Đoạn gạch chéo là phần lỗ, đoạn nền là phần lãi tới mục tiêu. Đây là kế hoạch có điều kiện, không phải lệnh.'},
+ {g:'D',no:'11',id:'costs',tone:'ok',name:'Còn lại bao nhiêu sau phí',tech:'Chi phí',
+  v:'Dự báo gộp 4,1%, trừ phí còn 3,5%.',
+  why:'{{rt|Chi phí hai chiều}} là 0,6% [chờ Haiku xác minh: phí và thuế]. Sau phí còn dương, nhưng dự báo dương không bảo đảm có lãi.',
+  nums:[['Trước phí','+4,1%',''],['Chi phí hai chiều','0,6%',''],['Sau phí','+3,5%','mốc 0']],
+  caut:'Mức phí và thuế thực tế khác theo công ty chứng khoán [chờ Haiku xác minh].',
+  vis:function(){return bars([['Trước phí',D.costs.gross,'var(--band)',.9,true],['Chi phí',D.costs.rt,'var(--s-caution)',.9,false],['Sau phí',D.costs.net,'var(--band)',.9,true]],4.5,'%')},cap:'Ba cột cùng một thang, bắt đầu từ 0.',slide:true},
+ {g:'D',no:'15',id:'decision',tone:'caution',chipText:'Chờ hoàn tất điều kiện',name:'Điều kiện để hành động',tech:'Quyết định',
+  v:'Mô hình: theo dõi. Chưa đủ điều kiện thực thi.',
+  why:'Lý do của báo cáo: chưa đủ điều kiện thời điểm vào lệnh. {{gate|Cổng điều kiện}} chưa đạt.',
+  nums:[['{{score|Điểm Quant}}','72/100','không phải xác suất'],['Cổng điều kiện','Không',''],['Đủ điều kiện thực thi','Không','']],
+  caut:'Điểm cao không có nghĩa là nên mua.'},
+ {g:'T',no:'14',id:'data_quality',tone:'ok',chipText:'Đạt',name:'Chất lượng dữ liệu đầu vào',tech:'Dữ liệu',
+  v:'Dữ liệu qua các kiểm tra của hệ thống, điểm 95 trên 100.',
+  why:'Qua kiểm tra nghĩa là đã đúng các quy tắc đã cài, không chứng minh mọi lỗi đã được bắt.',
+  nums:[['Trạng thái','Đạt',''],['Điểm','95/100','thang 0 đến 100'],['Số cảnh báo','0','']],
+  caut:'Điểm chấm dữ liệu đầu vào, không chấm chất lượng cổ phiếu.'},
+ {g:'T',no:'16',id:'commentary',tone:'neutral',name:'Tóm tắt bằng lời của báo cáo',tech:'Nhận định',
+  v:'Báo cáo xếp tín hiệu đang theo dõi, chưa đủ điều kiện thực thi.',
+  why:'Điểm hỗ trợ: pha tăng [05], dòng tiền nghiêng bên mua [06], sau phí còn +3,5% [11]. Rủi ro chính: lỗ trên 3% khi chờ [10], từng giảm 12% từ đỉnh [01].',
+  nums:[['Nguồn câu chữ','5 module',''],['Số mới thêm','0',''],['Cảnh báo','0','']],
+  caut:'Đoạn tổng hợp; số liệu gốc ở từng module. Không có số nào ngoài module.'}
+];
+var GROUPS={C:['C','Rủi ro','Có thể mất bao nhiêu?'],A:['A','Hiện trạng','Cổ phiếu đang thế nào?'],B:['B','Triển vọng','Giá có thể đi đâu?'],D:['D','Mua bán','Nếu hành động thì thế nào?'],T:['','Có tin được báo cáo không?','Dữ liệu và tóm tắt bằng lời']};
+function histo(){
+  var bins=[['-5 đến -1',20],['-1 đến 3',50],['3 đến 7',30]],W=320,H=130,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Phân bố lợi suất: 20% trong -5 đến -1, 50% trong -1 đến 3, 30% trong 3 đến 7"><g class="axis">';
+  bins.forEach(function(b,i){var h=b[1]/50*80,x=14+i*100;s+='<rect x="'+x+'" y="'+(94-h)+'" width="92" height="'+h+'" fill="var(--band)" opacity=".7" class="barfill"/><text x="'+(x+46)+'" y="'+(88-h)+'" text-anchor="middle" style="font-family:var(--mono);fill:var(--text)" class="big">'+b[1]+'%</text><text x="'+(x+46)+'" y="116" text-anchor="middle">'+b[0]+'%</text>'});
+  return s+'<line x1="8" x2="312" y1="94" y2="94" stroke="var(--line)"/></g></svg>';
+}
+function arimaLine(){
+  var pts=[102000,102200,102450,102600],W=320,H=110,x=function(i){return 20+i*88},y=function(v){return 90-(v-101800)/(102800-101800)*70};
+  var d='M'+pts.map(function(v,i){return x(i)+' '+y(v)}).join(' L'),s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Dự báo ARIMA 3 phiên: 102.200, 102.450, 102.600 từ giá hiện tại 102.000"><g class="axis"><line x1="14" x2="306" y1="90" y2="90" stroke="var(--line)"/>';
+  s+='<path d="'+d+'" fill="none" stroke="var(--band)" stroke-width="2.5"/>';
+  pts.forEach(function(v,i){s+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="4.5" fill="'+(i?'var(--band)':'var(--surface)')+'" stroke="var(--band)" stroke-width="2"/><text x="'+x(i)+'" y="'+(y(v)-10)+'" text-anchor="middle" style="font-family:var(--mono);fill:var(--text)">'+fmt(v)+'</text><text x="'+x(i)+'" y="106" text-anchor="middle">'+(i?'+'+i:'Nay')+'</text>'});
+  return s+'</g></svg>';
+}
+function modCard(m,i){
+  var t=m.tone,vis=m.vis?'<figure class="vis'+(m.slide?' slide anim':'')+'" style="margin:0">'+m.vis()+'<figcaption>'+m.cap+'</figcaption></figure>':'';
+  return '<article class="card mod '+t+'" data-mod="'+m.id+'" aria-labelledby="mt-'+m.id+'">'+
+   '<div class="mh">'+chip(t,m.chipText)+(m.badge?'<span class="badge">'+m.badge+'</span>':'')+'<span class="no" aria-label="Module số '+m.no+'">'+m.no+'</span></div>'+
+   '<h3 id="mt-'+m.id+'">'+m.name+'<small>'+m.tech+'</small></h3>'+
+   '<p class="verdict-line">'+tm(m.v)+'</p>'+
+   '<p class="why"><span class="lab">Vì sao</span>'+tm(m.why)+'</p>'+
+   '<dl class="nums">'+m.nums.map(function(n){var long=n[1].length>9;return '<div><dt>'+tm(n[0])+'</dt><dd'+(long?' class="long"':'')+'>'+n[1]+(n[2]?'<span class="ref">'+n[2]+'</span>':'')+'</dd></div>'}).join('')+'</dl>'+
+   vis+
+   '<p class="caut"><span class="lab">Lưu ý</span>'+tm(m.caut)+'</p>'+
+   '<p class="modfoot">'+(m.deep?'<a href="#l3" data-go3>Xem biểu đồ dải giá ở mức Chuyên sâu</a>':'Mở module đầy đủ ở mức Chuyên sâu')+'</p></article>';
+}
+function build(){
+  // lớp 1: thẻ nhóm
+  var g1=[
+   ['C','caution','Thận trọng','Có thể mất bao nhiêu?','Trong 100 lần mô phỏng có 8 lần lỗ trên 3% khi chờ, và cú sốc dao động có thể kéo dài.','8/100','lần lỗ trên 3% khi chờ'],
+   ['A','neutral','Mô tả','Cổ phiếu đang thế nào?','Lợi nhuận trên rủi ro khá, dòng tiền nghiêng bên mua. Cả hai chỉ là mô tả quá khứ.','1,2','Sharpe, mốc 1 là khá'],
+   ['B','caution','Thận trọng','Giá có thể đi đâu?','Mô hình khá nhất trí, nhưng mới 80% mô hình tham gia.','80%','độ phủ, mốc 100%'],
+   ['D','caution','Chưa đủ điều kiện','Nếu hành động thì thế nào?','Kế hoạch có điều kiện đã có nhưng cổng thực thi chưa đạt.','3 triệu','lỗ ước tính nếu sai']
+  ];
+  $('#groups').innerHTML=g1.map(function(x,i){return '<a class="card gcard '+x[1]+'" href="#grp-'+x[0]+'" data-group="'+x[0]+'"'+(i===0?' data-tour="gc"':'')+'><div class="gh"><span class="order" aria-label="Thứ tự đọc '+(i+1)+'">'+(i+1)+' · '+x[0]+'</span>'+chip(x[1],x[2])+'</div><span class="q">'+x[3]+'</span><p>'+x[4]+'</p><span class="big">'+x[5]+'</span><span class="more">'+x[6]+'</span></a>'}).join('');
+  // lớp 2
+  var order=['C','A','B','D','T'],html='';
+  order.forEach(function(k){
+    var items=M.filter(function(m){return m.g===k}),G0=GROUPS[k];
+    var tone=k==='T'?'ok':({C:'caution',A:'neutral',B:'caution',D:'caution'})[k];
+    html+='<details class="grp" id="grp-'+k+'" open><summary><span class="gt">'+(G0[0]?G0[0]+'. ':'')+G0[1]+'</span><span class="gq">'+G0[2]+'</span><svg class="car" width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 7l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2"/></svg></summary><div class="grid">'+items.map(modCard).join('')+'</div></details>';
+  });
+  $('#l2groups').innerHTML=html;
+  // bảng số
+  $('#tbody').innerHTML='<tr><td>0 (hôm nay)</td><td colspan="5" style="text-align:center">'+fmt(D.today)+'</td></tr>'+D.cone.map(function(r){return '<tr><td>+'+r.s+'</td><td>'+fmt(r.p05)+'</td><td>'+fmt(r.p25)+'</td><td>'+fmt(r.p50)+'</td><td>'+fmt(r.p75)+'</td><td>'+fmt(r.p95)+'</td></tr>'}).join('');
+  $('#dots100').innerHTML=dots([{n:62,cls:'a'},{n:38,cls:'c'}],false).replace('<div class="dotgrid">','').replace(/<\/div>$/,'');
+  $('#dots100').classList.add('dotgrid');
+  $$('#dots100 i').forEach(function(i,k){i.style.setProperty('--row',Math.floor(k/10))});
+}
+
+/* ---------- fan chart (vẽ theo bề rộng thật) ---------- */
+function fan(){
+  var box=$('#fanbox'),W=Math.max(280,box.clientWidth||600),narrow=W<520,H=narrow?260:320,pl=narrow?50:64,pr=narrow?70:84,pt=18,pb=40;
+  var min=95000,max=112000,xs=function(i){return pl+i/3*(W-pl-pr)},ys=function(v){return pt+(max-v)/(max-min)*(H-pt-pb)};
+  var rows=[{s:0,p05:D.today,p25:D.today,p50:D.today,p75:D.today,p95:D.today}].concat(D.cone);
+  var poly=function(a,b){return rows.map(function(r){return xs(r.s)+','+ys(r[a])}).concat(rows.slice().reverse().map(function(r){return xs(r.s)+','+ys(r[b])})).join(' ')};
+  var line=rows.map(function(r,i){return (i?'L':'M')+xs(r.s)+' '+ys(r.p50)}).join(' ');
+  var s='<svg id="fansvg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="group" aria-label="Biểu đồ dải giá mô phỏng 3 phiên của FPT. Giá hôm nay 102.000. Phiên 3: P05 97.000, P50 105.000, P95 110.000."><defs><clipPath id="clipFan"><rect class="reveal-rect" x="'+pl+'" y="0" width="'+(W-pl)+'" height="'+H+'"/></clipPath></defs><g class="axis">';
+  [95000,100000,105000,110000].forEach(function(v){s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+ys(v)+'" y2="'+ys(v)+'" stroke="var(--border)"/><text x="'+(pl-8)+'" y="'+(ys(v)+4)+'" text-anchor="end" style="font-family:var(--mono)">'+fmt(v)+'</text>'});
+  s+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+ys(D.today)+'" y2="'+ys(D.today)+'" stroke="var(--muted)" stroke-dasharray="4 4"/>';
+  [0,1,2,3].forEach(function(i){s+='<text x="'+xs(i)+'" y="'+(H-14)+'" text-anchor="'+(i===0?'start':i===3?'end':'middle')+'">'+(narrow?(i?'+'+i:'Nay'):(i?'+'+i+' phiên':'Hôm nay'))+'</text>'});
+  s+='</g><g clip-path="url(#clipFan)"><polygon points="'+poly('p05','p95')+'" fill="var(--band)" opacity=".2"/><polygon points="'+poly('p25','p75')+'" fill="var(--band)" opacity=".38"/><path d="'+line+'" fill="none" stroke="var(--band)" stroke-width="3" stroke-linejoin="round"/>';
+  rows.forEach(function(r){s+='<circle cx="'+xs(r.s)+'" cy="'+ys(r.p50)+'" r="4" fill="var(--surface)" stroke="var(--band)" stroke-width="2.5"/>'});
+  s+='</g><g class="axis">';
+  var l=D.cone[2];[['P95',l.p95],['P50',l.p50],['P05',l.p05]].forEach(function(p){s+=narrow?'<text x="'+(xs(3)+8)+'" y="'+(ys(p[1])-2)+'" style="fill:var(--text)"><tspan font-weight="600">'+p[0]+'</tspan><tspan x="'+(xs(3)+8)+'" dy="14" style="font-family:var(--mono)">'+fmt(p[1])+'</tspan></text>':'<text x="'+(xs(3)+10)+'" y="'+(ys(p[1])+4)+'" style="fill:var(--text)"><tspan font-weight="600">'+p[0]+'</tspan><tspan style="font-family:var(--mono)" dx="6">'+fmt(p[1])+'</tspan></text>'});
+  s+='<circle cx="'+xs(0)+'" cy="'+ys(D.today)+'" r="5" fill="var(--text)"/><text x="'+(xs(0)+8)+'" y="'+(ys(D.today)-10)+'" style="fill:var(--text);font-family:var(--mono)">'+fmt(D.today)+'</text></g>';
+  // cột tương tác theo phiên
+  D.cone.forEach(function(r){var cw=(W-pl-pr)/3;s+='<rect class="hit" tabindex="0" role="button" aria-label="Phiên +'+r.s+': P05 '+fmt(r.p05)+', P50 '+fmt(r.p50)+', P95 '+fmt(r.p95)+'" data-s="'+r.s+'" x="'+(xs(r.s)-cw/2)+'" y="'+pt+'" width="'+cw+'" height="'+(H-pt-pb)+'" fill="transparent"/>'});
+  s+='<line id="cur" y1="'+pt+'" y2="'+(H-pb)+'" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="3 3" style="display:none"/></svg>';
+  box.innerHTML=s;
+  var cur=$('#cur'),ro=$('#readout');
+  var show=function(sn){var r=D.cone[sn-1];cur.setAttribute('x1',xs(sn));cur.setAttribute('x2',xs(sn));cur.style.display='';ro.innerHTML='Phiên <b>+'+sn+'</b>: P05 <b>'+fmt(r.p05)+'</b> · P25 <b>'+fmt(r.p25)+'</b> · P50 <b>'+fmt(r.p50)+'</b> · P75 <b>'+fmt(r.p75)+'</b> · P95 <b>'+fmt(r.p95)+'</b> VND'};
+  $$('.hit',box).forEach(function(h){var sn=+h.getAttribute('data-s');['mouseenter','focus','click'].forEach(function(ev){h.addEventListener(ev,function(){show(sn)})});h.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();show(sn)}})});
+  observe($('#fan'));
+}
+function garchDeep(){
+  $('#volbox').innerHTML=bars([['Hiện tại',D.garch.vol,'var(--band)'],['Phiên 1',D.garch.fv[0],'var(--band)'],['Phiên 2',D.garch.fv[1],'var(--band)'],['Phiên 3',D.garch.fv[2],'var(--band)']],2.4,'%');
+  $('#pbox').innerHTML=scaleBar(0,1.2,.96,[[0,'0','start'],[.9,'0,9'],[1,'1'],[1.2,'1,2','end']],{label:'Dai dẳng 0,96 trên thang 0 đến 1,2, mốc 0,9 và 1',zones:[[.9,1,'var(--s-caution)',.35],[1,1.2,'var(--s-risk)',.35]]});
+}
+
+/* ---------- hiện hình khi vào khung nhìn, một lần ---------- */
+var io=null;
+function observe(el){if(!el)return;if(!('IntersectionObserver' in window)||reduce()){el.classList.add('in');return}io=io||new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target)}})},{threshold:.25});if(!el.classList.contains('in'))io.observe(el)}
+function observeAll(){$$('.anim').forEach(observe)}
+
+/* ---------- mức đọc ---------- */
+function setLevel(n,noScroll){
+  document.body.setAttribute('data-level',String(n));
+  $$('.seg button').forEach(function(b){b.setAttribute('aria-pressed',String(+b.getAttribute('data-level')===n))});
+  safe(function(){localStorage.setItem('qt-level',String(n))});
+  $$('[data-lv]').forEach(function(e){if(+e.getAttribute('data-lv')<=n&&!reduce()){e.classList.remove('lvfade');void e.offsetWidth;e.classList.add('lvfade')}});
+  requestAnimationFrame(function(){fan();observeAll()});
+}
+$$('.seg button').forEach(function(b){b.addEventListener('click',function(){setLevel(+b.getAttribute('data-level'))})});
+$('#more').addEventListener('click',function(){setLevel(2);requestAnimationFrame(function(){$('#l2').scrollIntoView({behavior:reduce()?'auto':'smooth'})})});
+$('#toWhy').addEventListener('click',function(){setLevel(2);requestAnimationFrame(function(){$('#l2').scrollIntoView({behavior:reduce()?'auto':'smooth'})})});
+$('#toPlan').addEventListener('click',function(){setLevel(2);requestAnimationFrame(function(){var g=$('#grp-D');g.open=true;g.scrollIntoView({behavior:reduce()?'auto':'smooth'})})});
+document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('[data-go3]');if(a){e.preventDefault();setLevel(3);requestAnimationFrame(function(){$('#l3').scrollIntoView({behavior:reduce()?'auto':'smooth'})})}
+  var g=e.target.closest&&e.target.closest('a[data-group]');if(g){e.preventDefault();setLevel(2);requestAnimationFrame(function(){var t=$(g.getAttribute('href'));t.open=true;t.scrollIntoView({behavior:reduce()?'auto':'smooth'})})}});
+
+/* ---------- chủ đề, giảm hiệu ứng ---------- */
+var SUN='<svg width="18" height="18" viewBox="0 0 18 18"><circle cx="9" cy="9" r="3.5" fill="currentColor"/><path d="M9 1v2M9 15v2M1 9h2M15 9h2M3.3 3.3l1.4 1.4M13.3 13.3l1.4 1.4M3.3 14.7l1.4-1.4M13.3 4.7l1.4-1.4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',MOON='<svg width="18" height="18" viewBox="0 0 18 18"><path d="M14.5 11A6.5 6.5 0 0 1 7 3.5 6.5 6.5 0 1 0 14.5 11z" fill="currentColor"/></svg>';
+function applyTheme(t){document.documentElement.setAttribute('data-theme',t);$('#themeIcon').innerHTML=t==='dark'?SUN:MOON;$('#themeLbl').textContent=t==='dark'?'Sáng':'Tối';safe(function(){localStorage.setItem('qt-theme',t)})}
+var th=safe(function(){return localStorage.getItem('qt-theme')})||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');applyTheme(th);
+$('#theme').addEventListener('click',function(){applyTheme(document.documentElement.getAttribute('data-theme')==='dark'?'light':'dark')});
+function applyCalm(on){document.documentElement.classList.toggle('calm',on);$('#calm').setAttribute('aria-pressed',String(on));safe(function(){localStorage.setItem('qt-calm',on?'1':'0')});$$('.anim').forEach(function(e){e.classList.add('in')})}
+$('#calm').addEventListener('click',function(){applyCalm(!document.documentElement.classList.contains('calm'))});
+if(safe(function(){return localStorage.getItem('qt-calm')})==='1')applyCalm(true);
+
+/* ---------- popover thuật ngữ / bottom sheet ---------- */
+var tip=$('#tip'),scrim=$('#scrim'),lastTerm=null,mobile=function(){return matchMedia('(max-width:767px)').matches};
+function openTip(btn){
+  var d=G[btn.getAttribute('data-term')];if(!d)return;lastTerm=btn;
+  $('#tipT').textContent=d[0];$('#tipB').textContent=d[1];$('#tipE').textContent=d[2];$('#tipE').style.display=d[2]?'':'none';
+  tip.classList.add('open');btn.setAttribute('aria-describedby','tip');
+  if(mobile()){scrim.classList.add('open');$('.x',tip).focus()}
+  else{var r=btn.getBoundingClientRect(),w=Math.min(340,innerWidth-24),left=Math.max(12,Math.min(r.left,innerWidth-w-12)),top=r.bottom+8;tip.style.width=w+'px';tip.style.left=left+'px';tip.style.top=top+'px';var h=tip.offsetHeight;if(top+h>innerHeight-8)tip.style.top=Math.max(8,r.top-h-8)+'px'}
+}
+function closeTip(restore){if(!tip.classList.contains('open'))return;tip.classList.remove('open');scrim.classList.remove('open');if(lastTerm){lastTerm.removeAttribute('aria-describedby');if(restore)lastTerm.focus()}}
+document.addEventListener('click',function(e){var b=e.target.closest&&e.target.closest('.term');if(b){e.preventDefault();if(tip.classList.contains('open')&&lastTerm===b){closeTip(false)}else openTip(b);return}
+  if(e.target.closest&&e.target.closest('#tip .x')){closeTip(true);return}
+  if(tip.classList.contains('open')&&!e.target.closest('#tip'))closeTip(false)});
+scrim.addEventListener('click',function(){closeTip(true)});
+var hov=null;document.addEventListener('pointerover',function(e){if(e.pointerType!=='mouse'||mobile())return;var b=e.target.closest&&e.target.closest('.term');if(b){clearTimeout(hov);hov=setTimeout(function(){openTip(b)},250)}});
+document.addEventListener('pointerout',function(e){if(e.pointerType!=='mouse')return;var b=e.target.closest&&e.target.closest('.term');if(b){clearTimeout(hov)}});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'){if(tip.classList.contains('open'))closeTip(true);else if($('#tour').classList.contains('open'))endTour(true)}});
+
+/* ---------- tour 4 bước ---------- */
+var steps=[
+ {sel:'[data-tour="verdict"]',t:'Kết luận ở đây',x:'Kết luận của mô hình nằm ở đây. Đây là nhãn của mô hình, không phải lệnh mua bán.'},
+ {sel:'[data-tour="gc"]',t:'Xem rủi ro trước',x:'Đọc rủi ro trước khi đọc cơ hội: bạn có thể mất bao nhiêu và trong tình huống nào.'},
+ {sel:'[data-tour="trust"]',t:'Kiểm tra độ tin cậy',x:'Thiếu dữ liệu thì kết luận kém chắc hơn. Dải này cho biết dữ liệu và độ phủ.'},
+ {sel:'[data-tour="level"]',t:'Đổi mức đọc',x:'Chuyển giữa Tóm tắt, Hiểu vì sao và Chuyên sâu bất cứ lúc nào.'}
+],ti=0,tourBtn=null;
+function placeTour(){
+  var s=steps[ti],el=$(s.sel);$$('.tour-target').forEach(function(e){e.classList.remove('tour-target')});if(!el)return;el.classList.add('tour-target');
+  el.scrollIntoView({block:mobile()?'start':'center',behavior:'auto'});
+  var P=$('#tour');$('#tourS').textContent='Bước '+(ti+1)+' trên 4';$('#tourT').textContent=s.t;$('#tourX').textContent=s.x;
+  $('#tBack').style.visibility=ti?'visible':'hidden';$('#tNext').textContent=ti===3?'Xong':'Tiếp';
+  if(!mobile()){var r=el.getBoundingClientRect(),w=P.offsetWidth||360;if(r.height>300){P.style.left='auto';P.style.right='24px';P.style.top=(innerHeight-P.offsetHeight-24)+'px';return}P.style.right='auto';var left=Math.max(12,Math.min(r.left+16,innerWidth-w-12)),top=r.bottom+14;P.style.left=left+'px';
+    if(top+P.offsetHeight>innerHeight-8)top=Math.max(8,r.top+Math.min(r.height,200)-P.offsetHeight-8);if(r.height>innerHeight*.7)top=innerHeight-P.offsetHeight-16;P.style.top=top+'px'}
+}
+function startTour(btn){tourBtn=btn||null;ti=0;if(document.body.getAttribute('data-level')==='1'){}$('#tour').classList.add('open');placeTour();$('#tNext').focus()}
+function endTour(restore){$('#tour').classList.remove('open');$$('.tour-target').forEach(function(e){e.classList.remove('tour-target')});safe(function(){localStorage.setItem('qt-tour','1')});if(restore&&tourBtn)tourBtn.focus()}
+$('#tNext').addEventListener('click',function(){if(ti<3){ti++;placeTour()}else endTour(true)});
+$('#tBack').addEventListener('click',function(){if(ti){ti--;placeTour()}});
+$('#tSkip').addEventListener('click',function(){endTour(true)});
+$('#howto').addEventListener('click',function(){startTour($('#howto'))});
+addEventListener('resize',function(){if($('#tour').classList.contains('open'))placeTour();clearTimeout(window.__r);window.__r=setTimeout(function(){fan();closeTip(false)},150)});
+$('#tour').addEventListener('keydown',function(e){if(e.key!=='Tab')return;var f=$$('button',$('#tour')).filter(function(b){return b.offsetParent!==null&&b.style.visibility!=='hidden'}),a=f[0],z=f[f.length-1];if(e.shiftKey&&document.activeElement===a){e.preventDefault();z.focus()}else if(!e.shiftKey&&document.activeElement===z){e.preventDefault();a.focus()}});
+
+/* ---------- khởi động ---------- */
+build();garchDeep();
+var q=new URLSearchParams(location.search),lv=+q.get('level')||+safe(function(){return localStorage.getItem('qt-level')})||1;
+if(q.get('theme'))applyTheme(q.get('theme'));
+setLevel(Math.min(3,Math.max(1,lv)));
+if(matchMedia('(max-width:767px)').matches&&!q.get('open'))$$('.grp').forEach(function(g,i){g.open=i===0});
+if(q.get('tour')!=='0'&&!safe(function(){return localStorage.getItem('qt-tour')})){setTimeout(function(){startTour($('#howto'))},400)}
+})();
+</script>
+</body>
+</html>
