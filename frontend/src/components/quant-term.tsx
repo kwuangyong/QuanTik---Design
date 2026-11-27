@@ -20,7 +20,7 @@ export function QuantTerm({ id, values, children }: { id: string; values?: Reado
   const example = entry.legal ? null : fillGlossaryExample(entry, values ?? {});
   const close = () => { setOpen(false); setPinned(false); button.current?.focus(); };
   return <span ref={root} className={styles.termRoot} onPointerLeave={event => { if (event.pointerType === "mouse" && !pinned) setOpen(false); }}>
-    <button ref={button} type="button" className={styles.term} aria-expanded={open} aria-describedby={open ? uid : undefined}
+    <button ref={button} type="button" data-quant-term className={styles.term} aria-expanded={open} aria-describedby={open ? uid : undefined}
       onPointerEnter={event => { if (event.pointerType === "mouse") setOpen(true); }}
       onFocus={() => setOpen(true)} onBlur={event => { if (!pinned && !root.current?.contains(event.relatedTarget as Node)) setOpen(false); }}
       onClick={() => { if (open && pinned) { setOpen(false); setPinned(false); } else { setOpen(true); setPinned(true); } }}>{children}</button>
@@ -29,6 +29,7 @@ export function QuantTerm({ id, values, children }: { id: string; values?: Reado
       <strong className={styles.popTitle}>{entry.term}: {entry.plain}</strong>
       <span className={styles.popText}>{entry.meaning}</span>
       {example && <span className={styles.popEx}>Ví dụ: {example}</span>}
+      <a className={styles.popMore} href={`/analysis/guide#term-${id}`} target="_blank" rel="noopener">Đọc thêm</a>
     </span>}
   </span>;
 }

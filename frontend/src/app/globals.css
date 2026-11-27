@@ -168,3 +168,6 @@ button:disabled {
 .home-explanation {--h-green:#79dba4;
 }
 }
+
+/* Quant tour: ring on the element the current step points at. */
+[data-tour-active="true"] { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 8px; }

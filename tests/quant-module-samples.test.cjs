@@ -1,3 +1,5 @@
+// These cases pin the legacy reader (flag off); the V2 default is covered by quant-glance/quant-explain/quant-reader-v2 tests.
+process.env.NEXT_PUBLIC_QUANT_READER_V2='0';
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
@@ -93,4 +95,24 @@ test('Upstream alternate reader still renders its overview and four evidence car
  const html=renderToStaticMarkup(React.createElement(SimpleQuantReport,{report,showAction:true}));
  for(const label of ['Tổng hợp kết quả mô hình','Xu hướng dễ hiểu','Kịch bản giá dễ hiểu','Rủi ro dễ hiểu','Kế hoạch giao dịch']) assert.ok(html.includes(`aria-label="${label}"`),label);
  assert.doesNotMatch(text(html),/undefined|NaN|Infinity/);assert.equal(JSON.stringify(report),before);
+});
+
+test('Reader V2 deep layer: no unverified settlement cycle (T+2, T-lock) and plain-language Monte Carlo labels; legacy labels stay with the flag off',()=>{
+ const prev=process.env.NEXT_PUBLIC_QUANT_READER_V2;
+ try{
+  for(const scenario of ['complete','partial'])for(const flag of [undefined,'0']){
+   if(flag===undefined)delete process.env.NEXT_PUBLIC_QUANT_READER_V2;else process.env.NEXT_PUBLIC_QUANT_READER_V2=flag;
+   const report=quantReportSample(scenario);
+   const body=quantModuleItems.map(([name])=>text(render(report,name))).join(' ')+' '+text(renderToStaticMarkup(React.createElement(QuantActionSummary,{report,compact:false,showAction:true})));
+   if(flag===undefined){
+    assert.doesNotMatch(body,/T\+2|T\+2\.5|T-lock/,scenario);
+    if(scenario==='complete'){
+     for(const label of ['Khả năng giá cuối kỳ cao hơn hôm nay','Mức giảm xấu khi chờ cổ phiếu về','Khả năng lỗ quá 3% khi chờ'])assert.ok(body.includes(label),label);
+     assert.doesNotMatch(body,/P\(tăng cuối kỳ\)|Sụt giảm T-lock|P\(lỗ trên 3%/);
+    }
+   }else if(scenario==='complete'){
+    for(const label of ['P(tăng cuối kỳ)','Sụt giảm T-lock','P(lỗ trên 3% trong T-lock)','P(lỗ trên 3% trong T+2)'])assert.ok(body.includes(label),label);
+   }
+  }
+ }finally{if(prev===undefined)delete process.env.NEXT_PUBLIC_QUANT_READER_V2;else process.env.NEXT_PUBLIC_QUANT_READER_V2=prev;}
 });

@@ -6,6 +6,8 @@ import {moduleGuides} from '../src/lib/quant-reader';
 import {moduleMetricTerms} from '../src/content/quant-module-terms';
 import {auditQuantTypography} from './helpers/quant-ui-audit';
 import {getTerm} from '../src/content/legacy/glossary';
+import {metricLabel} from '../src/lib/quant-reader';
+import {deepLayer,v2} from './helpers/quant-v2';
 
 async function openReport(page:Page, scenario: Parameters<typeof quantReportSample>[0] = "complete") {
   const state=await analysisFixture(page); state.status='SUCCEEDED';
@@ -13,6 +15,7 @@ async function openReport(page:Page, scenario: Parameters<typeof quantReportSamp
   if(scenario==='complete') state.report.sections.directional_alpha.metrics.momentum_alpha={score:0,active:false,components:{ret_5d_pct:1,ret_10d_pct:2,ret_20d_pct:3,ret_60d_pct:4}};
   state.jobs.push({id:'job-1',symbol:'FPT',target_session:'2026-10-16',status:'SUCCEEDED',created_at:1792224000,deadline:1792310400,attempt:1,report_id:'report-1',reason:null,quota_effect:'CONSUMED'});
   await page.goto('/analysis?symbol=FPT&job=job-1');
+  await deepLayer(page);
   await expect(page.locator('.quant-report-section')).toHaveCount(16);
   return state;
 }
@@ -42,7 +45,8 @@ test('All 16 module buttons reopen their section and metrics open distinct five-
   for(const name of ['garch','hmm']) {
     await nav.getByRole('button',{name:quantModuleItems.find(([id])=>id===name)![1],exact:true}).click();
     const section=page.locator(`[data-quant-module="${name}"]`);
-    for(const [label,path] of moduleGuides[name].metrics) {
+    for(const [rawLabel,path] of moduleGuides[name].metrics) {
+      const label=metricLabel(path,rawLabel);
       const trigger=section.locator('dt').getByRole('button',{name:label,exact:true});
       await trigger.focus(); await trigger.press('Enter');
       const popup=page.getByRole('tooltip');
@@ -66,10 +70,11 @@ test('GARCH surface and factor 3D preserve their source values and return to ori
   const garch=page.locator('[data-quant-module="garch"]');
   await garch.getByRole('group',{name:'Góc nhìn biến động GARCH',exact:true}).getByRole('button',{name:'3D',exact:true}).click();
   await expect(garch.getByRole('img',{name:'Mặt phản ứng GARCH 3D FPT',exact:true})).toBeVisible();
-  await garch.getByRole('img').press('ArrowRight');
+  await garch.getByRole('img',{name:'Mặt phản ứng GARCH 3D FPT',exact:true}).press('ArrowRight');
   await expect(garch).toContainText('không phải phân phối hoặc một dự báo mới');
   await garch.getByRole('button',{name:'2D',exact:true}).click();
-  await expect(garch.getByRole('img',{name:'Đường biến động trong module GARCH',exact:true})).toBeVisible();
+  // V2 returns to its own 2D figure for the same published forecast_vol series.
+  await expect(garch.getByRole('img',v2?{name:/^Biến động dự báo theo phiên/}:{name:'Đường biến động trong module GARCH',exact:true})).toBeVisible();
   await page.getByText('Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo',{exact:true}).click();
   const factors=page.getByRole('region',{name:'Visual Quant FPT',exact:true});
   await factors.getByRole('group',{name:'Góc nhìn hồ sơ nhân tố',exact:true}).getByRole('button',{name:'3D',exact:true}).click();
@@ -180,6 +185,7 @@ test('Radar uses raw negative Sharpe, filtered HMM and honest liquidity/module c
  state.report.research!.factors.find(p=>p.id==='sharpe')!.value=.466;
  delete state.report.research!.radar_scoring;
  await page.reload();
+ await deepLayer(page);
  await page.getByText('Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo',{exact:true}).click();
  const profile=page.locator('[data-factor-profile="true"]');
  await expect(profile.locator('[data-factor-point="sharpe"]')).toHaveAttribute('aria-label',/47\/100, Yếu/);

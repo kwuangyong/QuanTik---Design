@@ -2,6 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { needsText, type Figure, type Need, type ScaleRow, type Visual } from "@/lib/quant-visual";
 import { number } from "@/lib/quant-reader";
+import { reducedMotionNow } from "./quant-motion";
 import s from "./quant-visual.module.css";
 
 // SVG renderers for the V2 chart layer. Geometry is derived here from already validated figure data (lib/quant-visual.ts).
@@ -23,7 +24,7 @@ function useFrame() {
     let resize: ResizeObserver | undefined, io: IntersectionObserver | undefined;
     try { if (typeof ResizeObserver !== "undefined") { resize = new ResizeObserver(measure); resize.observe(el); } } catch { /* fixed width */ }
     try {
-      if (typeof IntersectionObserver !== "undefined" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      if (typeof IntersectionObserver !== "undefined" && !reducedMotionNow()) {
         setPhase("armed");
         io = new IntersectionObserver(([entry]) => { if (entry?.isIntersecting) { setPhase("run"); io?.disconnect(); } }, { threshold: 0.15 });
         io.observe(el);

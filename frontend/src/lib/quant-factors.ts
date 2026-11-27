@@ -13,7 +13,7 @@ export const factorLabels: Record<string, string> = {
   trend_quality: 'Chất lượng xu hướng',
   alpha_composite: 'Alpha tổng hợp',
   hmm_regime: 'Trạng thái HMM',
-  lock_safety: 'An toàn T+2',
+  lock_safety: 'An toàn khi chờ cổ phiếu về',
   vol_regime: 'Trạng thái biến động',
   distribution_quality: 'Chất lượng phân phối',
   liquidity: 'Thanh khoản',

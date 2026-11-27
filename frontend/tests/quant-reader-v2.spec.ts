@@ -1,8 +1,8 @@
 import { test, expect, type Page } from "@playwright/test";
 import { analysisFixture } from "./fixtures/analysis";
+import { v2 } from "./helpers/quant-v2";
 
-// Build-time flag: run with a build made with NEXT_PUBLIC_QUANT_READER_V2=1 to exercise V2; the default build must keep the legacy reader.
-const v2 = /^(1|true|on)$/i.test(process.env.NEXT_PUBLIC_QUANT_READER_V2 ?? "");
+// V2 is the default; a build made with NEXT_PUBLIC_QUANT_READER_V2=0 must keep the legacy reader. Run the suite once per build.
 
 async function openReport(page: Page) {
   const state = await analysisFixture(page);

@@ -69,13 +69,13 @@ test('Unavailable, disabled and failed show missing data honestly with no stale 
  }
  assert.ok(buildGlance(quantReportSample('unavailable')).groups.every(x=>x.tone==='nodata'));
 });
-test('Flag off keeps the legacy reader; flag on defaults to the summary layer without the 16 modules',()=>{
+test('Flag off (=0) keeps the legacy reader; default (flag on) shows the summary layer without the 16 modules',()=>{
  const report=quantReportSample('complete'),prev=process.env.NEXT_PUBLIC_QUANT_READER_V2;
  try{
-  delete process.env.NEXT_PUBLIC_QUANT_READER_V2;
+  process.env.NEXT_PUBLIC_QUANT_READER_V2='0';
   const off=renderToStaticMarkup(React.createElement(LiveQuantReport,{report}));
   assert.doesNotMatch(off,/data-quant-glance|data-quant-levels/);assert.equal((off.match(/data-quant-module=/g)||[]).length,16);
-  process.env.NEXT_PUBLIC_QUANT_READER_V2='1';
+  delete process.env.NEXT_PUBLIC_QUANT_READER_V2;
   const on=renderToStaticMarkup(React.createElement(LiveQuantReport,{report}));
   assert.match(on,/data-quant-glance/);assert.match(on,/data-quant-levels/);assert.equal((on.match(/data-quant-module=/g)||[]).length,0);
   assert.match(on,/aria-pressed="true" data-level="summary"/);

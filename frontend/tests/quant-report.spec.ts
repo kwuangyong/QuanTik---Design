@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { analysisFixture } from "./fixtures/analysis";
+import { deepLayer } from "./helpers/quant-v2";
 
 test("Quant: tự cập nhật lịch sử giữ trang đang xem", async ({ page }) => {
   await page.clock.install();
@@ -30,6 +31,7 @@ test("Quant: gửi yêu cầu, tự nhận báo cáo API và mở lại URL", as
   await expect(page.getByRole("heading", { name: /Đã tiếp nhận/ })).toBeVisible();
   expect(state.payloads[0]).toEqual({ symbol: "FPT", target_session: "2026-10-16", sizing: { account_size_vnd: 100000000, max_position_risk_ratio: 0.02 } });
   state.status = "SUCCEEDED";
+  await deepLayer(page);
   await expect(page.getByText("Báo cáo kiểm thử theo hợp đồng API.", { exact: true }).first()).toBeVisible({ timeout: 10000 });
   await expect(page.locator(".quant-report-section")).toHaveCount(16);
   await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo", { exact: true }).click();
@@ -60,6 +62,7 @@ test("Quant: không dùng mẫu để lấp biểu đồ mô hình còn thiếu"
   await page.goto("/analysis?symbol=FPT");
   await page.getByRole("button", { name: "Gửi yêu cầu Quant FPT", exact: true }).click();
   await page.getByRole("button", { name: "Xác nhận", exact: true }).click();
+  await deepLayer(page);
   await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo", { exact: true }).click();
   await expect(page.getByRole("img", { name: "Lịch sử giá đóng cửa FPT", exact: true })).toBeVisible();
   await expect(page.getByRole("img", { name: "Sụt giảm từ đỉnh FPT", exact: true })).toBeVisible();

@@ -26,7 +26,9 @@ export function reportFixture(): AnalysisReport {
   return report;
 }
 
-export async function analysisFixture(page: Page) {
+// The first-visit tour is marked as seen by default so older flows are not interrupted; pass { tour: true } to see it.
+export async function analysisFixture(page: Page, options: { tour?: boolean } = {}) {
+  if (!options.tour) await page.addInitScript(() => { try { window.localStorage.setItem("quantik.quant.tourSeen", "1"); } catch { /* storage blocked */ } });
   const state = { user: true, active: true, limit: 20, created: 0, ready: true, reason: "UNIVERSE_NOT_VALIDATED", failSubmitOnce: false,
     status: "QUEUED" as AnalysisJob["status"], keys: [] as string[], payloads: [] as unknown[], jobs: [] as AnalysisJob[], denyReport: false, unknown: [] as string[], report: reportFixture() };
   const ids = new Map<string, AnalysisJob>();

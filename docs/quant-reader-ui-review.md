@@ -1,3 +1,6 @@
+> Update (Gate 3, batch 5): this review describes the legacy reader. The redesigned three-layer reader is the default now;
+> `NEXT_PUBLIC_QUANT_READER_V2=0` at build time restores the legacy reader. Specs: `research/2026-11/redesign/G2-ux-spec.md`.
+
 # QuanTik: rà soát giao diện Phân tích Quant
 
 Bản cập nhật ngày 29/10/2026. Phạm vi: React/CSS và diễn giải kết quả đã công bố. Không sửa API, proxy, mô hình, backtest, phép tính tài chính, nguồn dữ liệu hoặc quyết định.

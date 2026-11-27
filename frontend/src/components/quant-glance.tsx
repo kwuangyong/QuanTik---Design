@@ -27,7 +27,7 @@ export function QuantGlance({ report, onOpenWhy, onOpenPlan }: { report: Analysi
   const filled = risk.frequency ? Math.min(100, risk.frequency.perHundred) : 0;
   return <section aria-label="Tóm tắt 30 giây" className={styles.glance} data-quant-glance data-glance-state={verdict.available ? "ready" : "missing"}>
     <div className={styles.top}>
-      <article className={`${styles.card} ${styles.verdict} ${styles[`rail_${verdict.tone}`]}`} aria-labelledby="quant-glance-verdict">
+      <article className={`${styles.card} ${styles.verdict} ${styles[`rail_${verdict.tone}`]}`} aria-labelledby="quant-glance-verdict" data-glance-verdict>
         <p className={styles.eyebrow}>KẾT LUẬN HÔM NAY · {g.symbol}</p>
         <QuantChip tone={verdict.tone}>{verdict.chip}</QuantChip>
         <h2 id="quant-glance-verdict" className={styles.h2}>{verdict.title}</h2>

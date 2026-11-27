@@ -77,3 +77,8 @@
 @keyframes qvPop { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .marker, .moving { transition: none; } }
 .fig[data-visual="dots"] .svg { width: 158px; max-width: 100%; }
+
+/* "Giảm hiệu ứng" in the app: every figure shows its final state at once, whatever the system preference says. */
+:global(html[data-reduce-motion="true"]) .fig .draw, :global(html[data-reduce-motion="true"]) .fig .fade, :global(html[data-reduce-motion="true"]) .fig .growx,
+:global(html[data-reduce-motion="true"]) .fig .growy, :global(html[data-reduce-motion="true"]) .fig .dotOn { animation-name: none !important; opacity: 1 !important; transform: none !important; stroke-dashoffset: 0 !important; }
+:global(html[data-reduce-motion="true"]) .marker, :global(html[data-reduce-motion="true"]) .moving { transition: none !important; }

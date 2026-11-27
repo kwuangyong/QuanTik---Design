@@ -1,3 +1,5 @@
+// These cases pin the legacy reader (flag off); the V2 default is covered by quant-glance/quant-explain/quant-reader-v2 tests.
+process.env.NEXT_PUBLIC_QUANT_READER_V2='0';
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const path=require('node:path');
@@ -28,4 +30,16 @@ test('Compact report preserves its initially closed modules while retaining the 
  const modules=html.match(/<details[^>]*data-quant-module[^>]*>/g)||[];
  assert.equal(modules.length,16);assert.ok(modules.every(tag=>tag.includes('hidden')));
  assert.match(html,/aria-label="Điều hướng module"/);
+});
+
+test('Default (flag on) opens the summary layer with the three reading levels, the guide button and the reduce-effects switch',()=>{
+ const prev=process.env.NEXT_PUBLIC_QUANT_READER_V2;
+ try{
+  delete process.env.NEXT_PUBLIC_QUANT_READER_V2;
+  const html=renderToStaticMarkup(React.createElement(LiveQuantReport,{report:reportFixture()}));
+  assert.match(html,/data-quant-glance/);assert.equal((html.match(/data-quant-module=/g)||[]).length,0);
+  assert.match(html,/aria-pressed="true" data-level="summary"/);
+  assert.match(html,/data-quant-guide-open[^>]*>Cách đọc</);assert.match(html,/data-reduce-effects[^>]*>Giảm hiệu ứng</);
+  assert.doesNotMatch(html,/data-quant-tour|data-quant-guide[ >]/);
+ }finally{if(prev===undefined)delete process.env.NEXT_PUBLIC_QUANT_READER_V2;else process.env.NEXT_PUBLIC_QUANT_READER_V2=prev;}
 });

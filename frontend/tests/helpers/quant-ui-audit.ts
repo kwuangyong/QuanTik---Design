@@ -3,6 +3,9 @@
 export function auditQuantTypography() {
   const roots = [...document.querySelectorAll('.quant-report,[data-quant-report="true"],[data-factor-profile="true"]')];
   const all = [...new Set(roots.flatMap(root => [root,...root.querySelectorAll('*')]))];
+  // Reader V2 sets running text in Inter and keeps IBM Plex Mono for numbers and code (G2-ux-spec 8.2); the legacy reader is all Plex Mono.
+  const reader2 = !!document.querySelector('[data-quant-levels]');
+  const fontOk = (family: string) => family.includes('IBM Plex Mono') || (reader2 && family.includes('Inter'));
   const violations: { text: string; computedPx: number; renderedPx: number; font: string }[] = [];
   let checked = 0;
   for (const el of all) {
@@ -16,7 +19,7 @@ export function auditQuantTypography() {
     const rendered=matrix ? size*Math.hypot(matrix.c,matrix.d) : size;
     checked++;
     const math=Boolean(el.closest('.katex'));
-    if(size<12.99 || rendered<12.99 || !math && !style.fontFamily.includes('IBM Plex Mono')) violations.push({text:(el.textContent||'').slice(0,100),computedPx:size,renderedPx:rendered,font:style.fontFamily});
+    if(size<12.99 || rendered<12.99 || !math && !fontOk(style.fontFamily)) violations.push({text:(el.textContent||'').slice(0,100),computedPx:size,renderedPx:rendered,font:style.fontFamily});
   }
   const canvases=all.filter((el):el is HTMLCanvasElement=>el instanceof HTMLCanvasElement && el.getClientRects().length>0);
   const canvasChecks=canvases.map(canvas=>{

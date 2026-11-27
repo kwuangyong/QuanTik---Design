@@ -1,4 +1,8 @@
 import type { TermDefinition } from "./legacy/glossary";
+import { quantReaderV2Enabled } from "@/lib/quant-flags";
+
+// Batch 5: the settlement cycle is unverified, so the reader V2 wording does not name it.
+const waitLabel = quantReaderV2Enabled() ? "chờ cổ phiếu về" : "chờ T+2";
 
 // Presentation only. Field order follows the stock-filter Summary sheet.
 // Methods checked against QuanTik-website/quant_engine/quant.py blob 94bfdd7.
@@ -7,7 +11,7 @@ export const sheetGroups = [
   { id: "sector", label: "Thị trường & ngành", index: "02" },
   { id: "performance", label: "Hiệu suất & trạng thái", index: "03" },
   { id: "forecast", label: "Dự báo & chi phí", index: "04" },
-  { id: "risk", label: "Rủi ro T+2", index: "05" },
+  { id: "risk", label: quantReaderV2Enabled() ? "Rủi ro khi chờ cổ phiếu về" : "Rủi ro T+2", index: "05" },
   { id: "quality", label: "Dữ liệu & thanh khoản", index: "06" },
   { id: "trade", label: "Kế hoạch giao dịch", index: "07" },
   { id: "notes", label: "Nhận xét", index: "08" },
@@ -52,7 +56,7 @@ export const sheetColumns = [
   column("roundtrip_cost_pct", "Chi phí (%)", "forecast", "pct", "Chi phí giả định cho cả lượt mua và bán.", String.raw`Cost_{RT}=Fee_{buy}+Fee_{sell}+Tax+Slippage`, "Các thành phần và mức phí do core/nguồn quy định, quy đổi về cùng cơ sở vốn.", "Gross 6%, Cost 0,6%: Net 5,4%.", "Là ước lượng trước giao dịch; chi phí thực tế có thể khác."),
   column("net_forecast_pct", "Lợi nhuận ròng (%)", "forecast", "pct", "Lợi nhuận dự báo sau chi phí khứ hồi.", String.raw`Net=Gross-Cost_{RT}`, "Các đại lượng cùng horizon, cùng đơn vị điểm phần trăm.", "6% − 0,6% = 5,4%.", "Net dương chưa đủ kết luận mua; Action Gate còn xét dữ liệu, thanh khoản và rủi ro."),
   column("mc_volatility_source", "Biến động mô phỏng", "risk", "text", "Nguồn biến động dùng trong mô phỏng Monte Carlo.", String.raw`\sigma_t\leftarrow\text{GARCH hoac lich su}`, "Trường MCVol của sheet là nhãn như recursive GARCH-t, GARCH-normal hoặc historical.", "recursive GARCH-t cho biết cách tạo biến động và nhiễu cho đường giá.", "Đây là tên phương pháp; không thêm dấu % hoặc coi là độ lệch chuẩn mô phỏng."),
-  column("lock_drawdown_pct", "Sụt giảm khi chờ T+2 (%)", "risk", "pct", "Phân vị 5% của mức giảm thấp nhất so với Entry trong thời gian khóa thanh toán.", String.raw`L_i=100(\min_{1\le t\le L}S_{i,t}/S_0-1),\quad Q_{.05}(L_i)`, "L: số phiên khóa thực trong báo cáo; i: đường giá Monte Carlo. Giữ quy ước dấu của nguồn.", "−4% nghĩa là phân vị xấu 5% của mức thấp nhất trong cửa sổ khóa là −4%.", "Tên sheet dùng T+2; phải đối chiếu lock_sessions thực. Khác với circuit breaker hay Max DD lịch sử."),
+  column("lock_drawdown_pct", `Sụt giảm khi ${waitLabel} (%)`, "risk", "pct", "Phân vị 5% của mức giảm thấp nhất so với Entry trong thời gian khóa thanh toán.", String.raw`L_i=100(\min_{1\le t\le L}S_{i,t}/S_0-1),\quad Q_{.05}(L_i)`, "L: số phiên khóa thực trong báo cáo; i: đường giá Monte Carlo. Giữ quy ước dấu của nguồn.", "−4% nghĩa là phân vị xấu 5% của mức thấp nhất trong cửa sổ khóa là −4%.", "Phải đối chiếu lock_sessions thực của báo cáo. Khác với circuit breaker hay Max DD lịch sử."),
   column("probability_loss_gt_3pct", "Xác suất lỗ trên 3% (%)", "risk", "pct", "Tỷ lệ đường mô phỏng có mức giảm trong thời gian khóa vượt 3% so với Entry.", String.raw`100\frac{\#\{i:L_i<-3\}}{N_{sim}}`, "Li: mức giảm thấp nhất trong cửa sổ khóa; Nsim: số đường mô phỏng hợp lệ.", "80/1.000 đường giảm dưới −3%: 8%.", "Là ước lượng theo mô hình cho cửa sổ khóa, không phải xác suất lỗ 3% NAV tài khoản."),
   column("data_quality_status", "Chất lượng dữ liệu", "quality", "text", "Kết quả kiểm định dữ liệu đầu vào Quant.", String.raw`DQStatus=g(DQScore,\text{loi nghiem trong})`, "Core tham chiếu dùng PASS/WARN/FAIL; lỗi nghiêm trọng có thể buộc FAIL.", "DQScore 85 có thể PASS nếu không có lỗi nghiêm trọng.", "Không dùng eligible của screening để xác nhận chất lượng dữ liệu Quant."),
   column("data_quality_score", "Điểm dữ liệu", "quality", "number", "Điểm 0–100 sau khi trừ các lỗi dữ liệu.", String.raw`DQScore=clip(100-\sum_j penalty_j,0,100)`, "Kiểm tra độ dài lịch sử, trùng ngày, OHLC sai, giá không dương, mất phiên, dữ liệu cũ và bước nhảy giá.", "Một lỗi dữ liệu có thể làm giảm điểm; mức trừ theo cấu hình core.", "Điểm dữ liệu cao không đồng nghĩa cổ phiếu có chất lượng đầu tư cao."),
@@ -67,7 +71,7 @@ export const sheetColumns = [
   column("take_profit_2_vnd", "TP2", "trade", "price", "Mục tiêu chốt lời tiếp theo hoặc mục tiêu tối ưu trong sheet.", String.raw`Reward_2=TP_2-Entry`, "Trường sheet TP nhận tp_optimal, rồi fallback tp2/tp_2r theo nguồn. UI không chọn lại mức giá.", "Mức mục tiêu cao hơn Entry chưa có nghĩa chắc chắn được chạm tới.", "Kiểm tra thứ tự mức giá của kế hoạch và điều kiện thực thi."),
   column("trade_model_agreement_pct", "Model Agreement (%)", "trade", "pct", "Mức đồng thuận mô hình gắn với kế hoạch giao dịch.", String.raw`Agreement_{trade}\leftarrow Agreement_{forecast}`, "Core tham chiếu sao chép fcast.agreement_pct sang kế hoạch SL/TP.", "Hai cột Đồng thuận và Model Agreement cùng 75% có thể dùng chung một nguồn.", "Không coi hai cột là hai xác nhận độc lập hoặc xác suất thắng."),
   column("risk_pct_nav", "RiskPctNAV", "trade", "pct", "Tổn thất tham chiếu tại SL của vị thế so với NAV tài khoản.", String.raw`100\frac{Q(Entry-SL)}{NAV}`, "Q: số cổ phiếu vị thế; NAV: vốn tài khoản được mô hình dùng. Cần cả hai đại lượng.", "Q=1.000, Entry−SL=3.000, NAV=300 triệu: 1%.", "Thiếu vốn hoặc quy mô vị thế thì để —. Không áp mặc định một mức % NAV cho mọi người."),
-  column("commentary", "Nhận xét chi tiết", "notes", "text", "Diễn giải kết quả và các điều kiện cần theo dõi của đúng mã, đúng phiên.", String.raw`\text{Nhan xet}=\text{dien giai ket qua nguon}`, "Giữ nội dung của bản công bố, có thể mở rộng để đọc toàn bộ.", "Nhận xét có thể kết nối xu hướng ngành, hiệu suất, dự báo và rủi ro T+2.", "Không tự viết kết luận đầu tư mới từ các ô còn thiếu."),
+  column("commentary", "Nhận xét chi tiết", "notes", "text", "Diễn giải kết quả và các điều kiện cần theo dõi của đúng mã, đúng phiên.", String.raw`\text{Nhan xet}=\text{dien giai ket qua nguon}`, "Giữ nội dung của bản công bố, có thể mở rộng để đọc toàn bộ.", "Nhận xét có thể kết nối xu hướng ngành, hiệu suất, dự báo và rủi ro khi chờ cổ phiếu về.", "Không tự viết kết luận đầu tư mới từ các ô còn thiếu."),
 ] as const;
 
 export type SheetColumn = typeof sheetColumns[number];

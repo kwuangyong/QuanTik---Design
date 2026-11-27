@@ -60,9 +60,9 @@ test('quantSummary and sample commentary do not present momentum, CMF or HMM pha
  assert.doesNotMatch(text,/Điểm hỗ trợ|nhận diện pha|bên mua|bên bán|tín hiệu/i);
  assert.doesNotMatch(r.commentary.summary,/Tín hiệu/);
 });
-test('Reader V2 flag is off by default and does not change anything when off',()=>{
- assert.equal(quantReaderV2Enabled(),/^(1|true|on)$/i.test(process.env.NEXT_PUBLIC_QUANT_READER_V2||''));
- if(!process.env.NEXT_PUBLIC_QUANT_READER_V2)assert.equal(quantReaderV2Enabled(),false);
+test('Reader V2 flag is on by default and only NEXT_PUBLIC_QUANT_READER_V2=0/false/off turns it off',()=>{
+ assert.equal(quantReaderV2Enabled(),!/^(0|false|off)$/i.test((process.env.NEXT_PUBLIC_QUANT_READER_V2||'').trim()));
+ if(!process.env.NEXT_PUBLIC_QUANT_READER_V2)assert.equal(quantReaderV2Enabled(),true);
 });
 test('Quant V2 tokens exist for dark and light and meet WCAG AA',()=>{
  const css=fs.readFileSync(path.join(__dirname,'../frontend/src/app/globals.css'),'utf8');

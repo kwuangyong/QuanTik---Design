@@ -10,6 +10,9 @@ import { quantReaderV2Enabled } from "@/lib/quant-flags";
 import { QuantGlance } from "./quant-glance";
 import { QuantExplain } from "./quant-explain";
 import { QuantReadingLevel, useReadingLevel } from "./quant-reading-level";
+import { QuantReduceEffects, useReduceEffects } from "./quant-motion";
+import { QuantGuideDrawer } from "./quant-guide";
+import { QuantTour, tourSeen, markTourSeen } from "./quant-tour";
 import styles from "./quant-reader.module.css";
 import glance from "./quant-glance.module.css";
 
@@ -52,6 +55,16 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
   }, []);
   const v2 = quantReaderV2Enabled() && !compact;
   const [level, setLevel] = useReadingLevel(v2);
+  const [reduceEffects, setReduceEffects] = useReduceEffects(v2);
+  const [guideOpen, setGuideOpen] = useState(false), [tourOpen, setTourOpen] = useState(false);
+  // First visit: start the 4-step tour on the summary layer once the glance has rendered (the stored reading level is applied after mount).
+  useEffect(() => {
+    if (!v2 || level !== "summary" || tourOpen || tourSeen()) return;
+    const timer = window.setTimeout(() => { if (!tourSeen() && document.querySelector("[data-glance-verdict]")) setTourOpen(true); }, 400);
+    return () => window.clearTimeout(timer);
+  }, [v2, level, tourOpen]);
+  useEffect(() => { if (tourOpen && level !== "summary") { markTourSeen(); setTourOpen(false); } }, [tourOpen, level]);
+  const replayTour = () => { setGuideOpen(false); setLevel("summary"); window.setTimeout(() => setTourOpen(true), 250); };
   const [selectedModule, setSelectedModule] = useState(compact ? "" : "statistics");
   const uid = useId().replaceAll(":", ""), research = researchFor(report);
   const sectionId = (name: string) => `${uid}-quant-${name}`;
@@ -92,7 +105,9 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
   </>;
   return <div ref={root} className={`quant-report ${styles.report} grid min-w-0 gap-6 ${compact ? "is-compact" : ""}`}>
     {!v2 ? deep : <>
-      <div className={glance.levelRow}><p>{report.symbol} · Báo cáo Quant · dữ liệu đến {report.data_as_of.slice(0, 10)}</p><QuantReadingLevel level={level} onChange={setLevel}/></div>
+      <div className={glance.levelRow}><p>{report.symbol} · Báo cáo Quant · dữ liệu đến {report.data_as_of.slice(0, 10)}</p><div className={glance.tools}><button type="button" className={glance.toolBtn} data-quant-guide-open aria-haspopup="dialog" onClick={() => setGuideOpen(true)}>Cách đọc</button><QuantReduceEffects on={reduceEffects} onChange={setReduceEffects}/><QuantReadingLevel level={level} onChange={setLevel}/></div></div>
+      <QuantGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} onReplayTour={replayTour}/>
+      {tourOpen && <QuantTour onClose={() => setTourOpen(false)}/>}
       {level === "summary" && <div className={glance.enter}><QuantGlance report={report} onOpenWhy={() => setLevel("why")} onOpenPlan={openPlan}/></div>}
       {level === "why" && <div className={glance.enter}><QuantExplain report={report} onOpenModule={openModule} onOpenSummary={() => setLevel("summary")}/></div>}
       {level === "deep" && <div className={`${glance.enter} grid min-w-0 gap-6`}>{deep}</div>}

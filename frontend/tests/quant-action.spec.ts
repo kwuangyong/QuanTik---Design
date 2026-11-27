@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import { analysisFixture } from "./fixtures/analysis";
+import { deepLayer, v2 } from "./helpers/quant-v2";
 
 async function actionReport(page: Page) {
   const state = await analysisFixture(page);
@@ -15,7 +16,7 @@ async function actionReport(page: Page) {
   state.report.sections.simulation_risk.metrics = { simulation_risk: { lock_risk: { max_dd_lock_pct: -4, prob_loss_gt_3pct: 8, lock_sessions: 2 } } };
   state.report.sections.data_quality.metrics = { data_quality: { status: "PASS", score: 95 } };
   state.report.sections.liquidity.metrics = { liquidity: { pass: true } };
-  const open = () => page.goto("/analysis?symbol=FPT&job=job-1");
+  const open = async () => { await page.goto("/analysis?symbol=FPT&job=job-1"); await deepLayer(page); };
   const card = page.getByRole("region", { name: "Hành động thực thi", exact: true });
   const value = (id: string) => card.locator(`[data-action-metric="${id}"] dd`);
   return { state, open, card, value };
@@ -25,7 +26,7 @@ test("Quant action: ưu tiên kế hoạch, giữ nguyên quyết định và Ke
   const { state, open, card, value } = await actionReport(page);
   await open();
   await expect(card).toBeVisible();
-  await expect(page.locator(".quant-report > :first-child")).toHaveAttribute("aria-label", "Hành động thực thi");
+  await expect(page.locator(v2 ? ".quant-report > :last-child > :first-child" : ".quant-report > :first-child")).toHaveAttribute("aria-label", "Hành động thực thi");
   await expect(card.getByRole("heading", { name: "HÀNH ĐỘNG · Mô hình: theo dõi", exact: true })).toBeVisible();
   await expect(card.getByText("Chưa đủ điều kiện thời điểm vào lệnh.", { exact: true })).toBeVisible();
   for (const [id, text] of Object.entries({ entry: "100.000", sl: "97.000", tp1: "105.000", tp2: "110.000", forecast: "4,1%", "forecast-net": "3,5%", agreement: "75%", "rr-net": "1,92x", "risk-nav": "1%", "lock-drawdown": "-4%", "lock-loss": "8%", shares: "1.000", allocation: "33,33%", "kelly-full": "—", "kelly-half": "—" })) {
@@ -59,11 +60,12 @@ test("Quant action: mọi chỉ số có popup, công thức và thao tác đón
     await page.keyboard.press("Escape");
     await expect(popup).toHaveCount(0);
   }
-  const loss = card.getByRole("button", { name: "P(lỗ trên 3% trong T+2)", exact: true });
+  const loss = card.getByRole("button", { name: v2 ? "Khả năng lỗ quá 3% khi chờ" : "P(lỗ trên 3% trong T+2)", exact: true });
   await loss.click();
   await expect(page.getByRole("tooltip")).toContainText("không tự động là lỗ 3% NAV");
   await page.getByRole("tooltip").getByRole("button", {name:"Đóng giải thích thuật ngữ", exact:true}).click();
   await expect(page.getByRole("tooltip")).toHaveCount(0);
+  await page.mouse.move(0, 0);
   const kelly = card.getByRole("button", { name: "Kelly Criterion", exact: true });
   await kelly.focus();
   await expect(page.getByRole("tooltip")).toContainText("không phải % đồng thuận mô hình");

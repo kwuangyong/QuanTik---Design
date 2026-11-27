@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
 import type { ScreeningItem } from "../src/lib/api/screening";
+import { v2 } from "./helpers/quant-v2";
 const item = (symbol: string): ScreeningItem => ({ symbol, exchange: "HOSE", price_vnd: 58000, change_ratio: 0.02, change_5d_ratio: -0.01, change_20d_ratio: 0.1,
   volume_shares: 400000, average_volume_20_shares: 200000, volume_ratio_20: 2, price_to_high20_ratio: 0.98,
   groups: { STRONG: { score: 71.4, met_count: 5, total_count: 7, unavailable_count: 0 }, ACCUMULATION: { score: 57.1, met_count: 4, total_count: 7, unavailable_count: 0 }, DISTRIBUTION: { score: 14.3, met_count: 1, total_count: 7, unavailable_count: 0 } },
@@ -84,7 +85,7 @@ test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ p
   for (const table of [best, worst]) {
     await expect(table.locator("tbody tr").first().locator("th, td")).toHaveCount(34);
     // Independent header order read from the supplied Google Sheet, not the component schema.
-    await expect(table.locator("thead button")).toHaveText(["Mã", "Khuyến nghị", "Giải thích điều kiện", "Điểm", "Đánh giá", "Thời gian nắm giữ", "Xu hướng VN-Index", "Nhóm ngành", "Xu hướng ngành", "Lợi nhuận ngành 20 phiên (%)", "Tương quan ngành", "Mã dẫn dắt ngành", "Sharpe", "Win Rate (%)", "Max DD (%)", "Annual Return (%)", "HMM", "Volatility Regime", "Dự báo", "Lợi nhuận dự báo (%)", "Chi phí (%)", "Lợi nhuận ròng (%)", "Sụt giảm khi chờ T+2 (%)", "Xác suất lỗ trên 3% (%)", "Thanh khoản", "GTGD TB 20 phiên (tỷ)", "Sức chứa tối đa (cổ phiếu)", "Khoảng trống giá 95% (%)", "Entry", "SL", "TP1", "TP2", "Model Agreement (%)", "Nhận xét chi tiết"]);
+    await expect(table.locator("thead button")).toHaveText(["Mã", "Khuyến nghị", "Giải thích điều kiện", "Điểm", "Đánh giá", "Thời gian nắm giữ", "Xu hướng VN-Index", "Nhóm ngành", "Xu hướng ngành", "Lợi nhuận ngành 20 phiên (%)", "Tương quan ngành", "Mã dẫn dắt ngành", "Sharpe", "Win Rate (%)", "Max DD (%)", "Annual Return (%)", "HMM", "Volatility Regime", "Dự báo", "Lợi nhuận dự báo (%)", "Chi phí (%)", "Lợi nhuận ròng (%)", `Sụt giảm khi ${v2 ? "chờ cổ phiếu về" : "chờ T+2"} (%)`, "Xác suất lỗ trên 3% (%)", "Thanh khoản", "GTGD TB 20 phiên (tỷ)", "Sức chứa tối đa (cổ phiếu)", "Khoảng trống giá 95% (%)", "Entry", "SL", "TP1", "TP2", "Model Agreement (%)", "Nhận xét chi tiết"]);
     await expect(table.locator("tbody tr").first().locator("[data-sheet-key]")).toHaveCount(33);
     for (const label of ["Chất lượng dữ liệu", "Điểm dữ liệu", "Cảnh báo dữ liệu", "Biến động mô phỏng", "Lợi nhuận gộp (%)", "Đồng thuận (%)", "Đạt bộ lọc", "RiskPctNAV"]) {
       await expect(table.getByRole("columnheader", { name: label, exact: true })).toHaveCount(0);

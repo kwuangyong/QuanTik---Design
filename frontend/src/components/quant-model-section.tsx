@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { analysisReason, type AnalysisReport, type ReportSection } from "@/lib/api/analysis";
-import { at, metricText, moduleGuides, number, record, researchFor } from "@/lib/quant-reader";
+import { at, metricText, metricLabel, moduleGuides, number, record, researchFor } from "@/lib/quant-reader";
 import { moduleMetricTerms } from "@/content/quant-module-terms";
 import TermHint from "./term-hint";
 import { quantSummary } from "@/lib/quant-summary";
@@ -92,7 +92,7 @@ export function QuantModelSection({ name, report, compact, id, agreementId, navi
   if (!guide) return null;
   const metrics = readableMetrics(section);
   if (name === "statistics" && section.status === "AVAILABLE" && Object.keys(record(metrics.stats)).length > 0 && metrics.n == null) metrics.n = researchFor(report).observations;
-  const rows = guide.metrics.map(([label, path, unit]) => { const value = at(metrics,path); return { label, path, value: Array.isArray(value) && value.every(finite) ? `(${value.join(", ")})` : metricText(value,unit) }; });
+  const rows = guide.metrics.map(([label, path, unit]) => { const value = at(metrics,path); return { label: compact ? label : metricLabel(path, label), path, value: Array.isArray(value) && value.every(finite) ? `(${value.join(", ")})` : metricText(value,unit) }; });
   const analysis = moduleAnalysis(name, metrics, report);
   const children = Object.values(section.metrics).flatMap(v => [record(v), ...Object.values(record(v)).map(record)]);
   const failed = children.some(v => v.error || v.available === false), fallback = children.some(v => v.method === "fallback");

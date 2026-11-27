@@ -241,6 +241,8 @@ const NEEDS = {
   quality: { field: 'data_quality.checks[]', what: 'Danh sách từng mục kiểm tra dữ liệu (đạt, cảnh báo, lỗi).' },
   hmmKind: { field: 'hmm.probability_kind', what: 'Loại xác suất HMM (lọc hay làm mượt) để xác nhận cách đọc.' },
 } as const;
+/** Fields the deep layer needs from the backend and the API does not publish yet (shown on "Cách đọc" and in the docs). */
+export const backendNeeds: readonly { field: string; what: string }[] = Object.values(NEEDS);
 const priceSeries = (report: AnalysisReport) => {
   const m = readableMetrics(report.sections.statistics), close = numeric(m._price_close), dates = Array.isArray(m._price_dates) && m._price_dates.length === close.length && m._price_dates.every(d => typeof d === 'string') ? (m._price_dates as string[]) : close.map((_, i) => `#${i + 1}`);
   return { close, dates, usable: has(m.stats) };

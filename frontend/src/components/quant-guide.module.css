@@ -1,0 +1,34 @@
+/* "Cách đọc" drawer and page. Text >= 14px except notes (13px). Colours from the existing tokens. */
+.scrim { position: fixed; inset: 0; z-index: 55; display: flex; justify-content: flex-end; background: rgb(0 0 0 / .45); }
+.drawer { box-sizing: border-box; width: min(560px, 100vw); height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 0 16px 32px; background: var(--surface); border-left: 1px solid var(--q-line-strong); color: var(--text); font-family: var(--q-font-text); font-size: var(--q-text-body); line-height: var(--q-text-body-lh); }
+@media (min-width: 768px) { .drawer { padding: 0 24px 32px; } }
+.drawer:focus { outline: none; }
+.head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; margin-bottom: 8px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.title { margin: 0; font-size: var(--q-text-card-title); font-weight: 650; }
+.close, .btn { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--q-line-strong); background: transparent; color: var(--text); font: inherit; font-size: var(--q-text-label); font-weight: 500; cursor: pointer; touch-action: manipulation; }
+.close:hover, .btn:hover { background: var(--raised); }
+.close:focus-visible, .btn:focus-visible, .toc a:focus-visible, .more summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.body { min-width: 0; }
+.body section { margin-top: 24px; scroll-margin-top: 72px; }
+.body h2, .body h3 { margin: 0 0 8px; font-size: var(--q-text-card-title); line-height: 1.35; font-weight: 650; }
+.lead { margin: 0 0 6px; font-size: var(--q-text-group-title); line-height: 1.25; font-weight: 650; }
+.p { margin: 0 0 10px; max-width: var(--q-measure); }
+.list { margin: 0 0 10px; padding-left: 20px; max-width: var(--q-measure); }
+.list li { margin-bottom: 4px; }
+.toc ol { margin: 0 0 12px; padding-left: 20px; display: grid; gap: 2px; }
+.toc a { color: var(--accent); text-underline-offset: 3px; display: inline-block; min-height: 28px; }
+.table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+.table th, .table td { text-align: left; vertical-align: top; padding: 8px 8px 8px 0; border-top: 1px solid var(--border); font-weight: 400; }
+.table thead th { font-size: var(--q-text-label); color: var(--muted); }
+.terms { margin: 0; display: grid; gap: 0; }
+.term { padding: 10px 0; border-top: 1px solid var(--border); scroll-margin-top: 72px; }
+.term:target { background: var(--raised); box-shadow: -8px 0 0 var(--raised), 8px 0 0 var(--raised); }
+.term dt { font-weight: 600; }
+.term dt span { color: var(--muted); font-weight: 400; }
+.term dd { margin: 2px 0 0; color: var(--muted); max-width: var(--q-measure); }
+.more { margin: 8px 0; font-size: var(--q-text-label); }
+.more summary { cursor: pointer; color: var(--accent); min-height: 28px; }
+.more code { font-family: var(--q-font-num); overflow-wrap: anywhere; }
+.badge { display: inline-block; font-size: var(--q-text-label); color: var(--muted); border: 1px dashed var(--q-line-strong); border-radius: 6px; padding: 1px 8px; line-height: 1.4; }
+.page { max-width: 760px; margin: 0 auto; padding: 16px; font-family: var(--q-font-text); }
+.back { color: var(--accent); text-underline-offset: 3px; }
