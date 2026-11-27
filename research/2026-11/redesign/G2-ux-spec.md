@@ -6,8 +6,8 @@ Quyết định đã duyệt (giữ nguyên): Kết luận 30 giây, rồi C. R�
 
 Ràng buộc bắt buộc (kiểm lại ở mỗi đợt Gate 3):
 1. Không con số hay tín hiệu nằm ngoài dữ liệu API thật. Thiếu thì hiện "—" và thẻ "Chưa đủ dữ liệu", không bao giờ là 0 hay "trung tính".
-2. Momentum, MA200, CMF không trình bày như tín hiệu mua (nghiên cứu nội bộ ghi chúng trượt OOS ở VN). Chúng chỉ là mô tả.
-3. HMM chỉ hiện xác suất lọc (filtered) của phiên cuối. Không dùng nhãn làm mượt (smoothed) của lịch sử làm tín hiệu.
+2. Momentum, MA200, CMF và pha HMM không trình bày như lý do mua hay điểm hỗ trợ (nghiên cứu nội bộ ghi chúng trượt OOS ở VN). Chúng chỉ mô tả quá khứ, kèm câu "chưa chứng minh dự báo được ngoài mẫu". Không dùng chữ "tín hiệu", "điểm hỗ trợ", "đà nghiêng về tăng" cho các module này.
+3. HMM chỉ được gọi là "xác suất lọc" khi `hmm.probability_kind === 'filtered'`. Thiếu trường này thì hiện "Chưa rõ loại xác suất (lọc/làm mượt)" và module chỉ mô tả. Không dùng nhãn làm mượt (smoothed) của lịch sử làm căn cứ.
 4. Không câu ra lệnh mua/bán. Nút chính là "Xem kế hoạch có điều kiện", không có "Mua ngay".
 5. Không gamification: không confetti, huy hiệu, bảng xếp hạng thúc giao dịch, đếm ngược, streak, số người đang xem.
 6. Nội dung pháp lý (T+, biên độ giá, phí, thuế) là placeholder `[chờ Haiku xác minh]`. Miễn trừ đánh dấu `[chờ rà soát pháp lý VN]`.
@@ -74,7 +74,7 @@ Thiết kế giữ nguyên các bước kỹ thuật này, chỉ thêm ba thứ:
 | Mô hình: theo dõi                                 | Dữ liệu: Đạt · 95/100            |
 | Chờ hoàn tất điều kiện. Lý do: chưa đủ điều kiện  | 80% mô hình tham gia             |
 | thời điểm vào lệnh.                               | 0 cảnh báo · [Xem chi tiết]      |
-| Rủi ro lớn nhất: mô phỏng có 8% khả năng lỗ >3%   |                                  |
+| Rủi ro lớn nhất: theo mô phỏng, khoảng 8 trong 100 lần lỗ >3%   |                                  |
 | khi chờ cổ phiếu về. [chờ Haiku xác minh: T+]     |                                  |
 | Miễn trừ ... [chờ rà soát pháp lý VN]             |                                  |
 +---------------------------------------------------+----------------------------------+
@@ -141,15 +141,15 @@ Năm nhãn, mỗi nhãn có màu, biểu tượng và chữ (không dựa vào m
 
 | Tone | Nhãn | Biểu tượng | Dùng khi |
 |---|---|---|---|
-| `ok` | Ổn theo mốc | dấu tích | Chỉ khi có điều kiện cụ thể đã nằm trong ngưỡng (ví dụ ADF p dưới 0,05; thanh khoản `pass=true`; dữ liệu `PASS`; sau phí còn dương) |
-| `neutral` | Mô tả | dấu ngang | Module chỉ mô tả, không có ngưỡng tốt/xấu (Sharpe, CMF, Hurst, HMM, tương quan, ...) |
+| `ok` | Ổn theo mốc | dấu tích | Chỉ khi có điều kiện cụ thể đã nằm trong ngưỡng của chẩn đoán hoặc kiểm tra (ví dụ ADF p dưới 0,05; thanh khoản `pass=true`; dữ liệu `PASS`). Không dùng cho dự báo, kể cả dự báo sau phí |
+| `neutral` | Mô tả | dấu ngang | Module chỉ mô tả, hoặc không có ngưỡng trong `quant-interpretation-thresholds.ts`. Có mốc đọc (Sharpe, Hurst, HMM, CMF) nhưng mốc đó không tạo tone `ok` hay `risk` |
 | `caution` | Thận trọng | tam giác | Có điều kiện cảnh báo trong ngưỡng (persistence từ 0,9; kurtosis dư trên 0; độ phủ dưới 100%; không đạt Gaussian) |
 | `risk` | Rủi ro cao | hình thoi đặc | Chỉ khi vượt giới hạn cứng (persistence từ 1; dữ liệu `FAIL`; thanh khoản `pass=false`; sau phí âm) |
 | `nodata` | Chưa đủ dữ liệu | dấu hỏi | Thiếu, tắt, lỗi |
 
 Nhãn nhóm (thẻ lớp 1) = mức nặng nhất trong các chip có tone của nhóm theo thứ tự `risk > caution > nodata(nếu quá nửa) > neutral`. Thẻ nhóm không bao giờ hiện `ok`, để một dòng xanh không bị đọc là "nên mua". Nhãn nhóm D có thể là "Chưa đủ điều kiện" (từ `decision.executable=false`) dùng đúng chữ backend.
 
-Tone chỉ được dùng ngưỡng đã có trong `quant-interpretation-thresholds.ts` (file ghi rõ chỉ là mốc đọc, không đưa vào điểm hay cổng hành động). Vì vậy: không gán `ok`/`risk` cho AIC, beta, điểm chất lượng hay dự báo.
+Tone chỉ được dùng ngưỡng đã có trong `quant-interpretation-thresholds.ts` (file ghi rõ chỉ là mốc đọc, không đưa vào điểm hay cổng hành động). Vì vậy: không gán `ok`/`risk` cho AIC, beta, điểm chất lượng hay dự báo. Không có ngưỡng thì chip là "Mô tả". Hệ quả: Monte Carlo (không có ngưỡng cho lỗ khi chờ) và Chi phí (dự báo sau phí) dùng `neutral`. Muốn có `caution` cho lỗ khi chờ thì phải thêm ngưỡng vào `thresholds.ts` trước (quyết định sản phẩm).
 
 ### 4.2 Khung 4 phần cho mọi thẻ module
 
@@ -183,19 +183,19 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 **04 GARCH - "Dự báo độ rung lắc giá"** (`garch`)
 - Tone: `p = garch.garch.persistence`. `p >= T.garch.stationaryLimit (1)` -> `risk`. `p >= T.garch.persistent (0,9)` -> `caution`. `0 < p < 0,9` -> `neutral`. Thiếu -> `nodata`.
 - Kết luận (nhánh 0,9 đến dưới 1): "Giá đang dao động khoảng 2% mỗi phiên và cú sốc có thể kéo dài." Nhánh dưới 0,9: "...và cú sốc thường lắng nhanh hơn." Nhánh từ 1: "Mô hình không cho kết luận ổn định về độ rung lắc dài hạn."
-- Vì sao: "Chỉ số dai dẳng α+β là 0,96, trên mốc tham khảo 0,9. Nghĩa là biến động cao hôm nay còn ảnh hưởng nhiều phiên sau."
+- Vì sao: "Chỉ số dai dẳng α+β là 0,96, trên mốc tham khảo 0,9. Nghĩa là cú sốc dao động hôm nay còn ảnh hưởng vài phiên sau."
 - Số: Biến động hiện tại `current_vol_pct` 2 %/phiên | Dai dẳng α+β `persistence` 0,96, mốc 0,9 và 1 | Chu kỳ bán rã `half_life` 17 phiên (chỉ hiện khi `0<p<1`, nếu không hiện "không xác định").
 - Lưu ý: "Đây là độ lớn dao động, không cho biết giá lên hay xuống." EGARCH γ (nếu có) chỉ ở lớp 3.
 - Hình lớp 2: ba thanh biến động dự báo (`forecast_vol`, 3 giá trị) và thang persistence có hai vạch mốc 0,9 và 1.
 - Ghi chú dữ liệu: "volatility cone" (phân vị lịch sử theo horizon) chưa có trong API; xem mục 11 (khoảng trống). Demo chỉ vẽ dữ liệu có thật.
 
 **10 Monte Carlo - "Mô phỏng nhiều kịch bản giá"** (`simulation_risk`)
-- Tone: `neutral` cho tỷ lệ tăng (mốc `T.simulation_risk.balancedUpPct = 50` chỉ để nói "trên/dưới nửa", không phải tốt/xấu). Thêm `caution` nếu `lock_risk.prob_loss_gt_3pct` có mặt và > 0: nhãn "Có rủi ro lỗ khi chờ cổ phiếu về" (không có ngưỡng cứng, nên chỉ `caution` khi giá trị > 0, không đặt cutoff riêng).
-- Kết luận: "Trong 100 lần mô phỏng, 62 lần giá sau 3 phiên cao hơn hôm nay, 38 lần thấp hơn hoặc bằng."
-- Vì sao: "Mô phỏng dùng biến động GARCH-t. Có 8 trong 100 lần lỗ hơn 3% trong thời gian chờ thanh toán [chờ Haiku xác minh: T+]."
-- Số: Giá cuối kỳ cao hơn `mc.prob_up` 62 trên 100, mốc 50 | Lỗ tối đa khi chờ `lock_risk.max_dd_lock_pct` -4% | P(lỗ trên 3%) `prob_loss_gt_3pct` 8 trên 100.
+- Tone: luôn `neutral` ("Mô tả") hoặc `nodata`. Mốc `T.simulation_risk.balancedUpPct = 50` chỉ để nói "trên/dưới nửa". `thresholds.ts` không có ngưỡng cho `prob_loss_gt_3pct`, nên không gán `caution` theo giá trị này.
+- Kết luận: "Khoảng 62 trong mỗi 100 lần (từ 1.000 lần mô phỏng), giá sau 3 phiên cao hơn hôm nay; khoảng 38 lần thấp hơn hoặc bằng." Số 62 là `mc.prob_up` (phần trăm); 1.000 là `research.simulation_count`; 62% × 1.000 = 620.
+- Vì sao: "Mô phỏng dùng biến động GARCH-t. Khoảng 8 trong mỗi 100 lần (khoảng 80 trên 1.000 lần mô phỏng) lỗ hơn 3% trong thời gian chờ thanh toán [chờ Haiku xác minh: T+]."
+- Số: Giá cuối kỳ cao hơn `mc.prob_up` 62 trên 100, mốc 50 | Sụt giảm khi chờ `lock_risk.max_dd_lock_pct` -4% (thống kê theo BE, chưa rõ) | Lỗ trên 3% `prob_loss_gt_3pct` 8 trên 100.
 - Lưu ý: "Mô phỏng dựa trên giả định về dao động quá khứ, không phải lời hứa; giá thật có thể ra ngoài dải."
-- Hình: lưới 100 chấm gom nhóm (62 chấm xanh dương nhạt = cao hơn, 38 chấm xám = thấp hơn hoặc bằng; không dùng đỏ/xanh giá) và fan chart P05-P95, P25-P75, P50 từ `research.cone`. Cả hai phía cùng cỡ.
+- Hình: lưới 100 chấm, mỗi chấm là 1% trong 1.000 lần mô phỏng, gom nhóm (62 chấm xanh dương nhạt = cao hơn, 38 chấm xám = thấp hơn hoặc bằng; không dùng đỏ/xanh giá) và fan chart P05-P95, P25-P75, P50 từ `research.cone`. Cả hai phía cùng cỡ. Ở lớp 3 thêm histogram 3 nhóm từ `research.distribution`, nhãn "Phân phối giá cuối kỳ mô phỏng, không phải lợi suất lịch sử".
 - Nếu `prob_up` ngoài 0-100 hoặc thiếu: không vẽ lưới, thẻ `nodata`.
 
 **02 Phân phối - "Hình dạng lợi suất lịch sử"** (`distribution`)
@@ -204,7 +204,7 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 - Vì sao: "Độ nhọn dư 2,44, trên mốc 0 của phân phối chuẩn. Độ lệch -0,49 nghĩa là phía giảm có đuôi dài hơn."
 - Số: Độ nhọn dư `excess_kurtosis` 2,44, mốc 0 | Độ lệch `skewness` -0,49, mốc 0 (âm: lệch trái) | Giống phân phối chuẩn? `is_gaussian` "Không".
 - Lưu ý: "Không có VaR/CVaR lịch sử trong báo cáo, nên chưa đo được mức lỗ ở đuôi." (đúng chữ `moduleAnalysis`).
-- Hình: histogram từ `research.distribution` (3 cột trong fixture), không tô đỏ/xanh; nhãn trục là lợi suất %.
+- Hình: histogram lợi suất lịch sử chỉ vẽ khi có chuỗi `_price_close` đủ dài (fixture chỉ có 7 điểm cho 252 quan sát, nên thẻ ghi "Chưa đủ chuỗi lợi suất lịch sử để vẽ hình phân phối"). `research.distribution` là phân phối mô phỏng Monte Carlo, thuộc module 10, không dùng ở đây.
 
 **13 Thanh khoản - "Dễ mua bán nhanh"** (`liquidity`)
 - Tone: `pass===true` -> `ok`; `pass===false` -> `risk`; thiếu -> `nodata`.
@@ -218,27 +218,28 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 **01 Hiệu suất - "Lợi nhuận trên mỗi đơn vị rủi ro"** (`statistics`)
 - Tone: `neutral` (mốc Sharpe chỉ để đọc). Nhãn phụ chữ: "Khá" khi `sharpe >= T.statistics.sharpeFair (1)`, "Rất tốt theo mốc" khi `>= sharpeStrong (2)`, "Hạn chế" khi `0 < sharpe < 1`, "Không vượt mức tham chiếu" khi `<= 0`. Không đặt tone `ok`.
 - Kết luận: "Năm qua cổ phiếu sinh lời khá so với mức dao động đã chịu."
-- Vì sao: "Sharpe 1,2, nằm giữa mốc khá (1) và rất tốt (2). Sụt giảm sâu nhất là -12%: 100 triệu đồng từng còn khoảng 88 triệu ở đáy."
+- Vì sao: "Sharpe 1,2, nằm giữa mốc khá (1) và rất tốt (2). Sụt giảm sâu nhất là -12%: mỗi 100 đồng ở đỉnh từng còn khoảng 88 đồng ở đáy."
 - Số: Lợi suất quy đổi năm `ann_return_pct` 24,5% | Sụt giảm tối đa `max_dd_pct` -12% | Sharpe `sharpe` 1,2, mốc 1 và 2.
 - Lưu ý: "Đây là quá khứ, không đảm bảo năm tới." Sortino, biến động năm, n ở lớp 3.
-- Ví dụ tiền 100 triệu giống `moduleAnalysis`, chỉ khi `-100 <= dd <= 0`.
+- Chỉ dùng ví dụ theo tỷ lệ (mỗi 100 đồng), không dùng số tiền cụ thể, để không lệch với `% tài sản` của module 12. Chỉ khi `-100 <= dd <= 0`.
 
 **06 Kỹ thuật - "Dòng tiền và chất lượng xu hướng"** (`technical`)
 - Tone: luôn `neutral` hoặc `nodata`. Cấm dùng `ok`. Huy hiệu cố định "Mô tả, chưa kiểm chứng ngoài mẫu" (xuất phát từ nghiên cứu nội bộ ghi CMF, MA200, momentum, R² xu hướng trượt OOS ở VN).
-- Kết luận: "Dòng tiền gần đây nghiêng về bên mua và đường giá khá rõ hướng." (nhánh theo dấu `cmf` so `T.technical.neutralFlow` 0 và `er` so `T.technical.noisyER` 0,3: ER từ 0,3 trở xuống thì câu thành "đường giá còn nhiều nhiễu").
-- Vì sao: "CMF 0,21 trên 0 là áp lực mua theo giá và khối lượng. ER 0,58 trên mốc nhiễu 0,3."
+- Kết luận: "Trong giai đoạn quan sát, CMF dương và đường giá khá rõ hướng. Chỉ mô tả, chưa chứng minh dự báo được ngoài mẫu." (nhánh theo dấu `cmf` so `T.technical.neutralFlow` 0 và `er` so `T.technical.noisyER` 0,3: ER từ 0,3 trở xuống, khớp `er<=noisyER` trong code, thì câu thành "đường giá còn nhiều nhiễu").
+- Vì sao: "CMF 0,21, trên 0: giá đóng cửa gần đỉnh phiên hơn. ER 0,58 trên mốc nhiễu 0,3. Chỉ mô tả quá khứ."
 - Số: Dòng tiền CMF `flow.cmf` 0,21, mốc 0 | Hiệu quả xu hướng ER `trend.er` 0,58, mốc 0,3 | Sức mạnh 20 phiên so với VN-Index `alpha.cross_sectional.rs_20d_pct` +4,2%.
-- Lưu ý: "CMF là ước lượng từ giá và khối lượng, không phải tiền nạp rút thật; không dùng riêng làm tín hiệu."
-- Cấm: câu "tín hiệu mua", "xu hướng tốt", dùng màu `up` cho chip.
+- Lưu ý: "CMF là ước lượng từ giá và khối lượng, không phải tiền nạp rút thật. Chưa chứng minh dự báo được ngoài mẫu."
+- Cấm: chữ "tín hiệu", "áp lực mua", "nghiêng về bên mua", "xu hướng tốt", dùng màu `up` cho chip.
 
 **05 HMM - "Trạng thái thị trường đang là gì"** (`hmm`)
 - Tone: `neutral`; nếu `method==='fallback'`: `nodata` kèm "Đang dùng phương pháp thay thế" và không hiện xác suất.
-- Kết luận: "Mô hình nhận ra pha tăng ở phiên cuối, với xác suất lọc 67%." Pha giảm/đi ngang dùng cùng khung, không ngôn ngữ tốt/xấu.
-- Vì sao: "Xác suất lọc chỉ dùng dữ liệu đến phiên cuối. 67% vượt một nửa (mốc 50%); pha đi ngang 24%, pha giảm 9%."
+- Huy hiệu: khi thiếu `hmm.probability_kind`, huy hiệu "Chưa rõ loại xác suất (lọc/làm mượt)" và module chỉ mô tả. Chữ "lọc" chỉ hiện khi `probability_kind === 'filtered'`.
+- Kết luận: "Mô hình gọi phiên cuối là pha tăng, độ chắc 67%. Chỉ mô tả." Pha giảm/đi ngang dùng cùng khung, không ngôn ngữ tốt/xấu.
+- Vì sao: "Chưa rõ loại xác suất (lọc/làm mượt). 67% vượt một nửa (mốc 50%); pha đi ngang 24%, pha giảm 9%."
 - Số: Xác suất pha tăng 67% | đi ngang 24% | giảm 9% (`state_probs`, tổng 100).
-- Lưu ý: "Đây là độ chắc của việc gọi tên trạng thái, không phải xác suất lãi, và không dùng để ra lệnh."
+- Lưu ý: "Đây là độ chắc của việc gọi tên trạng thái, không phải xác suất lãi, và không dùng để ra lệnh. Chưa chứng minh dự báo được ngoài mẫu."
 - Lưới 100 chấm gom nhóm theo ba trạng thái (67/24/9), thứ tự cố định.
-- Không vẽ dải lịch sử `research.regime` ở lớp 2. Ở lớp 3, nếu vẽ, ghi rõ "nhãn xem lại, không phải tín hiệu"; chỉ cho phép khi API xác nhận đó là xác suất lọc (mục 11).
+- Không vẽ dải lịch sử `research.regime` ở lớp 2. Ở lớp 3, nếu vẽ, ghi rõ "nhãn xem lại, chỉ mô tả quá khứ"; chỉ cho phép khi API xác nhận đó là xác suất lọc (mục 11).
 
 **08 Thị trường và ngành - "So với ngành và thị trường"** (`context`)
 - Tone: `neutral`.
@@ -252,17 +253,18 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 
 **03 ARIMA - "Kiểm tra giá có ổn định hay không"** (`arima`)
 - Tone: `adf_p < T.arima.adfSignificance (0,05)` và `stationary===true` -> `ok`; `stationary===false` hoặc p từ 0,05 -> `caution`; thiếu -> `nodata`. Không có tone cho AIC/BIC.
-- Kết luận: "Chuỗi lợi suất đủ ổn định để mô hình ARIMA đọc được."
+- Chip: "Đạt mốc ADF" (chẩn đoán, không phải dự báo).
+- Kết luận: "ADF p 0,012 bác bỏ giả thuyết chuỗi không ổn định ở mức 5%. Đây là chẩn đoán, không phải dự báo."
 - Vì sao: "ADF p-value 0,012, dưới mốc 0,05. Mô hình chọn cấu hình (1, 0, 1)."
 - Số: ADF p-value `adf_p` 0,012, mốc 0,05 | Cấu hình `best.order` (1, 0, 1) | Dự báo 3 phiên `forecast.prices` 102.200 đến 102.600 (chỉ khi có mảng).
 - Lưu ý: "ARIMA là chẩn đoán tham khảo; đường dự báo không phải giá sẽ đi theo. AIC thấp không có nghĩa mô hình đúng."
 - Hình: đường 3 điểm dự báo kèm điểm giá hiện tại; nếu thiếu `forecast`, thẻ ghi "Chưa có chuỗi dự báo" (ca `partial`).
 
 **07 Alpha có hướng - "Đà, tính duy trì và so sánh trong rổ"** (`directional_alpha`)
-- Tone: luôn `neutral`/`nodata`, huy hiệu "Mô tả, chưa kiểm chứng ngoài mẫu". Momentum không bao giờ thành "tín hiệu".
-- Kết luận: "Đà 20 phiên gần đây nghiêng về tăng, nhưng bằng chứng ngoài mẫu còn yếu."
+- Tone: luôn `neutral`/`nodata`, huy hiệu "Mô tả, chưa kiểm chứng ngoài mẫu". Momentum không bao giờ được trình bày như lý do mua.
+- Kết luận: "Điểm động lượng 0,4 (dương), chỉ mô tả quá khứ. Chưa chứng minh dự báo được ngoài mẫu."
 - Vì sao: "Điểm động lượng 0,4 trên mốc 0. Hurst 0,61 trên mốc 0,5, gợi ý xu hướng có tính duy trì."
-- Số: Điểm động lượng `momentum_alpha.score` 0,4, mốc 0 | Hurst `hurst.hurst` 0,61, mốc 0,5 | Thứ hạng trong rổ (LightGBM) `lightgbm_cross_sectional.rank_pct` 80 (chỉ khi `available===true`).
+- Số: Điểm động lượng `momentum_alpha.score` 0,4, mốc 0 | Hurst `hurst.hurst` 0,61, mốc 0,5 | Vị trí trong rổ (LightGBM) `lightgbm_cross_sectional.rank_pct` 80 trên 100, không phải xác suất (chỉ khi `available===true`).
 - Lưu ý: "Thứ hạng không phải xác suất lãi. Hồi quy phần dư chưa kích hoạt và không được tính như một phiếu."
 - Nếu `momentum*proj_pct < 0`: thêm "LightGBM trái chiều với đà gần đây".
 
@@ -278,24 +280,24 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 
 **12 Kế hoạch vị thế - "Các mức giá của kế hoạch"** (`trade_plan`)
 - Tone: bốn mức theo thứ tự `SL < Entry < TP1 <= TP2` và đều `> T.trade_plan.minPrice (0)` -> `neutral` ("Hợp lệ về thứ tự"); sai thứ tự -> `caution` + "Chưa tạo thành kế hoạch hợp lệ"; thiếu -> `nodata`.
-- Kết luận: "Kế hoạch có điều kiện: nếu vào ở 100.000 và sai, lỗ ước tính 3 triệu đồng."
-- Vì sao: "Cắt lỗ 97.000, mục tiêu 105.000 và 110.000. Tỷ lệ lãi/lỗ 3,33 (còn 1,92 sau chi phí)."
-- Số (thứ tự xấu trước): Lỗ ước tính tại cắt lỗ `pos.max_loss` 3.000.000 VND (1% tài sản) | Giá vào `sl.entry` 100.000 | Mục tiêu 1 `sl.tp1` 105.000 / mục tiêu 2 `sl.tp2` 110.000.
+- Kết luận: "Kế hoạch có điều kiện: nếu vào ở 100.000 và sai, lỗ ước tính khoảng 1% tài sản (3.000.000 VND)."
+- Vì sao: "Cắt lỗ 97.000, mục tiêu 105.000 và 110.000. Tỷ lệ lãi/lỗ tới mục tiêu 2 là 3,33 (`sl.rr2`, kiểm lại: (110.000 - 100.000) / (100.000 - 97.000)). Báo cáo ghi 1,92 sau chi phí (`sl.rr_net_cost`; công thức chưa công bố nên giao diện không tự suy ra)."
+- Số (thứ tự xấu trước): Lỗ ước tính tại cắt lỗ `pos.risk_pct_nav` 1% tài sản (`pos.max_loss` 3.000.000 VND) | Giá vào `sl.entry` 100.000 | Mục tiêu 1 `sl.tp1` 105.000 / mục tiêu 2 `sl.tp2` 110.000.
 - Lưu ý: "Cắt lỗ không đảm bảo bán được đúng giá khi giá nhảy hoặc thanh khoản thấp. Biên độ giá và thời gian chờ cổ phiếu về [chờ Haiku xác minh]."
-- Hình: thang giá nằm ngang SL-Entry-TP1-TP2, đoạn lỗ và đoạn lãi cùng độ dày; số tiền ví dụ theo `pos.value` 100 triệu. Không tô nút.
+- Hình: thang giá nằm ngang SL-Entry-TP1-TP2, đoạn lỗ và đoạn lãi cùng độ dày; chỉ ghi % tài sản và số tiền `pos.max_loss` có trong báo cáo, không thêm vốn ví dụ. Không tô nút.
 - Quy mô cá nhân (`PERSONALIZED`) hay tham chiếu (`REFERENCE`) hiện thành nhãn chữ; Kelly chỉ hiện khi `kelly.available===true` và là ô thu gọn.
 
 **11 Chi phí - "Còn lại bao nhiêu sau phí"** (`costs`)
-- Tone: `net > T.costs.breakEvenPct (0)` -> `ok` (nhãn "Còn dương sau phí"); `net === 0` -> `neutral`; `net < 0` -> `risk`; thiếu -> `nodata`.
+- Tone: `neutral` ("Mô tả") với mọi giá trị đủ dữ liệu, vì đây là dự báo; mốc `T.costs.breakEvenPct (0)` chỉ để đọc "trên/dưới 0". Thiếu -> `nodata`. Không dùng `ok` hay `risk`.
 - Kết luận: "Dự báo gộp 4,1%, trừ phí còn 3,5%."
-- Vì sao: "Chi phí hai chiều là 0,6% [chờ Haiku xác minh: mức phí và thuế]. Sau phí vẫn dương, nhưng dự báo dương không bảo đảm có lãi."
+- Vì sao: "Chi phí hai chiều là 0,6% [chờ Haiku xác minh: mức phí và thuế]. Sau phí là +3,5%, mốc hòa vốn 0. Dự báo dương không bảo đảm có lãi."
 - Số: Trước phí `gross_forecast_pct` 4,1% | Chi phí hai chiều `roundtrip_cost_pct` 0,6% | Sau phí `net_forecast_pct` 3,5%, mốc 0.
 - Lưu ý: "Mức phí và thuế thực tế khác theo công ty chứng khoán [chờ Haiku xác minh]."
 - Hình: waterfall 3 cột (gộp, phí, ròng).
 
 **15 Quyết định - "Điều kiện để hành động"** (`decision`)
 - Tone: `executable===true` -> `ok` ("Đủ điều kiện thực thi"); `false` -> `caution` ("Chờ hoàn tất điều kiện"); thiếu -> `nodata`.
-- Kết luận: dùng đúng nhãn `actionNames` (WATCH: "Mô hình: theo dõi"). `BUY_NOW` hiện "Mô hình: tín hiệu tích cực" (đúng chữ hiện có, không đổi thành lệnh).
+- Kết luận: dùng đúng nhãn `actionNames` (WATCH: "Mô hình: theo dõi"). `BUY_NOW` hiện đúng nhãn `actionNames` hiện có, không đổi thành lệnh. Chữ "tín hiệu" trong nhãn đó cần rà lại ở Gate 3.
 - Vì sao: lý do từ `report.decision.reason_codes` qua `analysisReason` (ví dụ TIMING_NOT_READY: "Chưa đủ điều kiện thời điểm vào lệnh.").
 - Số: Điểm Quant `rec.score` 72/100 (nhãn "điểm xếp hạng, không phải xác suất") | Cổng điều kiện `action.gate_pass` Không | Thực thi `action.executable` Không.
 - Lưu ý: "Điểm cao không có nghĩa là nên mua."
@@ -310,7 +312,7 @@ Mọi nhánh dưới đây dùng đúng ngưỡng trong `interpretationThreshold
 - Lưu ý: "Điểm chấm dữ liệu đầu vào, không chấm chất lượng cổ phiếu."
 
 **16 Nhận định - "Tóm tắt bằng lời"** (`commentary`)
-- Tone: `neutral`. Dùng `quantSummary()` (Điểm hỗ trợ, Rủi ro chính, Phần còn thiếu, Kết luận). Mỗi câu có chú thích số module nguồn, ví dụ [05], [10], để truy ngược.
+- Tone: `neutral`. Dùng `quantSummary()` nhưng đổi nhãn "Điểm hỗ trợ" thành "Các điểm mô tả" và không đưa CMF, momentum, pha HMM vào như lý do ủng hộ (cần sửa `quantSummary()` và fixture ở Gate 3). Kết luận: "Mô hình đang ở trạng thái theo dõi, chưa đủ điều kiện thực thi." Mỗi câu có chú thích số module nguồn, ví dụ [05], [10], để truy ngược.
 - Lưu ý cố định: "Đoạn văn tổng hợp; số liệu gốc ở từng module." Không thêm số nào không có trong module.
 
 ---
@@ -347,7 +349,7 @@ Mỗi hình có `role="img"` hoặc nhóm có `aria-label`, đoạn mô tả `<f
 | 6 | Độ lệch | Đuôi nào dài hơn | Âm: phía giảm có đuôi dài hơn. Dương: phía tăng dài hơn | 02 |
 | 7 | Độ nhọn dư | Độ dày đuôi | Trên 0 nghĩa là cú tăng giảm lớn xảy ra nhiều hơn phân phối chuẩn | 02 |
 | 8 | Phân phối chuẩn (Gaussian) | Hình chuông chuẩn | Mốc so sánh quen thuộc; thị trường thường lệch khỏi nó | 02 |
-| 9 | VaR / CVaR | Mức lỗ ở đuôi | Mức lỗ có thể gặp trong tình huống xấu; báo cáo hiện chưa công bố | 02 |
+| 9 | VaR / CVaR | Mức lỗ ở đuôi | VaR: mức lỗ không bị vượt với xác suất và kỳ đã chọn. CVaR: lỗ trung bình khi đã vượt VaR. Báo cáo hiện chưa công bố | 02 |
 | 10 | ARIMA | Mô hình đọc quán tính của chuỗi | Dùng quá khứ của chuỗi để dự báo bước kế tiếp | 03 |
 | 11 | ADF p-value | Kiểm tra chuỗi có ổn định không | Dưới 0,05 thì ủng hộ chuỗi ổn định. Không phải xác suất mô hình đúng | 03 |
 | 12 | Tính dừng | Chuỗi không trôi theo thời gian | Điều kiện để mô hình ARIMA hoạt động tốt | 03 |
@@ -357,27 +359,27 @@ Mỗi hình có `role="img"` hoặc nhóm có `aria-label`, đoạn mô tả `<f
 | 16 | Chu kỳ bán rã | Số phiên để cú sốc giảm một nửa | Của biến động, không phải của giá | 04 |
 | 17 | EGARCH γ | Giá giảm có làm rung lắc hơn không | γ âm: cú sốc giảm tác động mạnh hơn cú sốc tăng | 04 |
 | 18 | HMM | Trạng thái thị trường ẩn | Mô hình đoán thị trường đang ở pha tăng, đi ngang hay giảm | 05 |
-| 19 | Xác suất lọc | Độ chắc của nhãn trạng thái | Chỉ dùng dữ liệu đến phiên cuối. Không phải xác suất lãi | 05 |
-| 20 | CMF | Dòng tiền ước lượng | Từ vị trí đóng cửa và khối lượng. Trên 0: nghiêng bên mua. Không phải tiền thật | 06 |
-| 21 | ER | Hiệu quả xu hướng | Dưới 0,3 là đường giá nhiều nhiễu | 06 |
+| 19 | Xác suất trạng thái | Độ chắc của nhãn trạng thái | Chưa rõ loại xác suất (lọc/làm mượt) cho đến khi `probability_kind` có. Không phải xác suất lãi | 05 |
+| 20 | CMF | Dòng tiền ước lượng | Từ vị trí đóng cửa và khối lượng. Trên 0: giá đóng cửa gần đỉnh phiên hơn. Chỉ mô tả, chưa chứng minh dự báo được ngoài mẫu. Không phải tiền thật | 06 |
+| 21 | ER | Hiệu quả xu hướng | Từ 0,3 trở xuống là đường giá nhiều nhiễu | 06 |
 | 22 | R² xu hướng | Độ khớp đường xu hướng | Gần 1 là khớp hơn, không nói hướng | 06 |
 | 23 | RS20 | Sức mạnh 20 phiên so với VN-Index | Dương: lợi suất 20 phiên vượt VN-Index | 06 |
 | 24 | Beta | Độ nhạy với thị trường | Không phải mức lợi nhuận | 06 |
-| 25 | Momentum | Đà giá gần đây | Điểm có dấu; mô tả, không phải tín hiệu | 07 |
+| 25 | Momentum | Đà giá gần đây | Điểm có dấu; mô tả quá khứ, chưa chứng minh dự báo được ngoài mẫu | 07 |
 | 26 | Hurst | Xu hướng duy trì hay đảo chiều | Trên 0,5 gợi ý duy trì, dưới 0,5 gợi ý đảo chiều | 07 |
-| 27 | Thứ hạng trong rổ | Vị trí so với các mã khác | Không phải xác suất lãi | 07 |
+| 27 | Vị trí trong rổ | Vị trí so với các mã khác | Không phải xác suất lãi | 07 |
 | 28 | Alpha | Phần lợi nhuận vượt thị trường | Dự báo của mô hình, chưa chắc có thật ngoài mẫu | 07 |
 | 29 | Tương quan | Hai mã có cùng chiều không | Từ -1 đến +1; gần 0 không chứng minh độc lập | 08 |
 | 30 | Độ phủ | Bao nhiêu mô hình tham gia | 100% là đầy đủ theo cách tính của báo cáo | 09 |
 | 31 | Đồng thuận | Mức nhất trí giữa các mô hình | Không phải xác suất lãi | 09 |
 | 32 | Monte Carlo | Mô phỏng nhiều kịch bản giá | Chạy nhiều đường giá ngẫu nhiên theo giả định về dao động | 10 |
-| 33 | P05 / P50 / P95 | 5 / 50 / 95 trong 100 | P05: 5 trong 100 kịch bản thấp hơn mức này. P95 ngược lại | 10 |
+| 33 | P05 / P50 / P95 | 5 / 50 / 95 trong 100 | P05: 5 trong 100 kịch bản thấp hơn mức này. P95: 95 trong 100 kịch bản thấp hơn mức này | 10 |
 | 34 | T+ (chờ cổ phiếu về) [P] | Thời gian chờ thanh toán | [chờ Haiku xác minh] | 10, 12 |
-| 35 | Chi phí hai chiều | Phí mua cộng phí bán | Giả định của báo cáo; thực tế theo công ty chứng khoán [chờ Haiku xác minh] | 11 |
+| 35 | Chi phí hai chiều | Tổng chi phí mua và bán | Giả định của báo cáo, có thể gồm phí, thuế, trượt giá (không tách); thực tế theo công ty chứng khoán [chờ Haiku xác minh] | 11 |
 | 36 | Biên độ giá [P] | Giới hạn giá mỗi phiên | [chờ Haiku xác minh] | 12 |
 | 37 | Cắt lỗ / Mục tiêu | Mức giá của kế hoạch | Điều kiện của kế hoạch, không phải dự báo sẽ chạm | 12 |
-| 38 | Tỷ lệ lãi/lỗ (R:R) | So lãi mục tiêu với lỗ nếu sai | Không nói xác suất chạm mức nào | 12 |
-| 39 | Kelly | Cách chia vốn theo tỷ lệ thắng | Chỉ hiện khi báo cáo bật; thường dùng nửa Kelly | 12 |
+| 38 | Tỷ lệ lãi/lỗ (R:R) | So lãi mục tiêu với lỗ nếu sai | Trước chi phí: (mục tiêu - vào) / (vào - cắt lỗ). Giá trị sau chi phí lấy nguyên từ `sl.rr_net_cost`, công thức chưa công bố. Không nói xác suất chạm mức nào | 12 |
+| 39 | Kelly | Cách chia vốn theo tỷ lệ thắng và tỷ lệ lãi/lỗ | Chỉ hiện khi báo cáo bật; không là khuyến nghị | 12 |
 | 40 | Giá trị giao dịch TB 20 phiên (ADV20) | Dòng tiền giao dịch quen thuộc | Thước đo độ dễ vào ra | 13 |
 | 41 | Sức chứa | Số cổ phiếu có thể giao dịch tham chiếu | Theo giả định nguồn, không đảm bảo có bên đối ứng | 13 |
 | 42 | Cổng điều kiện | Các điều kiện phải đạt trước khi hành động | Điểm cao vẫn có thể bị chặn | 15 |
@@ -398,7 +400,7 @@ Tương tác: gạch chân đứt; hover, focus hoặc chạm mở thẻ <= 2 c�
 Điều khiển: Bỏ qua (có từ bước 1), Quay lại, Tiếp, Xong; Esc đóng; focus vào popover và trả về nút cũ; `role="dialog"`, `aria-labelledby`. Không đếm ngược, không phần thưởng khi xong. Lưu cờ đã xem bằng `localStorage` (try/catch); nút "Cách đọc" (dấu ?) mở lại.
 
 ### 7.3 Trang / ngăn kéo "Cách đọc" (1 phút)
-Mục lục: 1. Báo cáo trả lời 4 câu hỏi nào. 2. Ba mức đọc. 3. Nhãn trạng thái nghĩa là gì (bảng 5 nhãn, mục 4.1). 4. Đọc rủi ro trước cơ hội. 5. Xác suất trong báo cáo ("62 trong 100 lần mô phỏng" nghĩa là gì, và không phải là gì). 6. Vì sao mô hình có thể sai (giới hạn, dữ liệu thiếu). 7. Bảng thuật ngữ (glossary đầy đủ). 8. Miễn trừ `[chờ rà soát pháp lý VN]`. Có ví dụ báo cáo mẫu đã chú thích, ghi rõ "dữ liệu mẫu". Route đề xuất `/analysis/guide`, mở dạng ngăn kéo trong báo cáo.
+Mục lục: 1. Báo cáo trả lời 4 câu hỏi nào. 2. Ba mức đọc. 3. Nhãn trạng thái nghĩa là gì (bảng 5 nhãn, mục 4.1). 4. Đọc rủi ro trước cơ hội. 5. Xác suất trong báo cáo ("khoảng 62 trong mỗi 100 lần, từ 1.000 lần mô phỏng" nghĩa là gì, và không phải là gì). 6. Vì sao mô hình có thể sai (giới hạn, dữ liệu thiếu). 7. Bảng thuật ngữ (glossary đầy đủ). 8. Miễn trừ `[chờ rà soát pháp lý VN]`. Có ví dụ báo cáo mẫu đã chú thích, ghi rõ "dữ liệu mẫu". Route đề xuất `/analysis/guide`, mở dạng ngăn kéo trong báo cáo.
 
 ---
 
@@ -502,10 +504,10 @@ Xong khi: axe không lỗi nghiêm trọng ở 375/1440 x sáng/tối; không ph
 | Mục | Vấn đề | Hành động |
 |---|---|---|
 | GARCH volatility cone | API chưa công bố phân vị lịch sử biến động theo horizon; chỉ có `current_vol_pct` và `forecast_vol` | Cần backend thêm trường nếu muốn vẽ cone; Gate 3 chỉ vẽ thang persistence và 3 thanh dự báo |
-| HMM filtered vs smoothed | `research.regime` không ghi là xác suất lọc hay làm mượt; tài liệu hiện có ghi xác suất là "trong mẫu, phiên cuối" | Xác nhận với đội mô hình; trong lúc chờ, lớp 2 chỉ hiện xác suất phiên cuối, lịch sử HMM chỉ ở lớp 3 kèm nhãn "xem lại" |
+| HMM filtered vs smoothed | `research.regime` không ghi là xác suất lọc hay làm mượt; tài liệu hiện có ghi xác suất là "trong mẫu, phiên cuối" | Xác nhận với đội mô hình; trong lúc chờ (thiếu `hmm.probability_kind`), không gọi là "xác suất lọc"; lớp 2 hiện "Chưa rõ loại xác suất (lọc/làm mượt)" và chỉ mô tả, lịch sử HMM chỉ ở lớp 3 kèm nhãn "xem lại" |
 | Đường dẫn Monte Carlo | Fixture chỉ có 3 phiên trong `cone`; fan chart ngắn | Thiết kế co giãn theo số phiên thật; không nội suy |
 | Giá cuối làm điểm gốc | Lấy từ `_price_close[-1]` của `statistics`; nếu thiếu thì fan chart không có điểm gốc, hiện chú thích | Xác nhận trường chính thức cho "giá hôm nay" |
-| Ví dụ tiền | Vốn ví dụ 100 triệu (đã có trong `moduleAnalysis`), `pos.value` 100 triệu trong fixture | Cho người dùng sửa vốn ở Gate sau, không thuộc phạm vi này |
+| Ví dụ tiền | Fixture không có trường NAV; chỉ suy ngầm NAV = 300 triệu từ `risk_pct_nav` 1% và `max_loss` 3 triệu. Vốn ví dụ 100 triệu trong `moduleAnalysis` lệch với con số này | Giao diện chỉ nói "% tài sản" kèm `pos.max_loss`, bỏ vốn ví dụ; cho người dùng nhập vốn ở Gate sau |
 | Pháp lý | T+, biên độ, phí, thuế, miễn trừ | Placeholder `[chờ Haiku xác minh]` và `[chờ rà soát pháp lý VN]`; không in số cụ thể |
 | Nghiên cứu OOS | Việc gắn nhãn "chưa kiểm chứng ngoài mẫu" cho CMF, momentum, R² xu hướng dựa trên `docs/QUANT-RESEARCH-2026-11.md` (đọc qua G1) | Xác nhận câu chữ chính xác với đội nghiên cứu |
 | Fixture `complete` | Cone p50 (103.000 đến 105.000) khác dự báo ARIMA (102.200 đến 102.600) | Chỉ là dữ liệu mẫu; không phải mâu thuẫn của hệ thống thật |
@@ -516,7 +518,7 @@ Xong khi: axe không lỗi nghiêm trọng ở 375/1440 x sáng/tối; không ph
 |---|---|
 | Không số ngoài API | Mục 3, 5 (mỗi số gắn đường dẫn trường), 10 bất biến 5 |
 | Momentum/MA200/CMF không là tín hiệu mua | Mục 4.1, khung 06 và 07 (tone cố định `neutral`, huy hiệu mô tả) |
-| HMM chỉ xác suất lọc | Khung 05, mục 11 |
+| HMM chỉ gọi "xác suất lọc" khi `probability_kind` xác nhận | Khung 05, mục 11 |
 | Không câu ra lệnh | Mục 4.3 (danh sách cấm, test lint), khung 15 |
 | Không gamification | Mục 7.2, đợt 4 (grep CI) |
 | Pháp lý placeholder | Mục 5 (các dấu `[chờ Haiku xác minh]`), glossary [P], mục 11 |

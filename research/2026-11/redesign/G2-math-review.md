@@ -22,6 +22,20 @@ Số dòng: `ux` là `G2-ux-spec.md`, `demo` là `demo/index.html`, `fx` là `an
 
 ## 2. Lỗi chặn
 
+Trạng thái sau lượt sửa (2026-11-27). Các số dòng trong mục này là của bản trước khi sửa.
+
+| # | Trạng thái | Đã sửa ở |
+|---|---|---|
+| B1 | Đã sửa | demo: module 05 (huy hiệu "Chưa rõ loại xác suất (lọc/làm mượt)", câu kết luận, why, caption), glossary `pk` thay `filt`. ux: ràng buộc 3, khung 05, glossary #19, mục 11, mục 12 |
+| B2 | Đã sửa | demo: module 16 ("Các điểm mô tả", "Mô hình đang ở trạng thái theo dõi"), thẻ nhóm A, module 06. ux: ràng buộc 2, khung 16, khung 06. Fixture `quant-report-sample.ts` dòng 24 và `quantSummary()` chưa sửa (ngoài phạm vi, ghi ở ux khung 16) |
+| B3 | Đã sửa | demo: module 02 hiện "Chưa đủ chuỗi lợi suất lịch sử để vẽ hình phân phối"; histogram 3 nhóm chuyển sang mức Chuyên sâu, mục Monte Carlo, ghi nguồn "phân phối mô phỏng". ux: khung 02, khung 10 |
+| B4 | Đã sửa | demo: dải rủi ro lớn nhất, module 10, mức Chuyên sâu, thẻ nhóm C ("khoảng 8 trong mỗi 100 lần (từ 1.000 lần mô phỏng)", 8% × 1.000 = 80; 62% × 1.000 = 620). ux: khung 10, wireframe dòng 77 |
+| B5 | Đã sửa | demo: thẻ kết luận, thẻ nhóm D, module 12 chỉ ghi "1% tài sản" kèm 3.000.000 VND từ `pos.max_loss`; module 01 bỏ số tiền 100 triệu. ux: khung 01, 12, mục 11 |
+| B6 | Đã sửa | demo: module 07 ("Điểm động lượng 0,4 (dương), chỉ mô tả quá khứ. Chưa chứng minh dự báo được ngoài mẫu"). ux: khung 07 |
+| B7 | Đã sửa | demo: module 10 tone `neutral`. ux: §4.1, khung 10 |
+| B8 | Đã sửa | demo: module 11 tone `neutral`. ux: §4.1 (bảng tone, dòng `ok`), khung 11 |
+| B9 | Đã sửa | demo: module 12 và glossary `rr` chỉ hiện 3,33 (có công thức) và 1,92 kèm nguồn `sl.rr_net_cost`, ghi công thức chưa công bố. ux: khung 12, glossary #38 |
+
 ### B1. HMM được gọi là "xác suất lọc" trong khi API không có loại xác suất
 
 - Vị trí: `demo` dòng 526 (module 05), 525 (tone), mục glossary `filt` (dòng 281). `ux` dòng 236-239 (khung 05), dòng 360 (glossary #19). `ux` dòng 505 (mục 11) ghi chưa xác nhận filtered hay smoothed.
@@ -89,29 +103,29 @@ Số dòng: `ux` là `G2-ux-spec.md`, `demo` là `demo/index.html`, `fx` là `an
 
 ## 3. Lỗi nhỏ
 
-| # | Vị trí | Câu gốc (trích) | Vấn đề | Sửa đề xuất |
-|---|---|---|---|---|
-| N1 | `demo` 491; `ux` 186 | "dao động cao hôm nay còn ảnh hưởng nhiều phiên sau" | Không có ngưỡng biến động trong `thresholds.ts`, từ "cao" không có căn cứ | "Dao động hôm nay khoảng 2% mỗi phiên; cú sốc còn ảnh hưởng vài phiên sau." |
-| N2 | `demo` 422; `ux` 362 và 228 | "Từ 0,3 trở xuống" (demo); "Dưới 0,3" (`ux` glossary #21) | Biên 0,3 không nhất quán giữa ba chỗ | Thống nhất theo `quant-interpretation.ts` (cần đọc để xác nhận dấu so sánh) |
-| N3 | `ux` 350 | "VaR / CVaR: Mức lỗ có thể gặp trong tình huống xấu" | Định nghĩa không đúng | "VaR: mức lỗ không bị vượt với xác suất đã chọn trong khoảng thời gian đã chọn. CVaR: lỗ trung bình trong các trường hợp vượt VaR. Báo cáo chưa có hai số này." |
-| N4 | `demo` 430; `ux` 374 | "P95 thì ngược lại" | Mơ hồ | "P95: 95 trong 100 kịch bản thấp hơn mức này." |
-| N5 | `ux` 380 | "Cách chia vốn theo tỷ lệ thắng" | Kelly cần cả tỷ lệ thắng và tỷ lệ lãi/lỗ | "Cách chia vốn theo tỷ lệ thắng và tỷ lệ lãi/lỗ. Chỉ hiện khi báo cáo bật; không là khuyến nghị." |
-| N6 | `demo` 432; `ux` 376 | "Chi phí hai chiều: Phí mua cộng phí bán" | Định nghĩa quá hẹp. `G2-quant` §2.1: API chỉ có tổng, có thể gồm thuế và trượt giá | "Tổng chi phí hai chiều theo giả định của báo cáo; có thể gồm phí, thuế và trượt giá. BE không tách." |
-| N7 | `demo` 546 | "Thứ hạng trong rổ 80%" | `rank_pct` 80 hiện như xác suất | "Vị trí 80 trên 100 trong rổ." |
-| N8 | `demo` 354 | "Lỗ tối đa khi chờ -4%" | "Tối đa" gợi trường hợp xấu nhất. Thống kê của `max_dd_lock_pct` chưa rõ (trung vị, trung bình hay phân vị) | Ghi thống kê theo BE, hoặc "Sụt giảm khi chờ trong mô phỏng (theo BE)". |
-| N9 | `demo` 298 | "Rủi ro lớn nhất: ..." | Không có quy tắc chọn; cùng dòng có cả sụt giảm lịch sử 12% | "Rủi ro nổi bật" kèm quy tắc chọn (ví dụ module nhóm C đầu tiên có nhãn Thận trọng hoặc Rủi ro cao). |
-| N10 | `demo` 342 | "Chín trong mười lần, giá nằm trong dải P05 đến P95." | Tỷ lệ áp dụng cho từng phiên, không cho cả đường | "Ở mỗi phiên, theo mô phỏng, 9 trong 10 lần giá nằm trong dải P05 đến P95." |
-| N11 | `demo` 512 | "Sức chứa tham chiếu 20.000 cổ phiếu" | Cơ sở chưa rõ (`G2-quant` §8 mục 9) | Thêm "(cơ sở theo BE)" hoặc bỏ đến khi rõ. |
-| N12 | `ux` 145 | Liệt kê Sharpe, CMF, Hurst, HMM là "không có ngưỡng tốt/xấu" | `thresholds.ts` có `sharpeFair`, `sharpeStrong`, `neutralFlow`, `randomHurst`, `majorityPct` | Sửa ví dụ: "neutral: không có tone ok hoặc risk, dù có mốc đọc (Sharpe, Hurst, HMM, CMF)." |
-| N13 | `demo` 537; `ux` 254 | ARIMA có chip `ok` "Ổn theo mốc" trong nhóm Triển vọng | Chip xanh trên chẩn đoán ADF dễ bị đọc là triển vọng | Ghi "Chẩn đoán, không phải dự báo" ngay trên chip, hoặc đổi nhãn sang "Mô tả". Ngưỡng 0,05 khớp `adfSignificance`. |
-| N14 | `demo` 537; `ux` 255 | "Chuỗi lợi suất đủ ổn định để mô hình ARIMA đọc được." | ADF chỉ bác bỏ nghiệm đơn vị ở mức 5%, không đảm bảo ARIMA dùng được | "ADF p 0,012 bác bỏ giả thuyết không ổn định ở mức 5%." |
-| N15 | `demo` 610; `demo` 521; `ux` 229 | "dòng tiền nghiêng bên mua ... Cả hai chỉ là mô tả quá khứ"; "CMF 0,21 trên 0 là áp lực mua" | CMF là ước lượng từ phiên gần đây, không phải quá khứ. "Áp lực mua" là cách đọc mua | "CMF dương (0,21): giá đóng cửa gần đỉnh phiên hơn. Chỉ là mô tả." Sửa "quá khứ" thành "trong giai đoạn quan sát". |
-| N16 | `demo` 526; `ux` 236 | "Mô hình nhận ra pha tăng" | Động từ khẳng định hơn mức mô hình | "Mô hình gọi phiên cuối là pha tăng." |
-| N17 | `ux` 77 | "mô phỏng có 8% khả năng lỗ >3%" | Thiếu "theo mô phỏng", không đồng bộ với B4 | "Theo mô phỏng, khoảng 8% kịch bản lỗ hơn 3% khi chờ." |
-| N18 | `demo` 514-516 (module 01); `demo` 610 (thẻ nhóm A) | "Lợi nhuận trên rủi ro khá" | Đúng ngưỡng nhưng `sharpe` không ghi kỳ tính (năm hay tháng) | Ghi "Sharpe (quy đổi năm, theo BE)" khi BE xác nhận. |
-| N19 | `demo` 588-591; fixture `fx` 19, `analysis` | Hiện cùng lúc ARIMA +0,6%, MC P50 +2,9%, ensemble +4,1% | Ba dự báo 3 phiên khác nhau, không có chú thích. `research.drawdown` chỉ đến -3% trong khi `max_dd_pct` là -12% | Thêm chú thích cạnh module 03 và 09, hoặc sửa fixture. Ghi rõ đây là dữ liệu mẫu. |
-| N20 | `qs` dòng 18 | Nhãn factor "An toàn T+2" | T+2 chưa xác minh (`G2-quant` §1). Khi dùng fixture làm UI, phải thay bằng placeholder | Đổi nhãn thành "An toàn thanh toán [chờ Haiku xác minh]". |
-| N21 | `demo` 588-591 | Nhãn "+1, +2, +3" cho ba giá ARIMA | Chưa xác nhận mảng `forecast.prices` ứng với phiên 1-3 (`G2-quant` §8 mục 10) | Giữ nhãn, thêm "theo BE, chưa xác nhận vị trí phiên" vào ghi chú nội bộ. |
+| # | Vị trí | Câu gốc (trích) | Vấn đề | Sửa đề xuất | Trạng thái |
+|---|---|---|---|---|---|
+| N1 | `demo` 491; `ux` 186 | "dao động cao hôm nay còn ảnh hưởng nhiều phiên sau" | Không có ngưỡng biến động trong `thresholds.ts`, từ "cao" không có căn cứ | "Dao động hôm nay khoảng 2% mỗi phiên; cú sốc còn ảnh hưởng vài phiên sau." | Đã sửa: demo GARCH (why), ux dòng 186 |
+| N2 | `demo` 422; `ux` 362 và 228 | "Từ 0,3 trở xuống" (demo); "Dưới 0,3" (`ux` glossary #21) | Biên 0,3 không nhất quán giữa ba chỗ | Thống nhất theo `quant-interpretation.ts` (cần đọc để xác nhận dấu so sánh) | Đã sửa: ux glossary #21 ("Từ 0,3 trở xuống", khớp `er<=noisyER`); demo giữ nguyên |
+| N3 | `ux` 350 | "VaR / CVaR: Mức lỗ có thể gặp trong tình huống xấu" | Định nghĩa không đúng | "VaR: mức lỗ không bị vượt với xác suất đã chọn trong khoảng thời gian đã chọn. CVaR: lỗ trung bình trong các trường hợp vượt VaR. Báo cáo chưa có hai số này." | Đã sửa: ux glossary #9 |
+| N4 | `demo` 430; `ux` 374 | "P95 thì ngược lại" | Mơ hồ | "P95: 95 trong 100 kịch bản thấp hơn mức này." | Đã sửa: demo glossary `pct`, ux glossary #33 |
+| N5 | `ux` 380 | "Cách chia vốn theo tỷ lệ thắng" | Kelly cần cả tỷ lệ thắng và tỷ lệ lãi/lỗ | "Cách chia vốn theo tỷ lệ thắng và tỷ lệ lãi/lỗ. Chỉ hiện khi báo cáo bật; không là khuyến nghị." | Đã sửa: ux glossary #39 |
+| N6 | `demo` 432; `ux` 376 | "Chi phí hai chiều: Phí mua cộng phí bán" | Định nghĩa quá hẹp. `G2-quant` §2.1: API chỉ có tổng, có thể gồm thuế và trượt giá | "Tổng chi phí hai chiều theo giả định của báo cáo; có thể gồm phí, thuế và trượt giá. BE không tách." | Đã sửa: demo glossary `rt`, ux glossary #35 |
+| N7 | `demo` 546 | "Thứ hạng trong rổ 80%" | `rank_pct` 80 hiện như xác suất | "Vị trí 80 trên 100 trong rổ." | Đã sửa: demo module 07 ("Vị trí trong rổ 80/100"), ux khung 07 và glossary #27 |
+| N8 | `demo` 354 | "Lỗ tối đa khi chờ -4%" | "Tối đa" gợi trường hợp xấu nhất. Thống kê của `max_dd_lock_pct` chưa rõ (trung vị, trung bình hay phân vị) | Ghi thống kê theo BE, hoặc "Sụt giảm khi chờ trong mô phỏng (theo BE)". | Đã sửa: demo module 10 ("Sụt giảm khi chờ (mô phỏng)"), ux khung 10; thống kê của BE vẫn chờ xác nhận |
+| N9 | `demo` 298 | "Rủi ro lớn nhất: ..." | Không có quy tắc chọn; cùng dòng có cả sụt giảm lịch sử 12% | "Rủi ro nổi bật" kèm quy tắc chọn (ví dụ module nhóm C đầu tiên có nhãn Thận trọng hoặc Rủi ro cao). | Chưa sửa: cần quyết định quy tắc chọn rủi ro nổi bật |
+| N10 | `demo` 342 | "Chín trong mười lần, giá nằm trong dải P05 đến P95." | Tỷ lệ áp dụng cho từng phiên, không cho cả đường | "Ở mỗi phiên, theo mô phỏng, 9 trong 10 lần giá nằm trong dải P05 đến P95." | Đã sửa: demo (đoạn mở Monte Carlo, `#p9`), ux khung 10 |
+| N11 | `demo` 512 | "Sức chứa tham chiếu 20.000 cổ phiếu" | Cơ sở chưa rõ (`G2-quant` §8 mục 9) | Thêm "(cơ sở theo BE)" hoặc bỏ đến khi rõ. | Đã sửa: demo module 13 (ghi "cơ sở theo báo cáo"); chờ BE xác nhận cơ sở |
+| N12 | `ux` 145 | Liệt kê Sharpe, CMF, Hurst, HMM là "không có ngưỡng tốt/xấu" | `thresholds.ts` có `sharpeFair`, `sharpeStrong`, `neutralFlow`, `randomHurst`, `majorityPct` | Sửa ví dụ: "neutral: không có tone ok hoặc risk, dù có mốc đọc (Sharpe, Hurst, HMM, CMF)." | Đã sửa: ux §4.1 (bảng tone, dòng `neutral`) |
+| N13 | `demo` 537; `ux` 254 | ARIMA có chip `ok` "Ổn theo mốc" trong nhóm Triển vọng | Chip xanh trên chẩn đoán ADF dễ bị đọc là triển vọng | Ghi "Chẩn đoán, không phải dự báo" ngay trên chip, hoặc đổi nhãn sang "Mô tả". Ngưỡng 0,05 khớp `adfSignificance`. | Đã sửa: demo module 03 (chip "Đạt mốc ADF", câu "không phải dự báo"), ux khung 03 |
+| N14 | `demo` 537; `ux` 255 | "Chuỗi lợi suất đủ ổn định để mô hình ARIMA đọc được." | ADF chỉ bác bỏ nghiệm đơn vị ở mức 5%, không đảm bảo ARIMA dùng được | "ADF p 0,012 bác bỏ giả thuyết không ổn định ở mức 5%." | Đã sửa: demo và ux khung 03 |
+| N15 | `demo` 610; `demo` 521; `ux` 229 | "dòng tiền nghiêng bên mua ... Cả hai chỉ là mô tả quá khứ"; "CMF 0,21 trên 0 là áp lực mua" | CMF là ước lượng từ phiên gần đây, không phải quá khứ. "Áp lực mua" là cách đọc mua | "CMF dương (0,21): giá đóng cửa gần đỉnh phiên hơn. Chỉ là mô tả." Sửa "quá khứ" thành "trong giai đoạn quan sát". | Đã sửa: demo module 06, thẻ nhóm A, glossary `cmf`; ux khung 06 và glossary #20 |
+| N16 | `demo` 526; `ux` 236 | "Mô hình nhận ra pha tăng" | Động từ khẳng định hơn mức mô hình | "Mô hình gọi phiên cuối là pha tăng." | Đã sửa: demo và ux khung 05 ("Mô hình gọi phiên cuối là pha tăng") |
+| N17 | `ux` 77 | "mô phỏng có 8% khả năng lỗ >3%" | Thiếu "theo mô phỏng", không đồng bộ với B4 | "Theo mô phỏng, khoảng 8% kịch bản lỗ hơn 3% khi chờ." | Đã sửa: ux wireframe dòng 77 |
+| N18 | `demo` 514-516 (module 01); `demo` 610 (thẻ nhóm A) | "Lợi nhuận trên rủi ro khá" | Đúng ngưỡng nhưng `sharpe` không ghi kỳ tính (năm hay tháng) | Ghi "Sharpe (quy đổi năm, theo BE)" khi BE xác nhận. | Chưa sửa: chờ BE xác nhận kỳ tính Sharpe |
+| N19 | `demo` 588-591; fixture `fx` 19, `analysis` | Hiện cùng lúc ARIMA +0,6%, MC P50 +2,9%, ensemble +4,1% | Ba dự báo 3 phiên khác nhau, không có chú thích. `research.drawdown` chỉ đến -3% trong khi `max_dd_pct` là -12% | Thêm chú thích cạnh module 03 và 09, hoặc sửa fixture. Ghi rõ đây là dữ liệu mẫu. | Chưa sửa: chỉ là dữ liệu mẫu, đã ghi ở ux §11 (dòng "Fixture complete") |
+| N20 | `qs` dòng 18 | Nhãn factor "An toàn T+2" | T+2 chưa xác minh (`G2-quant` §1). Khi dùng fixture làm UI, phải thay bằng placeholder | Đổi nhãn thành "An toàn thanh toán [chờ Haiku xác minh]". | Ngoài phạm vi: nhãn nằm trong fixture `frontend/`, không đụng theo chỉ đạo |
+| N21 | `demo` 588-591 | Nhãn "+1, +2, +3" cho ba giá ARIMA | Chưa xác nhận mảng `forecast.prices` ứng với phiên 1-3 (`G2-quant` §8 mục 10) | Giữ nhãn, thêm "theo BE, chưa xác nhận vị trí phiên" vào ghi chú nội bộ. | Chưa sửa: chờ BE xác nhận vị trí `forecast.prices` |
 
 ---
 

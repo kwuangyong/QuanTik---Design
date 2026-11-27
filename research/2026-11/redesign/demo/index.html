@@ -295,10 +295,10 @@ html.calm .slide.anim .barfill{transform:none!important}
         <span class="chip caution" id="vchip"></span>
         <h2 id="vh">Mô hình: theo dõi</h2>
         <p class="lead">Chờ hoàn tất điều kiện. Lý do của mô hình: chưa đủ điều kiện thời điểm vào lệnh. Đây là nhãn của mô hình, không phải lệnh mua hay bán.</p>
-        <div class="risk-line" data-tour-risk><span><span class="lab">Rủi ro lớn nhất</span> Trong 100 lần mô phỏng, có <b>8</b> lần lỗ hơn 3% khi chờ cổ phiếu về <span class="badge">[chờ Haiku xác minh: T+]</span>. Lịch sử từng giảm tới 12% từ đỉnh.</span></div>
+        <div class="risk-line" data-tour-risk><span><span class="lab">Rủi ro lớn nhất</span> Khoảng <b>8</b> trong mỗi 100 lần (từ 1.000 lần mô phỏng) lỗ hơn 3% khi chờ cổ phiếu về <span class="badge">[chờ Haiku xác minh: T+]</span>. Lịch sử từng giảm tới 12% từ đỉnh.</span></div>
         <dl class="kv">
           <div><dt>Điểm Quant</dt><dd>72/100<small>Điểm xếp hạng, không phải xác suất lãi</small></dd></div>
-          <div><dt>Lỗ ước tính nếu kế hoạch sai</dt><dd>3 triệu<small>trên vốn mẫu 100 triệu đồng</small></dd></div>
+          <div><dt>Lỗ ước tính nếu kế hoạch sai</dt><dd>1% tài sản<small>3.000.000 VND (trường pos.max_loss, pos.risk_pct_nav)</small></dd></div>
           <div><dt>Giá đóng cửa gần nhất</dt><dd>102.000<small>VND, phiên 2026-10-16</small></dd></div>
         </dl>
         <div class="cta">
@@ -339,7 +339,7 @@ html.calm .slide.anim .barfill{transform:none!important}
     <article class="card" aria-labelledby="mch">
       <p class="eyebrow">10 · MONTE CARLO</p>
       <h3 id="mch">Giá sau 3 phiên có thể nằm đâu?</h3>
-      <p style="margin:6px 0 14px;max-width:68ch">Trong 100 lần mô phỏng, 62 lần giá cao hơn hôm nay và 38 lần thấp hơn hoặc bằng. <span id="p9">Chín trong mười lần, giá nằm trong dải P05 đến P95.</span> Đây là kịch bản mô phỏng, không phải lời hứa.</p>
+      <p style="margin:6px 0 14px;max-width:68ch">Khoảng 62 trong mỗi 100 lần (từ 1.000 lần mô phỏng), giá sau 3 phiên cao hơn hôm nay; khoảng 38 trong 100 lần thấp hơn hoặc bằng. <span id="p9">Ở mỗi phiên, 9 trong 10 lần giá nằm trong dải P05 đến P95.</span> Đây là kịch bản mô phỏng, không phải lời hứa.</p>
       <div class="mc-layout">
         <figure class="vis fan anim" id="fan" style="margin:0">
           <div id="fanbox"></div>
@@ -347,15 +347,20 @@ html.calm .slide.anim .barfill{transform:none!important}
           <figcaption>Dải ngoài là P05 đến P95 (9 trong 10 lần). Dải trong là P25 đến P75 (1 nửa số lần). Đường liền là P50. Điểm gốc là giá đóng cửa gần nhất. Trục ngang là số phiên sau hôm nay.</figcaption>
         </figure>
         <div>
-          <p class="lab" style="margin:0 0 8px">62 trong 100 lần mô phỏng</p>
-          <div class="dotgrid anim" id="dots100" role="img" aria-label="Lưới 100 chấm: 62 chấm đặc là giá cao hơn hôm nay, 38 chấm rỗng là giá thấp hơn hoặc bằng"></div>
+          <p class="lab" style="margin:0 0 8px">Khoảng 62 trong mỗi 100 lần (từ 1.000 lần mô phỏng)</p>
+          <div class="dotgrid anim" id="dots100" role="img" aria-label="Lưới 100 chấm, mỗi chấm là 1% trong 1.000 lần mô phỏng: 62 chấm đặc là giá cao hơn hôm nay, 38 chấm rỗng là thấp hơn hoặc bằng"></div>
           <ul class="legend"><li><i class="a"></i>62: giá cao hơn hôm nay</li><li><i class="c"></i>38: thấp hơn hoặc bằng</li></ul>
           <dl class="nums" style="grid-template-columns:1fr 1fr;margin-top:14px">
-            <div><dt>Lỗ tối đa khi chờ cổ phiếu về</dt><dd>-4%</dd></div>
-            <div><dt>Lỗ trên 3% khi chờ</dt><dd>8/100</dd></div>
+            <div><dt>Sụt giảm khi chờ cổ phiếu về (mô phỏng)</dt><dd>-4%</dd></div>
+            <div><dt>Lỗ trên 3% khi chờ (khoảng 80 trên 1.000 lần)</dt><dd>8/100</dd></div>
           </dl>
         </div>
       </div>
+      <figure class="vis" id="simhist" style="margin:18px 0 0">
+        <p class="lab" style="margin:0 0 8px">Phân phối giá cuối kỳ mô phỏng (3 nhóm)</p>
+        <div id="simhistbox"></div>
+        <figcaption>Nguồn: phân phối mô phỏng Monte Carlo (research.distribution, 1.000 lần), không phải lợi suất lịch sử. Mỗi cột là tỷ lệ kịch bản có lợi suất cuối kỳ trong nhóm đó. Chỉ có 3 nhóm, không phải phân phối đầy đủ.</figcaption>
+      </figure>
       <details class="alt"><summary>Bảng số thay thế cho biểu đồ</summary>
         <div class="scroll-x"><table class="tbl"><caption>Phân vị giá mô phỏng (VND). Phiên 0 là giá đóng cửa gần nhất.</caption>
         <thead><tr><th scope="col">Phiên</th><th scope="col">P05</th><th scope="col">P25</th><th scope="col">P50</th><th scope="col">P75</th><th scope="col">P95</th></tr></thead><tbody id="tbody"></tbody></table></div>
@@ -417,21 +422,21 @@ var G={
  pers:['Độ dai dẳng α+β: cú sốc kéo dài bao lâu','Từ 0,9 là kéo dài; từ 1 là không có mức dài hạn ổn định.','Trong báo cáo này: 0,96.'],
  half:['Chu kỳ bán rã: số phiên để cú sốc giảm một nửa','Của độ dao động, không phải của giá.','Trong báo cáo này: 17 phiên.'],
  hmm:['HMM: trạng thái thị trường ẩn','Mô hình đoán thị trường đang ở pha tăng, đi ngang hay giảm.',''],
- filt:['Xác suất lọc: độ chắc của nhãn trạng thái','Chỉ dùng dữ liệu đến phiên cuối. Không phải xác suất lãi và không dùng để ra lệnh.','Trong báo cáo này: pha tăng 67%.'],
- cmf:['CMF: dòng tiền ước lượng','Tính từ vị trí đóng cửa và khối lượng. Trên 0 là nghiêng về bên mua. Không phải tiền nạp rút thật.','Trong báo cáo này: 0,21.'],
+ pk:['Xác suất trạng thái: độ chắc của nhãn','Báo cáo chưa nói đây là xác suất lọc (chỉ dùng dữ liệu đến phiên cuối) hay làm mượt (dùng cả dữ liệu về sau). Chưa rõ loại xác suất (lọc/làm mượt), nên chỉ đọc như mô tả. Không phải xác suất lãi.','Trong báo cáo này: pha tăng 67%.'],
+ cmf:['CMF: dòng tiền ước lượng','Tính từ vị trí đóng cửa và khối lượng. Trên 0: giá đóng cửa gần đỉnh phiên hơn. Chỉ mô tả giai đoạn quan sát, chưa chứng minh dự báo được ngoài mẫu. Không phải tiền nạp rút thật.','Trong báo cáo này: 0,21.'],
  er:['ER: hiệu quả xu hướng','Từ 0,3 trở xuống là đường giá nhiều nhiễu.','Trong báo cáo này: 0,58.'],
  rs20:['RS20: sức mạnh 20 phiên so với VN-Index','Dương nghĩa là lợi suất 20 phiên vượt VN-Index.','Trong báo cáo này: +4,2%.'],
  corr:['Tương quan: hai mã có cùng chiều không','Từ -1 đến +1. Gần 0 không chứng minh độc lập.','Trong báo cáo này: 0,64.'],
- mom:['Momentum: đà giá gần đây','Điểm có dấu để mô tả. Không phải tín hiệu mua bán.','Trong báo cáo này: 0,4.'],
+ mom:['Momentum: đà giá gần đây','Điểm có dấu để mô tả quá khứ. Chưa chứng minh dự báo được ngoài mẫu.','Trong báo cáo này: 0,4.'],
  hurst:['Hurst: xu hướng duy trì hay đảo chiều','Trên 0,5 gợi ý duy trì, dưới 0,5 gợi ý đảo chiều. Ước lượng có sai số khi mẫu ngắn.','Trong báo cáo này: 0,61.'],
  cover:['Độ phủ: bao nhiêu mô hình tham gia','100% là đầy đủ theo cách tính của báo cáo.','Trong báo cáo này: 80%.'],
  agree:['Đồng thuận: mức nhất trí giữa các mô hình','Không phải xác suất lãi. Các mô hình dùng chung dữ liệu nên chưa phải bằng chứng độc lập.','Trong báo cáo này: 75%.'],
  mc:['Monte Carlo: mô phỏng nhiều kịch bản giá','Chạy nhiều đường giá ngẫu nhiên theo giả định về dao động quá khứ.',''],
- pct:['P05 / P50 / P95: 5, 50, 95 trong 100','P05: 5 trong 100 kịch bản thấp hơn mức này. P95 thì ngược lại. P50 là mức giữa.',''],
+ pct:['P05 / P50 / P95: 5, 50, 95 trong 100','P05: 5 trong 100 kịch bản thấp hơn mức này. P95: 95 trong 100 kịch bản thấp hơn mức này. P50 là mức giữa.',''],
  tplus:['T+ (thời gian chờ cổ phiếu về)','[chờ Haiku xác minh]',''],
- rt:['Chi phí hai chiều: phí mua cộng phí bán','Giả định của báo cáo. Mức phí và thuế thực tế theo công ty chứng khoán [chờ Haiku xác minh].','Trong báo cáo này: 0,6%.'],
+ rt:['Chi phí hai chiều: tổng chi phí mua và bán','Tổng theo giả định của báo cáo; có thể gồm phí, thuế, trượt giá nhưng báo cáo không tách. Mức thực tế theo công ty chứng khoán [chờ Haiku xác minh].','Trong báo cáo này: 0,6%.'],
  sl:['Cắt lỗ và mục tiêu: các mức giá của kế hoạch','Điều kiện của kế hoạch, không phải dự báo giá sẽ chạm. Biên độ giá [chờ Haiku xác minh].',''],
- rr:['Tỷ lệ lãi/lỗ (R:R)','So lãi tới mục tiêu với lỗ nếu sai. Không nói xác suất chạm mức nào.','Trong báo cáo này: 3,33, còn 1,92 sau chi phí.'],
+ rr:['Tỷ lệ lãi/lỗ (R:R)','So lãi tới mục tiêu 2 với lỗ nếu sai, trước chi phí: (110.000 - 100.000) / (100.000 - 97.000) = 3,33. Giá trị sau chi phí lấy nguyên từ báo cáo, công thức chưa công bố nên không tự suy ra. Không nói xác suất chạm mức nào.','Trong báo cáo này: 3,33 (sl.rr2); 1,92 sau chi phí (sl.rr_net_cost, công thức chưa công bố).'],
  adv:['Giá trị giao dịch TB 20 phiên','Thước đo độ dễ vào ra. Giao dịch nhiều không có nghĩa là tiền đang vào ròng.','Trong báo cáo này: 120 tỷ VND.'],
  gate:['Cổng điều kiện','Các điều kiện phải đạt trước khi hành động. Điểm cao vẫn có thể bị chặn.',''],
  score:['Điểm Quant: điểm xếp hạng','Xếp hạng chất lượng theo hệ thống, không phải xác suất lãi.','Trong báo cáo này: 72/100.']
@@ -488,62 +493,62 @@ function bars(rows,max,unit){
 var M=[
  {g:'C',no:'04',id:'garch',tone:'caution',name:'Dự báo độ rung lắc giá',tech:'GARCH',
   v:'Giá đang dao động khoảng 2% mỗi phiên và cú sốc có thể kéo dài.',
-  why:'Chỉ số {{pers|dai dẳng α+β}} là 0,96, trên mốc tham khảo 0,9. Nghĩa là dao động cao hôm nay còn ảnh hưởng nhiều phiên sau.',
+  why:'Chỉ số {{pers|dai dẳng α+β}} là 0,96, trên mốc tham khảo 0,9. Nghĩa là cú sốc dao động hôm nay còn ảnh hưởng vài phiên sau.',
   nums:[['Biến động hiện tại','2 %/phiên',''],['Dai dẳng α+β','0,96','mốc 0,9 và 1'],['{{half|Chu kỳ bán rã}}','17 phiên','của dao động']],
   caut:'Đây là độ lớn dao động, không cho biết giá lên hay xuống.',
   vis:function(){return scaleBar(0,1.2,.96,[[0,'0','start'],[.9,'0,9'],[1,'1'],[1.2,'1,2','end']],{label:'Dai dẳng 0,96 trên thang 0 đến 1,2, mốc 0,9 và 1',zones:[[.9,1,'var(--s-caution)',.35],[1,1.2,'var(--s-risk)',.35]]})},
   cap:'Vùng vàng 0,9 đến 1: cú sốc kéo dài. Vùng sau 1: không có mức dài hạn ổn định.',slide:true},
- {g:'C',no:'10',id:'mc',tone:'caution',name:'Mô phỏng nhiều kịch bản giá',tech:'Monte Carlo',
-  v:'Trong 100 lần mô phỏng, 62 lần giá sau 3 phiên cao hơn hôm nay, 38 lần thấp hơn hoặc bằng.',
-  why:'Mô phỏng dùng biến động GARCH-t. Có 8 trong 100 lần lỗ hơn 3% khi chờ cổ phiếu về {{tplus|[chờ Haiku xác minh]}}.',
-  nums:[['Giá cuối kỳ cao hơn','62/100','mốc 50'],['Lỗ tối đa khi chờ','-4%',''],['Lỗ trên 3% khi chờ','8/100','']],
+ {g:'C',no:'10',id:'mc',tone:'neutral',name:'Mô phỏng nhiều kịch bản giá',tech:'Monte Carlo',
+  v:'Khoảng 62 trong mỗi 100 lần (từ 1.000 lần mô phỏng), giá sau 3 phiên cao hơn hôm nay; khoảng 38 lần thấp hơn hoặc bằng.',
+  why:'Mô phỏng dùng biến động GARCH-t. Khoảng 8 trong mỗi 100 lần (khoảng 80 trên 1.000 lần mô phỏng) lỗ hơn 3% khi chờ cổ phiếu về {{tplus|[chờ Haiku xác minh]}}.',
+  nums:[['Giá cuối kỳ cao hơn','62/100','mốc 50'],['Sụt giảm khi chờ (mô phỏng)','-4%',''],['Lỗ trên 3% khi chờ','8/100','từ 1.000 lần']],
   caut:'{{mc|Mô phỏng}} dựa trên giả định từ quá khứ, không phải lời hứa. Giá thật có thể ra ngoài dải.',
   vis:function(){return dots([{n:62,cls:'a'},{n:38,cls:'c'}],true)+legend([['a','62 cao hơn hôm nay'],['c','38 thấp hơn hoặc bằng']])},
-  cap:'Mỗi chấm là một lần mô phỏng, gom nhóm theo hàng. Biểu đồ dải giá ở lớp Chuyên sâu.',deep:true},
+  cap:'Mỗi chấm là 1% trong 1.000 lần mô phỏng, gom nhóm theo hàng. Biểu đồ dải giá ở lớp Chuyên sâu.',deep:true},
  {g:'C',no:'02',id:'distribution',tone:'caution',name:'Hình dạng lợi suất lịch sử',tech:'Phân phối',
   v:'Lợi suất quá khứ có đuôi dày: cú tăng giảm lớn xảy ra nhiều hơn mức bình thường.',
   why:'{{kurt|Độ nhọn dư}} 2,44, trên mốc 0 của phân phối chuẩn. {{skew|Độ lệch}} -0,49 nghĩa là phía giảm có đuôi dài hơn.',
   nums:[['Độ nhọn dư','2,44','mốc 0'],['Độ lệch','-0,49','mốc 0'],['Giống phân phối chuẩn?','Không','']],
   caut:'Báo cáo chưa có VaR/CVaR lịch sử nên chưa đo được mức lỗ ở đuôi.',
-  vis:function(){return histo()},cap:'Phân bố lợi suất trong mẫu: 3 nhóm (20%, 50%, 30%). Không tô theo dấu.'},
+  vis:function(){return '<p class="caut" style="margin:0">Chưa đủ chuỗi lợi suất lịch sử để vẽ hình phân phối.</p>'},cap:'Chuỗi giá mẫu chỉ có 7 điểm. Histogram 3 nhóm ở mức Chuyên sâu (module 10) là phân phối mô phỏng, không phải lợi suất lịch sử.'},
  {g:'C',no:'13',id:'liquidity',tone:'ok',name:'Dễ mua bán nhanh',tech:'Thanh khoản',
   v:'Cổ phiếu đạt điều kiện thanh khoản của báo cáo.',
   why:'{{adv|Giá trị giao dịch}} trung bình 20 phiên khoảng 120 tỷ đồng. Nhịp gần đây cao hơn nền 1,2 lần (mốc 1).',
-  nums:[['Giao dịch TB 20 phiên','120 tỷ','VND'],['Tỷ lệ 5/20 phiên','1,2x','mốc 1'],['Sức chứa tham chiếu','20.000','cổ phiếu']],
+  nums:[['Giao dịch TB 20 phiên','120 tỷ','VND'],['Tỷ lệ 5/20 phiên','1,2x','mốc 1'],['Sức chứa tham chiếu','20.000','cổ phiếu, cơ sở theo báo cáo']],
   caut:'Giao dịch nhiều không có nghĩa tiền đang vào ròng. Lệnh lớn vẫn có thể trượt giá.'},
  {g:'A',no:'01',id:'statistics',tone:'neutral',name:'Lợi nhuận trên mỗi đơn vị rủi ro',tech:'Hiệu suất',
   v:'Năm qua cổ phiếu sinh lời khá so với mức dao động đã chịu.',
-  why:'{{sharpe|Sharpe}} 1,2, giữa mốc khá (1) và rất tốt (2). {{dd|Sụt giảm sâu nhất}} là -12%: 100 triệu đồng từng còn khoảng 88 triệu ở đáy.',
+  why:'{{sharpe|Sharpe}} 1,2, giữa mốc khá (1) và rất tốt (2). {{dd|Sụt giảm sâu nhất}} là -12%: mỗi 100 đồng ở đỉnh từng còn khoảng 88 đồng ở đáy.',
   nums:[['Lợi suất quy đổi năm','24,5%',''],['Sụt giảm tối đa','-12%',''],['Sharpe','1,2','mốc 1 và 2']],
   caut:'Đây là quá khứ, không đảm bảo năm tới.',
   vis:function(){return scaleBar(0,3,1.2,[[0,'0','start'],[1,'1'],[2,'2'],[3,'3','end']],{label:'Sharpe 1,2 trên thang 0 đến 3, mốc 1 và 2'})},cap:'Mốc 1 và 2 chỉ để đọc, không phải ngưỡng mua bán.',slide:true},
  {g:'A',no:'06',id:'technical',tone:'neutral',badge:'Chưa kiểm chứng ngoài mẫu',name:'Dòng tiền và chất lượng xu hướng',tech:'Kỹ thuật',
-  v:'Dòng tiền gần đây nghiêng về bên mua và đường giá khá rõ hướng.',
-  why:'{{cmf|CMF}} 0,21, trên 0. {{er|ER}} 0,58, trên mốc nhiễu 0,3. Đây là mô tả, không phải tín hiệu.',
+  v:'Trong giai đoạn quan sát, CMF dương và đường giá khá rõ hướng. Chỉ mô tả, chưa chứng minh dự báo được ngoài mẫu.',
+  why:'{{cmf|CMF}} 0,21, trên 0: giá đóng cửa gần đỉnh phiên hơn. {{er|ER}} 0,58, trên mốc nhiễu 0,3. Chỉ mô tả quá khứ.',
   nums:[['Dòng tiền CMF','0,21','mốc 0'],['Hiệu quả xu hướng ER','0,58','mốc 0,3'],['{{rs20|Sức mạnh 20 phiên}} so VN-Index','+4,2%','']],
-  caut:'CMF ước lượng từ giá và khối lượng, không phải tiền thật. Không dùng riêng làm tín hiệu.'},
- {g:'A',no:'05',id:'hmm',tone:'neutral',name:'Trạng thái thị trường đang là gì',tech:'HMM',
-  v:'Mô hình nhận ra pha tăng ở phiên cuối, với xác suất lọc 67%.',
-  why:'{{filt|Xác suất lọc}} chỉ dùng dữ liệu đến phiên cuối. 67% vượt một nửa (mốc 50%); đi ngang 24%, giảm 9%.',
+  caut:'CMF ước lượng từ giá và khối lượng, không phải tiền thật. Chưa chứng minh dự báo được ngoài mẫu.'},
+ {g:'A',no:'05',id:'hmm',tone:'neutral',badge:'Chưa rõ loại xác suất (lọc/làm mượt)',name:'Trạng thái thị trường đang là gì',tech:'HMM',
+  v:'Mô hình gọi phiên cuối là pha tăng, độ chắc 67%. Chỉ mô tả.',
+  why:'{{pk|Xác suất trạng thái}}: chưa rõ loại xác suất (lọc/làm mượt). 67% vượt một nửa (mốc 50%); đi ngang 24%, giảm 9%.',
   nums:[['Pha tăng','67%',''],['Đi ngang','24%',''],['Pha giảm','9%','']],
-  caut:'Đây là độ chắc của việc gọi tên trạng thái, không phải xác suất lãi và không dùng để ra lệnh.',
-  vis:function(){return dots([{n:67,cls:'a'},{n:24,cls:'b'},{n:9,cls:'r'}],true)+legend([['a','67 pha tăng'],['b','24 đi ngang'],['r','9 pha giảm']])},cap:'100 chấm theo tỷ lệ xác suất lọc, thứ tự cố định.'},
+  caut:'Đây là độ chắc của việc gọi tên trạng thái, không phải xác suất lãi và không dùng để ra lệnh. Chưa chứng minh dự báo được ngoài mẫu.',
+  vis:function(){return dots([{n:67,cls:'a'},{n:24,cls:'b'},{n:9,cls:'r'}],true)+legend([['a','67 pha tăng'],['b','24 đi ngang'],['r','9 pha giảm']])},cap:'100 chấm theo tỷ lệ xác suất trạng thái (chưa rõ loại), thứ tự cố định.'},
  {g:'A',no:'08',id:'context',tone:'neutral',name:'So với ngành và thị trường',tech:'Thị trường & ngành',
   v:'Ngành Công nghệ đang ở xu hướng tăng, và các mã trong ngành khá cùng chiều.',
   why:'{{corr|Tương quan}} trung bình giữa các mã là 0,64, trên mốc 0. Ngành tăng 3,1% trong 20 phiên.',
   nums:[['Ngành','Công nghệ',''],['Xu hướng ngành','Tăng',''],['Tương quan TB','0,64','mốc 0']],
   caut:'Tương quan cao nghĩa là ngành lên xuống cùng nhau, nên đa dạng hóa trong ngành giúp ít.',
   vis:function(){return scaleBar(-1,1,.64,[[-1,'-1','start'],[0,'0'],[1,'+1','end']],{label:'Tương quan 0,64 trên thang -1 đến +1'})},cap:'Thang -1 (ngược chiều) đến +1 (cùng chiều).',slide:true},
- {g:'B',no:'03',id:'arima',tone:'ok',name:'Kiểm tra giá có ổn định hay không',tech:'ARIMA',
-  v:'Chuỗi lợi suất đủ ổn định để mô hình ARIMA đọc được.',
+ {g:'B',no:'03',id:'arima',tone:'ok',chipText:'Đạt mốc ADF',name:'Kiểm tra giá có ổn định hay không',tech:'ARIMA',
+  v:'ADF p 0,012 bác bỏ giả thuyết chuỗi không ổn định ở mức 5%. Đây là chẩn đoán, không phải dự báo.',
   why:'{{adf|ADF p-value}} 0,012, dưới mốc 0,05. Mô hình chọn cấu hình (1, 0, 1).',
   nums:[['ADF p-value','0,012','mốc 0,05'],['Cấu hình','(1, 0, 1)',''],['Dự báo 3 phiên','102.200 đến 102.600','VND']],
   caut:'ARIMA là chẩn đoán tham khảo; đường dự báo không phải giá sẽ đi theo. AIC thấp không có nghĩa mô hình đúng.',
   vis:function(){return arimaLine()},cap:'Điểm gốc là giá đóng cửa gần nhất 102.000; 3 điểm là dự báo công bố.'},
  {g:'B',no:'07',id:'directional_alpha',tone:'neutral',badge:'Chưa kiểm chứng ngoài mẫu',name:'Đà giá và so sánh trong rổ',tech:'Alpha có hướng',
-  v:'Đà gần đây nghiêng về tăng, nhưng bằng chứng ngoài mẫu còn yếu.',
+  v:'Điểm động lượng 0,4 (dương), chỉ mô tả quá khứ. Chưa chứng minh dự báo được ngoài mẫu.',
   why:'Điểm {{mom|động lượng}} 0,4 trên mốc 0. {{hurst|Hurst}} 0,61 trên mốc 0,5, gợi ý xu hướng có tính duy trì.',
-  nums:[['Điểm động lượng','0,4','mốc 0'],['Hurst','0,61','mốc 0,5'],['Thứ hạng trong rổ','80%','không phải xác suất lãi']],
+  nums:[['Điểm động lượng','0,4','mốc 0'],['Hurst','0,61','mốc 0,5'],['Vị trí trong rổ','80/100','không phải xác suất lãi']],
   caut:'Hồi quy phần dư chưa kích hoạt nên không được tính như một phiếu xác nhận.'},
  {g:'B',no:'09',id:'agreement',tone:'caution',name:'Các mô hình có nhất trí không',tech:'Đồng thuận',
   v:'Các mô hình khá nhất trí, nhưng mới 80% mô hình tham gia.',
@@ -551,14 +556,14 @@ var M=[
   nums:[['Dự báo tổng hợp','+4,1%','3 phiên'],['Đồng thuận','75%',''],['Độ phủ','80%','mốc 100']],
   caut:'Nhất trí không phải xác suất lãi. Các mô hình dùng chung dữ liệu nên bằng chứng không độc lập.'},
  {g:'D',no:'12',id:'trade_plan',tone:'neutral',name:'Các mức giá của kế hoạch có điều kiện',tech:'Kế hoạch vị thế',
-  v:'Nếu vào ở 100.000 và kế hoạch sai, lỗ ước tính 3 triệu đồng.',
-  why:'{{sl|Cắt lỗ}} 97.000, mục tiêu 105.000 và 110.000. {{rr|Tỷ lệ lãi/lỗ}} tới mục tiêu 2 là 3,33, còn 1,92 sau chi phí.',
-  nums:[['Lỗ ước tính tại cắt lỗ','3.000.000','VND, 1% tài sản'],['Giá vào','100.000','VND'],['Mục tiêu 1 và 2','105.000 / 110.000','VND']],
+  v:'Nếu vào ở 100.000 và kế hoạch sai, lỗ ước tính khoảng 1% tài sản (3.000.000 VND).',
+  why:'{{sl|Cắt lỗ}} 97.000, mục tiêu 105.000 và 110.000. {{rr|Tỷ lệ lãi/lỗ}} tới mục tiêu 2 là 3,33 (trường sl.rr2). Báo cáo ghi 1,92 sau chi phí (trường sl.rr_net_cost, công thức chưa công bố).',
+  nums:[['Lỗ ước tính tại cắt lỗ','1% tài sản','3.000.000 VND (pos.max_loss)'],['Giá vào','100.000','VND'],['Mục tiêu 1 và 2','105.000 / 110.000','VND']],
   caut:'Cắt lỗ không đảm bảo bán được đúng giá khi giá nhảy hoặc thanh khoản thấp. Biên độ giá và thời gian chờ về {{tplus|[chờ Haiku xác minh]}}.',
   vis:function(){return ladder()},cap:'Đoạn gạch chéo là phần lỗ, đoạn nền là phần lãi tới mục tiêu. Đây là kế hoạch có điều kiện, không phải lệnh.'},
- {g:'D',no:'11',id:'costs',tone:'ok',name:'Còn lại bao nhiêu sau phí',tech:'Chi phí',
+ {g:'D',no:'11',id:'costs',tone:'neutral',name:'Còn lại bao nhiêu sau phí',tech:'Chi phí',
   v:'Dự báo gộp 4,1%, trừ phí còn 3,5%.',
-  why:'{{rt|Chi phí hai chiều}} là 0,6% [chờ Haiku xác minh: phí và thuế]. Sau phí còn dương, nhưng dự báo dương không bảo đảm có lãi.',
+  why:'{{rt|Chi phí hai chiều}} là 0,6% [chờ Haiku xác minh: phí và thuế]. Sau phí là +3,5%, mốc hòa vốn 0. Dự báo dương không bảo đảm có lãi.',
   nums:[['Trước phí','+4,1%',''],['Chi phí hai chiều','0,6%',''],['Sau phí','+3,5%','mốc 0']],
   caut:'Mức phí và thuế thực tế khác theo công ty chứng khoán [chờ Haiku xác minh].',
   vis:function(){return bars([['Trước phí',D.costs.gross,'var(--band)',.9,true],['Chi phí',D.costs.rt,'var(--s-caution)',.9,false],['Sau phí',D.costs.net,'var(--band)',.9,true]],4.5,'%')},cap:'Ba cột cùng một thang, bắt đầu từ 0.',slide:true},
@@ -573,14 +578,14 @@ var M=[
   nums:[['Trạng thái','Đạt',''],['Điểm','95/100','thang 0 đến 100'],['Số cảnh báo','0','']],
   caut:'Điểm chấm dữ liệu đầu vào, không chấm chất lượng cổ phiếu.'},
  {g:'T',no:'16',id:'commentary',tone:'neutral',name:'Tóm tắt bằng lời của báo cáo',tech:'Nhận định',
-  v:'Báo cáo xếp tín hiệu đang theo dõi, chưa đủ điều kiện thực thi.',
-  why:'Điểm hỗ trợ: pha tăng [05], dòng tiền nghiêng bên mua [06], sau phí còn +3,5% [11]. Rủi ro chính: lỗ trên 3% khi chờ [10], từng giảm 12% từ đỉnh [01].',
+  v:'Mô hình đang ở trạng thái theo dõi, chưa đủ điều kiện thực thi.',
+  why:'Các điểm mô tả: HMM gọi phiên cuối là pha tăng [05]; CMF dương chỉ là mô tả dòng tiền ước lượng [06]; dự báo sau phí +3,5% [11] nhưng chưa đủ điều kiện thời điểm [15]. Chưa chứng minh dự báo được ngoài mẫu. Rủi ro nổi bật: khoảng 8 trong 100 lần mô phỏng lỗ trên 3% khi chờ [10], từng giảm 12% từ đỉnh [01].',
   nums:[['Nguồn câu chữ','5 module',''],['Số mới thêm','0',''],['Cảnh báo','0','']],
   caut:'Đoạn tổng hợp; số liệu gốc ở từng module. Không có số nào ngoài module.'}
 ];
 var GROUPS={C:['C','Rủi ro','Có thể mất bao nhiêu?'],A:['A','Hiện trạng','Cổ phiếu đang thế nào?'],B:['B','Triển vọng','Giá có thể đi đâu?'],D:['D','Mua bán','Nếu hành động thì thế nào?'],T:['','Có tin được báo cáo không?','Dữ liệu và tóm tắt bằng lời']};
 function histo(){
-  var bins=[['-5 đến -1',20],['-1 đến 3',50],['3 đến 7',30]],W=320,H=130,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Phân bố lợi suất: 20% trong -5 đến -1, 50% trong -1 đến 3, 30% trong 3 đến 7"><g class="axis">';
+  var bins=[['-5 đến -1',20],['-1 đến 3',50],['3 đến 7',30]],W=320,H=130,s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Phân phối mô phỏng của lợi suất cuối kỳ: 20% kịch bản trong -5 đến -1, 50% trong -1 đến 3, 30% trong 3 đến 7"><g class="axis">';
   bins.forEach(function(b,i){var h=b[1]/50*80,x=14+i*100;s+='<rect x="'+x+'" y="'+(94-h)+'" width="92" height="'+h+'" fill="var(--band)" opacity=".7" class="barfill"/><text x="'+(x+46)+'" y="'+(88-h)+'" text-anchor="middle" style="font-family:var(--mono);fill:var(--text)" class="big">'+b[1]+'%</text><text x="'+(x+46)+'" y="116" text-anchor="middle">'+b[0]+'%</text>'});
   return s+'<line x1="8" x2="312" y1="94" y2="94" stroke="var(--line)"/></g></svg>';
 }
@@ -606,10 +611,10 @@ function modCard(m,i){
 function build(){
   // lớp 1: thẻ nhóm
   var g1=[
-   ['C','caution','Thận trọng','Có thể mất bao nhiêu?','Trong 100 lần mô phỏng có 8 lần lỗ trên 3% khi chờ, và cú sốc dao động có thể kéo dài.','8/100','lần lỗ trên 3% khi chờ'],
-   ['A','neutral','Mô tả','Cổ phiếu đang thế nào?','Lợi nhuận trên rủi ro khá, dòng tiền nghiêng bên mua. Cả hai chỉ là mô tả quá khứ.','1,2','Sharpe, mốc 1 là khá'],
+   ['C','caution','Thận trọng','Có thể mất bao nhiêu?','Khoảng 8 trong mỗi 100 lần (từ 1.000 lần mô phỏng) lỗ trên 3% khi chờ, và cú sốc dao động có thể kéo dài.','8/100','lỗ trên 3% khi chờ, mô phỏng'],
+   ['A','neutral','Mô tả','Cổ phiếu đang thế nào?','Lợi nhuận trên rủi ro khá, CMF dương. Cả hai chỉ mô tả giai đoạn quan sát, chưa chứng minh dự báo được ngoài mẫu.','1,2','Sharpe, mốc 1 là khá'],
    ['B','caution','Thận trọng','Giá có thể đi đâu?','Mô hình khá nhất trí, nhưng mới 80% mô hình tham gia.','80%','độ phủ, mốc 100%'],
-   ['D','caution','Chưa đủ điều kiện','Nếu hành động thì thế nào?','Kế hoạch có điều kiện đã có nhưng cổng thực thi chưa đạt.','3 triệu','lỗ ước tính nếu sai']
+   ['D','caution','Chưa đủ điều kiện','Nếu hành động thì thế nào?','Kế hoạch có điều kiện đã có nhưng cổng thực thi chưa đạt.','1% tài sản','lỗ ước tính nếu kế hoạch sai']
   ];
   $('#groups').innerHTML=g1.map(function(x,i){return '<a class="card gcard '+x[1]+'" href="#grp-'+x[0]+'" data-group="'+x[0]+'"'+(i===0?' data-tour="gc"':'')+'><div class="gh"><span class="order" aria-label="Thứ tự đọc '+(i+1)+'">'+(i+1)+' · '+x[0]+'</span>'+chip(x[1],x[2])+'</div><span class="q">'+x[3]+'</span><p>'+x[4]+'</p><span class="big">'+x[5]+'</span><span class="more">'+x[6]+'</span></a>'}).join('');
   // lớp 2
@@ -624,6 +629,7 @@ function build(){
   $('#tbody').innerHTML='<tr><td>0 (hôm nay)</td><td colspan="5" style="text-align:center">'+fmt(D.today)+'</td></tr>'+D.cone.map(function(r){return '<tr><td>+'+r.s+'</td><td>'+fmt(r.p05)+'</td><td>'+fmt(r.p25)+'</td><td>'+fmt(r.p50)+'</td><td>'+fmt(r.p75)+'</td><td>'+fmt(r.p95)+'</td></tr>'}).join('');
   $('#dots100').innerHTML=dots([{n:62,cls:'a'},{n:38,cls:'c'}],false).replace('<div class="dotgrid">','').replace(/<\/div>$/,'');
   $('#dots100').classList.add('dotgrid');
+  $('#simhistbox').innerHTML=histo();
   $$('#dots100 i').forEach(function(i,k){i.style.setProperty('--row',Math.floor(k/10))});
 }
 
