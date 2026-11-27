@@ -13,7 +13,7 @@ const result = await build({
   jsx: "automatic",
   target: "es2020",
   format: "iife",
-  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_GA_ID": '""' },
+  define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_GA_ID": '""', "process.env.NEXT_PUBLIC_QUANT_READER_V2": JSON.stringify(process.env.NEXT_PUBLIC_QUANT_READER_V2 ?? "") },
   alias: {
     "next/link": resolve(root, "frontend/preview/router.tsx"),
     "next/navigation": resolve(root, "frontend/preview/router.tsx"),

@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const result = await build({ absWorkingDir: root, entryPoints: ["frontend/preview/quant-reader.tsx"], bundle: true, write: false, outdir: "preview/quant-reader-assets", minify: true, jsx: "automatic", format: "iife", target: "es2020", tsconfig: "frontend/tsconfig.json", alias: { "next/link": resolve(root,"frontend/preview/router.tsx"), "next/navigation": resolve(root,"frontend/preview/router.tsx") }, define: { "process.env.NODE_ENV": '"production"' } });
+const result = await build({ absWorkingDir: root, entryPoints: ["frontend/preview/quant-reader.tsx"], bundle: true, write: false, outdir: "preview/quant-reader-assets", minify: true, jsx: "automatic", format: "iife", target: "es2020", tsconfig: "frontend/tsconfig.json", alias: { "next/link": resolve(root,"frontend/preview/router.tsx"), "next/navigation": resolve(root,"frontend/preview/router.tsx") }, define: { "process.env.NODE_ENV": '"production"', "process.env.NEXT_PUBLIC_QUANT_READER_V2": JSON.stringify(process.env.NEXT_PUBLIC_QUANT_READER_V2 ?? "") } });
 const cssFiles = (await readdir(resolve(root, "frontend/.next/static"), { recursive: true })).filter(p => p.endsWith(".css"));
 if (!cssFiles.length) throw new Error("Run npm run build before exporting the preview.");
 let css = (await Promise.all(cssFiles.map(p => readFile(resolve(root, "frontend/.next/static", p), "utf8")))).join("\n").replace(/@font-face\s*\{[^}]*\}/g, "");
