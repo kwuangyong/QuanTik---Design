@@ -22,6 +22,9 @@ test('API boundary: rejects unsupported routes and cross-origin mutations before
     assert.equal(allowed('GET', 'admin/orders'), true);
     for (const route of ['market/latest', 'market/candles', 'portfolio']) assert.equal(allowed('GET', route), true, route);
     assert.equal(allowed('PUT', 'portfolio'), true);
+    assert.equal(allowed('GET', 'screenings/run-1/board'), true);
+    assert.equal(allowed('GET', 'analyses/previous-session'), true);
+    assert.equal(allowed('POST', 'screenings/run-1/board'), false);
     assert.equal(allowed('DELETE', 'portfolio'), false);
     assert.equal(allowed('GET', 'market/other'), false);
     assert.equal(allowed('POST', 'analyses'), true);

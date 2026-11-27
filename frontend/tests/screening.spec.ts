@@ -5,7 +5,7 @@ const item = (symbol: string): ScreeningItem => ({ symbol, exchange: "HOSE", pri
   groups: { STRONG: { score: 71.4, met_count: 5, total_count: 7, unavailable_count: 0 }, ACCUMULATION: { score: 57.1, met_count: 4, total_count: 7, unavailable_count: 0 }, DISTRIBUTION: { score: 14.3, met_count: 1, total_count: 7, unavailable_count: 0 } },
   eligible: true, status: "ELIGIBLE" });
 async function fixture(page: Page, mode = "ready") {
-  const state = { mode, calls: [] as string[], results: [] as string[], details: [] as string[], mutations: [] as string[] };
+  const state = { mode, calls: [] as string[], results: [] as string[], boards: [] as string[], details: [] as string[], mutations: [] as string[] };
   await page.route("**/api/v1/**", async route => {
     const request = route.request(), url = new URL(request.url()), path = url.pathname.slice(8);
     const json = (data: unknown, status = 200) => route.fulfill({ status, contentType: "application/json", body: JSON.stringify(data) });
@@ -17,7 +17,19 @@ async function fixture(page: Page, mode = "ready") {
       if (state.mode === "unpaid") return json({ code: "SCREENING_SUBSCRIPTION_REQUIRED" },403);
       if (state.mode === "network") return json({ code: "BACKEND_UNAVAILABLE" },502);
       if (state.mode === "waiting") return json({ code: "SCREENING_NOT_READY", latest_attempt: { reason: "TASK_DEADLINE" } },503);
-      return json({ id: state.mode === "new" ? "new-run" : "ready-run", target_session: "2026-10-16", published_at: 1792123200, stale: state.mode === "stale", refresh_after_seconds: 60, screening_quota: { limit: 20, used: state.results.length, remaining: Math.max(0, 20 - state.results.length) } });
+      return json({ id: state.mode === "new" ? "new-run" : "ready-run", target_session: "2026-10-16", published_at: 1792123200, stale: state.mode === "stale", refresh_after_seconds: 60, screening_quota: { limit: 20, used: state.results.length + state.boards.length, remaining: Math.max(0, 20 - state.results.length - state.boards.length) },
+        expected_session: "2026-10-16", expected_slot: "PM", latest_attempt: { target_session: "2026-10-16", slot: "PM", status: state.mode === "stale" ? "FAILED" : "READY" }, stale_reasons: state.mode === "stale" ? ["LATEST_RUN_UNAVAILABLE"] : [] });
+    }
+    const board = path.match(/^screenings\/(.+)\/board$/);
+    if (board) {
+      // "legacy" mimics a quantik-server without the /board route: FastAPI's plain 404.
+      if (state.mode === "legacy") return json({ detail: "Not Found" }, 404);
+      state.boards.push(board[1]);
+      if (state.mode === "quota") return json({ code: "SCREENING_QUOTA_EXCEEDED" },403);
+      if (state.mode === "network") return json({ code: "BACKEND_UNAVAILABLE" },502);
+      const first = board[1] === "new-run" ? "VCB" : "FPT";
+      return json({ run_id: board[1], overall: [first,"HPG","MBB","SSI","VNM","SHOULD_NOT_SHOW"].map(symbol => ({ ...item(symbol), data_session: "2026-10-16", stale_sessions: 0 })),
+        distribution: ["BAD1","BAD2","BAD3","BAD4","BAD5","BAD6"].map(symbol => ({ ...item(symbol), data_session: symbol === "BAD1" ? "2026-10-14" : "2026-10-16", stale_sessions: symbol === "BAD1" ? 2 : 0 })) });
     }
     const match = path.match(/^screenings\/(.+)\/results$/);
     if (match) {
@@ -88,7 +100,7 @@ test("Screening: hai bảng top 5 đầy đủ thông tin và modal", async ({ p
   const modal = page.getByRole("dialog");
   await expect(modal.getByRole("heading", { name:"Bối cảnh VNINDEX", exact:true })).toBeVisible();
   await expect(modal.getByText("Quan sát vùng hỗ trợ.")).toBeVisible();
-  await expect(modal.getByRole("link", { name:/Phân tích Quant/ })).toHaveAttribute("href", "/analysis?symbol=FPT");
+  await expect(modal.getByRole("link", { name:/Phân tích Quant/ })).toHaveAttribute("href", "/analysis?symbol=FPT&target_session=2026-10-16");
   expect(await modal.evaluate(el => el.scrollWidth <= el.clientWidth+1)).toBeTruthy();
   const bounds = await modal.boundingBox();
   expect(bounds!.x).toBeGreaterThan(0);
@@ -123,8 +135,7 @@ test("Screening: cập nhật bảng giữ modal đúng bản công bố", async
 
 test("Screening sheet: giữ đúng đơn vị, điều kiện, chú giải và cột mã khi cuộn", async ({ page }, testInfo) => {
   const state = await fixture(page);
-  await page.route("**/api/v1/screenings/*/results?*", async route => {
-    const group = new URL(route.request().url()).searchParams.get("group");
+  await page.route("**/api/v1/screenings/*/board", async route => {
     const enriched = { ...item("FPT"), name: "FPT", company_name: "Công ty Cổ phần FPT", action: "WATCH", gate_pass: false,
       gate_reasons: ["TIMING_NOT_READY"], score: 72, rating: "THEO DÕI", holding_sessions: 10,
       index_trend: "NEUTRAL", sector: "Công nghệ", sector_trend: "Tăng", sector_return_20d_pct: 5.1,
@@ -137,8 +148,8 @@ test("Screening sheet: giữ đúng đơn vị, điều kiện, chú giải và 
       adv20_value_vnd: 10000000000, capacity_shares: 20000, gap_abs_p95_pct: 2.2,
       entry_vnd: 58000, stop_loss_vnd: 55000, take_profit_1_vnd: 62000, take_profit_2_vnd: 65000,
       trade_model_agreement_pct: 75, risk_pct_nav: null, commentary: "Nhận xét đầy đủ của phiên.\nTheo dõi vùng hỗ trợ." };
-    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ run_id: "ready-run", group,
-      items: group === "OVERALL" ? [enriched, item("HPG"), item("MBB"), item("SSI"), item("VNM")] : [item("BAD1")] }) });
+    await route.fulfill({ contentType: "application/json", body: JSON.stringify({ run_id: "ready-run",
+      overall: [enriched, item("HPG"), item("MBB"), item("SSI"), item("VNM")], distribution: [item("BAD1")] }) });
   });
   await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   const best = page.getByRole("region", { name: "5 mã xếp hạng cao nhất", exact: true });
@@ -156,7 +167,7 @@ test("Screening sheet: giữ đúng đơn vị, điều kiện, chú giải và 
   // Basic screening eligibility/scores must never be reinterpreted as Quant data.
   await expect(best.locator("tbody tr").nth(1).locator('[data-sheet-key="score"]')).toHaveText("—");
   await row.getByRole("link", { name: "Kích hoạt phân tích quant chi tiết FPT" }).focus();
-  await expect(row.getByRole("link")).toHaveAttribute("href", "/analysis?symbol=FPT");
+  await expect(row.getByRole("link")).toHaveAttribute("href", "/analysis?symbol=FPT&target_session=2026-10-16");
   const identityX = (await row.locator("th").boundingBox())!.x;
   await best.getByRole("button", { name: "Win Rate (%)" }).click();
   const tooltip = page.getByRole("tooltip");
@@ -247,14 +258,15 @@ test("Screening: chỉ /latest được thăm dò, /results không bị tính qu
   await page.clock.install();
   const state = await fixture(page); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   await expect(page.getByRole("button", { name: "FPT", exact: true })).toBeVisible();
-  expect(state.results).toHaveLength(2);
-  await expect(page.getByText(/Còn 18\/20 lượt xem hôm nay/)).toBeVisible();
+  expect(state.boards).toHaveLength(1);
+  expect(state.results).toHaveLength(0);
+  await expect(page.getByText(/Còn 19\/20 lượt xem hôm nay/)).toBeVisible();
   await page.clock.fastForward(61000);
   await expect.poll(() => state.calls.filter(path => path === "screenings/latest").length, { timeout: 15000 }).toBeGreaterThanOrEqual(2);
   await expect(page.getByRole("button", { name: "Kiểm tra bản mới ↻" })).toBeEnabled();
   await page.getByRole("button", { name: "Kiểm tra bản mới ↻" }).click();
   await expect.poll(() => state.calls.filter(path => path === "screenings/latest").length, { timeout: 15000 }).toBeGreaterThanOrEqual(3);
-  expect(state.results).toHaveLength(2);
+  expect(state.boards).toHaveLength(1);
   // Reopening a detail already read in this tab is not charged again.
   await page.getByRole("button", { name: "FPT", exact: true }).click();
   await expect(page.getByRole("dialog").getByText("Quan sát vùng hỗ trợ.")).toBeVisible();
@@ -268,4 +280,37 @@ test("Screening: hết lượt xem trong ngày không bị báo nhầm là thi�
   await fixture(page, "quota"); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
   await expect(page.getByRole("heading", { name: "Đã dùng hết lượt xem quét hôm nay", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Cần gói phân tích còn hiệu lực", exact: true })).toHaveCount(0);
+});
+
+test("Screening: một lượt /board cho cả hai bảng, Quant link giữ phiên quét, cập nhật cột Quant có chủ đích", async ({ page }) => {
+  const state = await fixture(page); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  await expect(page.getByRole("button", { name: "FPT", exact: true })).toBeVisible();
+  expect(state.boards).toEqual(["ready-run"]);
+  expect(state.results).toEqual([]);
+  const best = page.getByRole("region", { name: "5 mã xếp hạng cao nhất", exact: true });
+  await expect(best.locator("tbody tr")).toHaveCount(5);
+  await expect(best.getByRole("link", { name: /FPT/ }).first()).toHaveAttribute("href", "/analysis?symbol=FPT&target_session=2026-10-16");
+  await page.getByRole("button", { name: "Cập nhật cột Quant · dùng 1 lượt xem" }).click();
+  await expect.poll(() => state.boards.length).toBe(2);
+  await page.getByRole("button", { name: "BAD1", exact: true }).click();
+  await expect(page.getByRole("dialog").getByText(/Phiên quét 16\/10\/2026 · Giá ngày 14\/10\/2026 \(trễ 2 phiên\)/)).toBeVisible();
+  await expect(page.getByRole("dialog").getByRole("link", { name: "Phân tích Quant ↗" })).toHaveAttribute("href", "/analysis?symbol=BAD1&target_session=2026-10-16");
+});
+
+test("Screening: máy chủ chưa có /board thì quay về /results, không thử lại /board", async ({ page }) => {
+  await page.clock.install();
+  const state = await fixture(page, "legacy"); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  await expect(page.getByRole("button", { name: "FPT", exact: true })).toBeVisible();
+  expect(state.results.sort()).toEqual(["?group=DISTRIBUTION", "?group=OVERALL"]);
+  await expect(page.getByRole("button", { name: "Cập nhật cột Quant · dùng 1 lượt xem" })).toHaveCount(0);
+  state.mode = "new";
+  await page.clock.fastForward(61000);
+  await expect(page.getByRole("button", { name: "VCB", exact: true })).toBeVisible();
+  expect(state.calls.filter(path => path.endsWith("/board"))).toHaveLength(1);
+  expect(state.boards).toEqual([]);
+});
+
+test("Screening: hiện lý do bản cũ và trạng thái phiên dự kiến", async ({ page }) => {
+  await fixture(page, "stale"); await page.goto("/screener"); await page.getByRole("button", { name: "Kích hoạt kết quả" }).click();
+  await expect(page.getByText(/Phiên dự kiến: 16\/10\/2026 \(ca chiều\)\. Lần quét ca chiều ngày 16\/10\/2026: xử lý chưa thành công\. · Ca mới nhất chưa công bố thành công/)).toBeVisible();
 });
