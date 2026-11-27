@@ -10,6 +10,8 @@ import { readableMetrics, moduleAvailability } from "@/lib/quant-presentation";
 export { readableMetrics } from "@/lib/quant-presentation";
 import styles from "./quant-reader.module.css";
 import { QuantModuleEvidence } from "./quant-module-evidence";
+import { QuantDeepVisual } from "./quant-deep-visual";
+import { quantReaderV2Enabled } from "@/lib/quant-flags";
 
 const finite = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
 const signed = (v: unknown, unit = "") => finite(v) ? `${v > 0 ? "+" : ""}${number(v, unit)}` : "—";
@@ -41,7 +43,7 @@ function Participation({ value }: { value: unknown }) {
   return <span>{value === true ? "Đang tham gia" : value === false ? "Chưa tham gia" : "Chưa công bố trạng thái tham gia"}</span>;
 }
 
-function AlphaEvidence({ report, metrics, agreementId, compact, onSelect }: { report: AnalysisReport; metrics: Record<string, unknown>; agreementId?: string; compact: boolean; onSelect?: (name: string) => void }) {
+function AlphaEvidence({ report, metrics, agreementId, compact, onSelect, v2 = false }: { report: AnalysisReport; metrics: Record<string, unknown>; agreementId?: string; compact: boolean; onSelect?: (name: string) => void; v2?: boolean }) {
   const momentum = record(metrics.momentum_alpha), hurst = record(metrics.hurst), lgbm = record(metrics.lightgbm_cross_sectional), residual = record(metrics.conditional_mr);
   const forecast = lgbm.available === true ? lgbm.proj_pct : undefined;
   const sourceHorizon = finite(lgbm.horizon_sessions) ? lgbm.horizon_sessions : finite(lgbm.horizon) ? lgbm.horizon : undefined;
@@ -52,6 +54,7 @@ function AlphaEvidence({ report, metrics, agreementId, compact, onSelect }: { re
   const residualReason = typeof residual.reason === "string" ? reasons[residual.reason] : undefined;
   const agreement = readableMetrics(report.sections.agreement), fcast = record(agreement.fcast);
   return <div className="grid min-w-0 gap-5">
+    {v2 && <QuantDeepVisual name="directional_alpha" report={report}/>}
     <div className="max-w-4xl"><p className="text-[13px] font-medium tracking-widest text-[var(--accent)]">KẾT QUẢ CỦA {report.symbol}</p><h4 className="mt-2 text-lg font-medium leading-8">{momRead}; {forecastRead}.</h4><p className="mt-2 text-[13px] leading-6 text-[var(--muted)]">Hurst: {regimes[regime] || "chưa có nhãn trạng thái"}. Cấu trúc chuỗi và hướng dự báo được đọc riêng.</p></div>
     <div className={`grid min-w-0 gap-3 ${compact ? "" : "xl:grid-cols-3"}`}>
       <article aria-label="Bằng chứng Momentum" className="min-w-0 rounded border border-[var(--border)] p-4">
@@ -104,10 +107,10 @@ export function QuantModelSection({ name, report, compact, id, agreementId, navi
     {open && <div className="grid min-w-0 gap-5 border-t border-[var(--border)] py-5">
       {section.reason_codes.length > 0 && <p role="status" className="text-[13px] leading-6 text-[var(--muted)]">{section.reason_codes.map(analysisReason).join(" ")}</p>}
       {fallback && <p className="text-[13px] leading-6 text-[var(--muted)]">Báo cáo sử dụng phương pháp thay thế; đọc phương pháp công bố trước khi dùng kết quả.</p>}
-      {name === "directional_alpha" && section.status !== "DISABLED" ? <AlphaEvidence report={report} metrics={metrics} agreementId={agreementId} compact={compact} onSelect={onSelect}/> : <>
+      {name === "directional_alpha" && section.status !== "DISABLED" ? <AlphaEvidence report={report} metrics={metrics} agreementId={agreementId} compact={compact} onSelect={onSelect} v2={quantReaderV2Enabled() && !compact}/> : <>
         <div className="max-w-4xl"><p className="text-[13px] font-medium tracking-widest text-[var(--accent)]">KẾT QUẢ CỦA {report.symbol}</p></div>
         <MetricGrid rows={rows}/>
-        <QuantModuleEvidence name={name} report={report} metrics={metrics} available={hasMetrics || name === "commentary"}/>
+        <QuantModuleEvidence name={name} report={report} metrics={metrics} available={hasMetrics || name === "commentary"} v2={quantReaderV2Enabled() && !compact}/>
 
       </>}
       <section className={styles.interpretation} aria-label={`Ý nghĩa & phân tích · ${guide.title}`}>

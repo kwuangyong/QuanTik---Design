@@ -57,6 +57,17 @@ test(v2 ? "Quant V2: lớp Tóm tắt, chuyển lớp, nhớ lựa chọn và to
   await expect(explain.locator('[data-explain-module="agreement"]')).toContainText("mới 80% mô hình tham gia");
   await expect(explain.locator('[data-explain-module="decision"]')).toContainText("Mô hình: theo dõi");
   await expect(explain.locator('[data-explain-module="data_quality"]')).toContainText("điểm 95 trên 100");
+  // Batch 4: small figures with an aria-label and a table, and the "Vì sao / Lưu ý" part collapsed.
+  const quality = explain.locator('[data-explain-figure="data_quality"] svg[role="img"]');
+  await expect(quality).toHaveAttribute("aria-label", /Điểm dữ liệu 95\/100/);
+  await expect(explain.locator('[data-explain-figure="data_quality"] table')).toHaveCount(1);
+  await expect(explain.locator('[data-explain-figure="decision"] svg[role="img"]')).toHaveAttribute("aria-label", /72\/100/);
+  const more = explain.locator('[data-explain-more="data_quality"]');
+  await expect(more).not.toHaveAttribute("open", "");
+  await expect(more.locator("p").first()).toBeHidden();
+  await more.locator("summary").click();
+  await expect(more.locator("p").first()).toBeVisible();
+  await expect(explain.locator('[data-explain-module][data-explain-state="missing"] [data-explain-figure]')).toHaveCount(0);
   await explain.locator('details[data-explain-group="C"] > summary').click();
   await expect(explain.locator('[data-explain-module="garch"]')).toBeHidden();
   await explain.locator('details[data-explain-group="C"] > summary').click();
@@ -74,6 +85,14 @@ test(v2 ? "Quant V2: lớp Tóm tắt, chuyển lớp, nhớ lựa chọn và to
   await page.reload();
   await expect(page.getByRole("button", { name: "Chuyên sâu", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(action).toBeVisible();
+  // Deep layer: what the API lacks is a labelled cell, never an invented series.
+  await page.getByRole("button", { name: "ARIMA", exact: true }).click();
+  const arimaNeed = page.locator('details[data-quant-module="arima"] [data-need="arima.forecast.interval"]');
+  await expect(arimaNeed).toContainText("Cần dữ liệu từ backend: arima.forecast.interval");
+  await expect(page.locator('details[data-quant-module="arima"] [data-deep-visual] svg')).toHaveCount(0);
+  await page.getByRole("button", { name: "Monte Carlo", exact: true }).click();
+  await expect(page.locator('details[data-quant-module="simulation_risk"] [data-need="research.mc_paths"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   await page.getByRole("button", { name: "Tóm tắt", exact: true }).click();
   await expect(glance).toBeVisible();
   await glance.getByRole("button", { name: "Xem kế hoạch có điều kiện" }).click();

@@ -3,13 +3,16 @@ import {useEffect,useMemo,useRef,useState,type CSSProperties,type ReactNode} fro
 import type {AnalysisReport} from "@/lib/api/analysis";
 import {number} from "@/lib/quant-reader";
 import {scenarioScenes,type ScenarioKind,type ScenarioScene} from "@/lib/quant-scenario-data";
+import {quantReaderV2Enabled} from "@/lib/quant-flags";
+// V2 reader: 3D never starts rotating or replaying by itself; the viewer opts in.
+const startMoving = !quantReaderV2Enabled();
 
 const button: CSSProperties = {border:"1px solid var(--border)",borderRadius:3,background:"var(--surface)",padding:"7px 11px",fontSize:"var(--fs-min,13px)",lineHeight:"20px",color:"var(--muted)",cursor:"pointer"};
 const active: CSSProperties = {...button,borderColor:"var(--accent)",color:"var(--accent)"};
 const group: CSSProperties = {display:"flex",flexWrap:"wrap",alignItems:"center",gap:8};
 
 export function SceneCanvas({scene,frame,title,autoRotate = true}: {scene:ScenarioScene;frame:number;title:string;autoRotate?:boolean}) {
-  const [rotating,setRotating] = useState(true), [reduced,setReduced] = useState(false);
+  const [rotating,setRotating] = useState(startMoving), [reduced,setReduced] = useState(false);
   const frameRef=useRef(frame);
   useEffect(()=>{frameRef.current=frame;redraw.current();},[frame]);
   const canvasRef = useRef<HTMLCanvasElement>(null), rotation = useRef({yaw:-.62,pitch:.45}), drag = useRef<{x:number;y:number}|null>(null), redraw = useRef(()=>{});
@@ -49,7 +52,7 @@ export function SceneCanvas({scene,frame,title,autoRotate = true}: {scene:Scenar
 }
 
 function SceneExplorer({scene,kind}: {scene:ScenarioScene;kind:ScenarioKind}) {
-  const [frame,setFrame]=useState(0),[playing,setPlaying]=useState(true),[reduced,setReduced]=useState(false),wrapper=useRef<HTMLDivElement>(null),frameRef=useRef(frame);
+  const [frame,setFrame]=useState(0),[playing,setPlaying]=useState(startMoving),[reduced,setReduced]=useState(false),wrapper=useRef<HTMLDivElement>(null),frameRef=useRef(frame);
   const index=Math.max(0,Math.min(frame,scene.labels.length-1));
   frameRef.current=index;
   useEffect(()=>{const media=matchMedia("(prefers-reduced-motion: reduce)"),sync=()=>{setReduced(media.matches);if(media.matches)setPlaying(false);};sync();media.addEventListener("change",sync);return()=>media.removeEventListener("change",sync);},[]);

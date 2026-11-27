@@ -9,6 +9,7 @@ import {QuantScenarioView} from "./quant-scenario-3d";
 import {QuantGarchView} from "./quant-report-views";
 import {QuantFactorProfile} from "./quant-factor-profile";
 import {HmmPhaseTriangle} from "./hmm-phase-triangle";
+import {QuantDeepVisual} from "./quant-deep-visual";
 import TermHint from "./term-hint";
 const finite=(v:unknown):v is number=>typeof v==="number"&&Number.isFinite(v);
 const numeric=(v:unknown):number[]=>Array.isArray(v)&&v.every(finite)?v:[];
@@ -35,10 +36,11 @@ function TradeLevels({metrics}:{metrics:Record<string,unknown>}) {
  const values=levels.map(([,v])=>Number(v));if(!(values[0]<values[1]&&values[1]<values[2]&&values[2]<=values[3]))return <Missing text="Các mức giá chưa tạo thành thứ tự SL < Entry < TP1 ≤ TP2 hợp lệ. Giữ số liệu công bố để đối chiếu."/>;
  return <><svg role="img" aria-label="Khoảng giá SL, Entry, TP1 và TP2 theo VND" viewBox="0 0 440 130" className="my-6 block w-full"><line x1="25" y1="58" x2="415" y2="58" stroke="var(--border)" strokeWidth="3"/>{levels.map(([label,v],i)=>{const x=25+(Number(v)-values[0])/(values[3]-values[0])*390;return <g key={label}><circle cx={x} cy="58" r="6" fill={i===0?"var(--negative)":i===1?"var(--accent)":"var(--positive)"}/><text x={x} y={i%2?25:95} textAnchor="middle" fill="var(--muted)" fontSize="13">{label}</text></g>;})}</svg><dl className="grid grid-cols-2 gap-4 text-[13px]">{levels.map(([label,v,term])=><div key={label}><dt className="text-[var(--muted)]"><TermHint id={term}>{label}</TermHint></dt><dd className="mt-1 font-mono">{number(v," VND")}</dd></div>)}</dl></>;
 }
-export function QuantModuleEvidence({name,report,metrics,available}:{name:string;report:AnalysisReport;metrics:Record<string,unknown>;available:boolean}) {
+export function QuantModuleEvidence({name,report,metrics,available,v2=false}:{name:string;report:AnalysisReport;metrics:Record<string,unknown>;available:boolean;v2?:boolean}) {
  const research=researchFor(report),[title,explanation]=moduleEvidenceReadings[name]||["Bằng chứng","Đối chiếu kết quả với dữ liệu đầu vào."];
  let chart:ReactNode=null;
- if(!available||report.sections[name]?.status==="DISABLED")chart=<Missing text="Module chưa có kết quả khả dụng để dựng biểu đồ. Các giải thích phương pháp vẫn được giữ bên dưới."/>;
+ if(v2&&name!=="commentary")chart=<QuantDeepVisual name={name} report={report}/>;
+ else if(!available||report.sections[name]?.status==="DISABLED")chart=<Missing text="Module chưa có kết quả khả dụng để dựng biểu đồ. Các giải thích phương pháp vẫn được giữ bên dưới."/>;
  else switch(name){
  case "statistics":chart=<LinePlot title={`Sụt giảm trong module hiệu suất ${report.symbol}`} unit="%" drawdown rows={research.drawdown.map((p,i)=>({x:i,value:p.valuePct,label:p.date}))}/>;break;
  case "distribution":chart=<Histogram title="Phân phối lợi suất lịch sử" observation="quan sát" data={historicalHistogram(numeric(readableMetrics(report.sections.statistics)._price_close))}/>;break;
