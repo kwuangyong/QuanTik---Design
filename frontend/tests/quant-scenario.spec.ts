@@ -1,5 +1,6 @@
 import {test,expect,type Page} from "@playwright/test";
 import {analysisFixture} from "./fixtures/analysis";
+import {deepLayer,v2} from "./helpers/quant-v2";
 
 async function openReport(page:Page,missing=false){
  const state=await analysisFixture(page);state.status="SUCCEEDED";
@@ -7,6 +8,7 @@ async function openReport(page:Page,missing=false){
  if(missing){state.report.research!.cone=[];state.report.research!.regime=[];state.report.sections.hmm.metrics={};}
  state.jobs.push({id:"job-1",symbol:"FPT",target_session:"2026-10-16",status:"SUCCEEDED",created_at:1792224000,deadline:1792310400,attempt:1,report_id:"report-1",reason:null,quota_effect:"CONSUMED"});
  await page.goto('/analysis?symbol=FPT&job=job-1');
+ await deepLayer(page);
  await expect(page.locator('.quant-report-section')).toHaveCount(16);await page.getByText("Biểu đồ bổ sung · Đối chiếu toàn bộ báo cáo",{exact:true}).click();return state;
 }
 
@@ -43,7 +45,8 @@ test('Monte Carlo 3D switches safely and follows published sessions',async({page
  const view=gallery.getByRole('region',{name:'Monte Carlo · Khám phá 3D',exact:true});
  await expect(view.getByRole('img',{name:'Monte Carlo 3D theo phiên',exact:true})).toBeVisible();
  await view.getByRole('img').press('ArrowRight');
- await view.getByRole('button',{name:'Tạm dừng',exact:true}).click();
+ // V2 opens 3D paused (the viewer opts in to motion); the legacy reader starts playing.
+ if(!v2)await view.getByRole('button',{name:'Tạm dừng',exact:true}).click();
  await view.getByRole('slider',{name:'Chọn phiên Monte Carlo 3D',exact:true}).press('Home');
  await expect(view).toContainText('Phiên +1');
  await view.getByRole('button',{name:'Phát theo phiên',exact:true}).click();

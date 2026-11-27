@@ -28,7 +28,7 @@ Mở `http://localhost:3000`. Bấm **Đăng nhập hệ thống**; sau đăng n
 - **Dashboard**: VN-INDEX, VN30, UPCOM, HNX-INDEX → bảng điện có TC/trần/sàn, ba mức dư mua/bán, khớp lệnh, tổng KL, GTGD, thống kê và nước ngoài → bảng nhóm ngành. Theo dõi nằm trong cùng bảng. Bấm mã mở cửa sổ chart với Quant bên cạnh; có thể thu/mở Quant hoặc mở trang phân tích toàn màn hình.
 - **Quét toàn sàn**: kích hoạt để đọc bản công bố mới nhất, hiển thị hai bảng 5 mã tốt nhất và 5 mã nên tránh nhất theo thứ hạng screening. Mỗi bảng có 34 cột riêng theo thứ tự sheet lọc cổ phiếu sau khi bỏ 8 cột đã thống nhất; cuộn ngang, cố định mã, tên công ty và nút Quant. Bấm tiêu đề bất kỳ để xem định nghĩa/cách tính; bấm mã để mở screening, nút Quant mở luồng yêu cầu hiện có. Các trường Quant/tên doanh nghiệp chưa có trong API giữ trạng thái thiếu dữ liệu; không lấy điểm screening làm điểm Quant và không chạy phân tích ngầm.
 
-- **Phân tích Quant**: chọn mã → gửi yêu cầu → đọc kết luận dễ hiểu, biểu đồ xu hướng/kịch bản/rủi ro và các mốc giá cần theo dõi. Có mô hình 3D tương tác từ dữ liệu báo cáo; phần mô hình chuyên sâu mở thêm khi cần.
+- **Phân tích Quant**: chọn mã (hoặc mở từ bảng Quét toàn sàn) → gửi yêu cầu → đọc báo cáo theo ba lớp Tóm tắt, Hiểu vì sao, Chuyên sâu (xem mục dưới); kết luận dễ hiểu, biểu đồ xu hướng/kịch bản/rủi ro và các mốc giá cần theo dõi. Có mô hình 3D tương tác từ dữ liệu báo cáo; phần mô hình chuyên sâu mở thêm khi cần.
 - **Biểu đồ**: giữ đường dẫn `/charts?symbol=FPT` cho chế độ toàn màn hình. Biểu đồ nằm trong luồng chọn mã, không thêm mục riêng vào menu.
 
 Hợp đồng API và xác nhận production: [Screening tables](docs/SCREENING-TABLES.md).
@@ -77,6 +77,20 @@ Phân tích Quant ưu tiên cách đọc đơn giản: kết luận → xu hư�
 `backend/mock/analysis-visuals.json` chứa 25 báo cáo minh họa, xác suất trạng thái, đường biến động, các đường giá và phân vị đã lưu. Đây là fixture trình bày, không phải kết quả mô hình của các mã và không phải trọng số mới. Không khớp GARCH/HMM hoặc chạy Monte Carlo trong trình duyệt.
 
 3D trong báo cáo thật dùng SVG với phép chiếu 3D, hỗ trợ kéo, phím mũi tên, thanh xoay và đổi theme; không tự chạy chuyển động. Home và các fixture minh họa giữ renderer riêng.
+
+### Báo cáo Quant: ba lớp đọc (bật mặc định)
+
+Từ đợt 5 của Gate 3, báo cáo Quant mở ở lớp **Tóm tắt** thay vì 16 module. Có ba lớp đọc, đổi bằng ba nút ở đầu báo cáo (lựa chọn lưu bằng `localStorage`):
+
+- **Tóm tắt (30 giây)**: thẻ Kết luận của mô hình, một dòng rủi ro nổi bật (số lần trong 100 lần mô phỏng), bốn nhóm theo thứ tự đọc Rủi ro, Hiện trạng, Triển vọng, Mua bán, và dải tin cậy (dữ liệu, độ phủ mô hình).
+- **Hiểu vì sao (3 phút)**: mỗi module một thẻ bốn phần (kết luận, vì sao, tối đa ba số, lưu ý) và một hình nhỏ vẽ từ đúng số đã công bố.
+- **Chuyên sâu**: 16 module, bảng chỉ số, "Ý nghĩa & phân tích", cảnh 3D (tải khi bấm, không tự xoay) và điều hướng 16 nút. Nhãn chỉ số dùng lời thường; thuật ngữ gốc nằm trong tooltip.
+
+Lần đầu mở báo cáo có tour 4 bước (Kết luận, Rủi ro, ba lớp đọc, Thuật ngữ; có Bỏ qua, Quay lại, Tiếp, Esc, nhớ đã xem). Nút **Cách đọc** mở ngăn kéo 8 mục (cũng có ở `/analysis/guide`) và cho xem lại tour. Nút **Giảm hiệu ứng** cộng thêm vào `prefers-reduced-motion`: mọi hình hiện ngay trạng thái cuối.
+
+Tắt V2 khi build bằng `NEXT_PUBLIC_QUANT_READER_V2=0` (hoặc `false`/`off`); khi đó giữ nguyên báo cáo cũ. Cờ được nhúng lúc build, nên phải build lại. Các câu pháp lý và thị trường (chu kỳ chờ thanh toán, biên độ giá, phí, thuế, miễn trừ) vẫn là placeholder trung tính cho tới khi được xác minh.
+
+Trường backend lớp Chuyên sâu còn cần (chưa có trong API; giao diện ghi "Cần dữ liệu từ backend", không vẽ số mẫu): `arima.forecast.interval`, `garch.vol_cone`, `research.mc_paths`, `context.vnindex_series`, `research.returns`, `directional_alpha.ic` / `t_stat` / `tier`, `agreement.models[]`, `costs.components[]`, `exchange` và `price_band_pct`, `data_quality.checks[]`, `hmm.probability_kind`. Nguồn: `research/2026-11/redesign/G2-quant-spec.md` mục 9.
 
 ### Điểm radar theo chỉ số gốc
 

@@ -1,6 +1,7 @@
 import { getStock, getScanResult, getDemoResult, getDemoCandles, getAnalysisVisuals, marketSnapshotInfo, scanSnapshot } from "./mock-data";
 import { factorProfile } from "./factor-profile";
 import { at, moduleReading } from "./quant-reader";
+import { readDecision } from "./quant-decision";
 import { analysisReason, type AnalysisReport } from "./api/analysis";
 import type { ScreeningLatest, ScreeningResults } from "./api/screening";
 import type { Asset } from "./portfolio-engine";
@@ -53,9 +54,9 @@ export function publishedPortfolioEvidence(symbol:string,session:string,input:{s
   return {
     symbol,session,screening:{status:scanState==="AVAILABLE"&&!item?"NOT_LISTED":scanState,priceVnd:item?.price_vnd??null,eligible:item?.eligible??null,groups:item?.groups??null},
     quant:{status:reportState,beta:value("technical","alpha.cross_sectional.beta"),
-      action:hasDecision&&typeof report!.decision.action==="string"?report!.decision.action:null,
-      executable:hasDecision&&typeof report!.decision.executable==="boolean"?report!.decision.executable:null,
-      reasons:hasDecision&&Array.isArray(report!.decision.reason_codes)?report!.decision.reason_codes.filter((c):c is string=>typeof c==="string").map(analysisReason):[],
+      action:hasDecision&&readDecision(report).action?readDecision(report).action:null,
+      executable:hasDecision?readDecision(report).executable:null,
+      reasons:hasDecision?readDecision(report).reasonCodes.map(analysisReason):[],
       readings:["statistics","technical","garch","hmm","liquidity"].flatMap(name=>{const metrics=section(name);return metrics?[{module:name,text:moduleReading(name,metrics)}]:[]})},
   };
 }

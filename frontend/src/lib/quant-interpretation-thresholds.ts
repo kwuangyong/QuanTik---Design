@@ -18,3 +18,6 @@ export const interpretationThresholds = {
   decision: { minScore: 0, maxScore: 100 },
   commentary: {},
 } as const;
+
+// Single tolerance (percentage points) for HMM state probabilities summing to 100: three integer-rounded values can drift up to 1.5.
+export const HMM_PROB_SUM_TOLERANCE = 1.5;

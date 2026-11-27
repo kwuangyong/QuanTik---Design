@@ -1,0 +1,100 @@
+import { test, expect, type Page } from "@playwright/test";
+import { analysisFixture } from "./fixtures/analysis";
+import { v2 } from "./helpers/quant-v2";
+
+// V2 is the default; a build made with NEXT_PUBLIC_QUANT_READER_V2=0 must keep the legacy reader. Run the suite once per build.
+
+async function openReport(page: Page) {
+  const state = await analysisFixture(page);
+  state.status = "SUCCEEDED";
+  state.jobs.push({ id: "job-1", symbol: "FPT", target_session: "2026-10-16", status: "SUCCEEDED", created_at: 1792224000, deadline: 1792310400, attempt: 1, report_id: "report-1", reason: null, quota_effect: "CONSUMED" });
+  state.report.sections.simulation_risk.metrics = { simulation_risk: { lock_risk: { max_dd_lock_pct: -4, prob_loss_gt_3pct: 8, lock_sessions: 2 } } };
+  state.report.sections.data_quality.metrics = { data_quality: { status: "PASS", score: 95 } };
+  state.report.sections.agreement.metrics = { fcast: { ensemble_ret_pct: 4.1, agreement_pct: 75, coverage_pct: 80, horizon: 3 } };
+  state.report.sections.decision.metrics = { rec: { score: 72 }, action: { action: "WATCH", executable: false, gate_pass: false } };
+  await page.goto("/analysis?symbol=FPT&job=job-1");
+  return state;
+}
+
+test(v2 ? "Quant V2: lớp Tóm tắt, chuyển lớp, nhớ lựa chọn và tooltip thuật ngữ" : "Quant V2 tắt: giữ nguyên báo cáo cũ", async ({ page }) => {
+  await openReport(page);
+  const action = page.getByRole("region", { name: "Hành động thực thi", exact: true });
+  if (!v2) {
+    await expect(action).toBeVisible();
+    await expect(page.locator("[data-quant-glance]")).toHaveCount(0);
+    await expect(page.locator("[data-quant-levels]")).toHaveCount(0);
+    return;
+  }
+  const glance = page.locator("[data-quant-glance]");
+  await expect(glance).toBeVisible();
+  await expect(glance.getByRole("heading", { name: "Mô hình: theo dõi" })).toBeVisible();
+  await expect(glance.locator("[data-glance-risk]")).toContainText("khoảng 8 trong mỗi 100 lần (từ 1.000 lần mô phỏng) lỗ hơn 3% khi chờ cổ phiếu về");
+  await expect(glance.locator("[data-glance-risk]")).toContainText("theo quy định hiện hành của công ty chứng khoán");
+  await expect(glance.locator('dl[aria-label="Các số chính"] [data-glance-number]')).toHaveCount(3);
+  await expect(glance.locator('[data-glance-number="score"] dd')).toHaveText("72/100");
+  await expect(glance.locator('[data-trust="coverage"]')).toContainText("80%");
+  await expect(glance.locator("[data-glance-group]")).toHaveText([/Rủi ro/, /Hiện trạng/, /Triển vọng/, /Mua bán/]);
+  await expect(glance).not.toContainText(/tín hiệu/i);
+  await expect(action).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  const term = glance.getByRole("button", { name: "Điểm Quant", exact: true });
+  await term.click();
+  await expect(page.getByRole("tooltip")).toContainText("Không phải xác suất lãi");
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("tooltip")).toHaveCount(0);
+
+  await page.getByRole("button", { name: "Hiểu vì sao", exact: true }).click();
+  const explain = page.locator("[data-quant-explain]");
+  await expect(explain).toBeVisible();
+  await expect(page.locator("[data-quant-why-placeholder]")).toHaveCount(0);
+  await expect(explain.locator("[data-explain-group]")).toHaveCount(5);
+  await expect(explain.locator("[data-explain-group] > summary > span:first-child")).toHaveText([/^C\. Rủi ro/, /^A\. Hiện trạng/, /^B\. Triển vọng/, /^D\. Mua bán/, /Có tin được báo cáo không\?/]);
+  await expect(explain.locator("[data-explain-module]")).toHaveCount(16);
+  await expect(explain).not.toContainText(/tín hiệu|Haiku|undefined|NaN/i);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  for (const part of ["Vì sao", "Lưu ý"]) await expect(explain.locator('[data-explain-module="garch"]')).toContainText(part);
+  await expect(explain.locator('[data-explain-module="agreement"]')).toContainText("mới 80% mô hình tham gia");
+  await expect(explain.locator('[data-explain-module="decision"]')).toContainText("Mô hình: theo dõi");
+  await expect(explain.locator('[data-explain-module="data_quality"]')).toContainText("điểm 95 trên 100");
+  // Batch 4: small figures with an aria-label and a table, and the "Vì sao / Lưu ý" part collapsed.
+  const quality = explain.locator('[data-explain-figure="data_quality"] svg[role="img"]');
+  await expect(quality).toHaveAttribute("aria-label", /Điểm dữ liệu 95\/100/);
+  await expect(explain.locator('[data-explain-figure="data_quality"] table')).toHaveCount(1);
+  await expect(explain.locator('[data-explain-figure="decision"] svg[role="img"]')).toHaveAttribute("aria-label", /72\/100/);
+  const more = explain.locator('[data-explain-more="data_quality"]');
+  await expect(more).not.toHaveAttribute("open", "");
+  await expect(more.locator("p").first()).toBeHidden();
+  await more.locator("summary").click();
+  await expect(more.locator("p").first()).toBeVisible();
+  await expect(explain.locator('[data-explain-module][data-explain-state="missing"] [data-explain-figure]')).toHaveCount(0);
+  await explain.locator('details[data-explain-group="C"] > summary').click();
+  await expect(explain.locator('[data-explain-module="garch"]')).toBeHidden();
+  await explain.locator('details[data-explain-group="C"] > summary').click();
+  await expect(explain.locator('[data-explain-module="garch"]')).toBeVisible();
+  await explain.locator('[data-explain-open="garch"]').click();
+  await expect(page.getByRole("button", { name: "Chuyên sâu", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator('details[data-quant-module="garch"]')).toBeInViewport();
+  await page.getByRole("button", { name: "Hiểu vì sao", exact: true }).click();
+  await explain.getByRole("button", { name: "Quay lại Tóm tắt" }).click();
+  await expect(glance).toBeVisible();
+  await page.getByRole("button", { name: "Hiểu vì sao", exact: true }).click();
+  await page.getByRole("button", { name: "Chuyên sâu", exact: true }).click();
+  await expect(action).toBeVisible();
+  await expect(page.locator("details[data-quant-module]")).toHaveCount(16);
+  await page.reload();
+  await expect(page.getByRole("button", { name: "Chuyên sâu", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(action).toBeVisible();
+  // Deep layer: what the API lacks is a labelled cell, never an invented series.
+  await page.getByRole("button", { name: "ARIMA", exact: true }).click();
+  const arimaNeed = page.locator('details[data-quant-module="arima"] [data-need="arima.forecast.interval"]');
+  await expect(arimaNeed).toContainText("Cần dữ liệu từ backend: arima.forecast.interval");
+  await expect(page.locator('details[data-quant-module="arima"] [data-deep-visual] svg')).toHaveCount(0);
+  await page.getByRole("button", { name: "Monte Carlo", exact: true }).click();
+  await expect(page.locator('details[data-quant-module="simulation_risk"] [data-need="research.mc_paths"]')).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("button", { name: "Tóm tắt", exact: true }).click();
+  await expect(glance).toBeVisible();
+  await glance.getByRole("button", { name: "Xem kế hoạch có điều kiện" }).click();
+  await expect(action).toBeVisible();
+});

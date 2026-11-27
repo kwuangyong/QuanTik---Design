@@ -1,0 +1,16 @@
+/* Tour popover: anchored, no dimmed overlay. Desktop: fixed at the anchor; narrow screens: bottom sheet. */
+.tour { position: fixed; z-index: 60; width: min(380px, calc(100vw - 16px)); box-sizing: border-box; padding: 16px; border: 1px solid var(--q-line-strong); border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: 0 10px 30px rgb(0 0 0 / .35); font-family: var(--q-font-text); font-size: var(--q-text-body); line-height: 1.5; }
+@media (max-width: 639px) { .tour { left: 8px; right: 8px; bottom: 8px; top: auto; width: auto; } }
+.tour:focus { outline: none; }
+.count { margin: 0; font-size: var(--q-text-label); font-weight: 600; color: var(--muted); }
+.title { margin: 2px 0 6px; font-size: var(--q-text-card-title); line-height: 1.3; font-weight: 650; }
+.text { margin: 0 0 14px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.nav { display: inline-flex; gap: 8px; }
+.btn, .skip { min-height: 44px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--q-line-strong); background: transparent; color: var(--text); font: inherit; font-size: var(--q-text-label); font-weight: 500; cursor: pointer; touch-action: manipulation; }
+.skip { border-color: transparent; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+.btn:hover, .skip:hover { background: var(--raised); }
+.primary { background: var(--accent); border-color: var(--accent); color: #1a0e05; font-weight: 600; }
+:global(.terminal[data-theme="light"]) .primary { color: #ffffff; }
+.primary:hover { background: var(--accent); filter: brightness(1.06); }
+.btn:focus-visible, .skip:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }

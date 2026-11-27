@@ -34,7 +34,7 @@ export const moduleEvidenceReadings: Record<string,[string,string]> = {
   ],
   "simulation_risk": [
     "Phân vị không phải đường giá chắc chắn",
-    "Dải giá mô tả phân bố theo phiên; histogram mô tả lợi suất cuối horizon. Rủi ro T-lock xét thời gian chờ riêng. Không dùng xác suất tăng cuối kỳ làm xác suất TP chạm trước SL."
+    "Dải giá mô tả phân bố theo phiên; histogram mô tả lợi suất cuối horizon. Rủi ro khi chờ cổ phiếu về được xét riêng. Không dùng xác suất tăng cuối kỳ làm xác suất TP chạm trước SL."
   ],
   "costs": [
     "Lợi thế còn lại sau chi phí",

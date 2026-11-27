@@ -1,3 +1,8 @@
+> Update (Gate 3, batch 5): the redesigned reader (three layers: Tóm tắt, Hiểu vì sao, Chuyên sâu) is now the default.
+> The behaviour described below is the legacy reader, still available when the build sets `NEXT_PUBLIC_QUANT_READER_V2=0`.
+> In the new reader the sixteen modules are the "Chuyên sâu" layer, 3D scenes load on demand and never start by themselves,
+> and the app has a "Giảm hiệu ứng" switch. See the README section "Báo cáo Quant: ba lớp đọc".
+
 # Quant: a simpler report with interactive visuals
 
 The default reader answers everyday questions before showing model names or

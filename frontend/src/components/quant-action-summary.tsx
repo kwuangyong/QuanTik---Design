@@ -3,9 +3,11 @@ import { useId } from "react";
 import type { AnalysisReport } from "@/lib/api/analysis";
 import { analysisReason } from "@/lib/api/analysis";
 import { stamp } from "@/lib/api/contracts";
+import { readDecision } from "@/lib/quant-decision";
 import { actionNames, at, metricText, number, record } from "@/lib/quant-reader";
 import TermHint from "./term-hint";
 import { readableMetrics } from "@/lib/quant-presentation";
+import { quantReaderV2Enabled } from "@/lib/quant-flags";
 
 // Read published values only: do not derive a new decision, forecast or Kelly.
 function metrics(report: AnalysisReport, section: string) {
@@ -25,7 +27,7 @@ function Metric({ label, value, id, term }: { label: string; value: string; id: 
 }
 
 export function QuantActionSummary({ report, compact, showAction }: { report: AnalysisReport; compact: boolean; showAction: boolean }) {
-  const uid = useId();
+  const uid = useId(), v2 = quantReaderV2Enabled() && !compact;
   const trade = metrics(report, "trade_plan"), sl = output(trade.sl), pos = output(trade.pos);
   const forecast = output(metrics(report, "agreement").fcast), costs = output(metrics(report, "costs").costs);
   const simulation = output(metrics(report, "simulation_risk").simulation_risk), lock = output(simulation.lock_risk);
@@ -33,9 +35,10 @@ export function QuantActionSummary({ report, compact, showAction }: { report: An
   const kelly = record(trade.kelly);
   const kellyDisabled = report.sections.trade_plan?.status === "DISABLED" || at(report.sections.trade_plan?.metrics, "kelly.disabled") === true || at(report.commentary, "compatibility.kelly") === "DISABLED" || at(report.sections.commentary?.metrics, "compatibility.kelly") === "DISABLED";
   const kellyAvailable = !kellyDisabled && !kelly.error && kelly.available !== false && (numeric(kelly.full_pct) != null || numeric(kelly.half_pct) != null);
-  const action = typeof report.decision.action === "string" ? report.decision.action : "";
-  const executable = report.decision.executable;
-  const reasons = Array.isArray(report.decision.reason_codes) ? report.decision.reason_codes.map(code => analysisReason(String(code))) : [];
+  const decision = readDecision(report);
+  const action = decision.action;
+  const executable = decision.executable ?? undefined;
+  const reasons = decision.reasonCodes.map(code => analysisReason(code));
   const horizon = numeric(forecast.horizon);
   const riskFlag = sl.lock_risk_flag;
   const sizing = trade.sizing_mode === "PERSONALIZED" ? "Theo vốn cá nhân" : trade.sizing_mode === "REFERENCE" ? "Theo vốn tham chiếu" : "Chưa có thông tin vốn";
@@ -68,11 +71,11 @@ export function QuantActionSummary({ report, compact, showAction }: { report: An
             <Metric id="rr-net" label="R:R sau chi phí" term="action_rr_net" value={number(sl.rr_net_cost, "x")}/>
             <Metric id="risk-nav" label="Rủi ro / NAV" term="action_risk_nav" value={percentage(pos.risk_pct_nav)}/>
             <Metric id="rr-tp2" label="R:R TP2 (gộp)" term="action_rr_tp2" value={number(sl.rr2, "x")}/>
-            <Metric id="lock-drawdown" label="Sụt giảm T+2" term="action_lock_drawdown" value={percentage(lock.max_dd_lock_pct)}/>
-            <Metric id="lock-loss" label="P(lỗ trên 3% trong T+2)" term="action_lock_loss" value={percentage(lock.prob_loss_gt_3pct)}/>
-            <Metric id="lock-sessions" label="Cửa sổ khóa thanh toán" term="action_lock_sessions" value={number(lock.lock_sessions, " phiên")}/>
+            <Metric id="lock-drawdown" label={v2 ? "Mức giảm xấu khi chờ cổ phiếu về" : "Sụt giảm T+2"} term="action_lock_drawdown" value={percentage(lock.max_dd_lock_pct)}/>
+            <Metric id="lock-loss" label={v2 ? "Khả năng lỗ quá 3% khi chờ" : "P(lỗ trên 3% trong T+2)"} term="action_lock_loss" value={percentage(lock.prob_loss_gt_3pct)}/>
+            <Metric id="lock-sessions" label={v2 ? "Số phiên chờ cổ phiếu về" : "Cửa sổ khóa thanh toán"} term="action_lock_sessions" value={number(lock.lock_sessions, " phiên")}/>
           </dl>
-          <p className={`mt-4 border-t border-[var(--border)] pt-3 text-[13px] leading-6 ${riskFlag === true ? "text-[var(--negative)]" : "text-[var(--muted)]"}`}><TermHint id="action_lock_flag">Cờ rủi ro T+2</TermHint>: {riskFlag === true ? "Có cảnh báo rủi ro trước khi cổ phiếu về tài khoản." : riskFlag === false ? "Báo cáo không bật cờ cảnh báo T+2; vẫn cần đối chiếu mức lỗ mô phỏng." : "Chưa có kết luận về cờ rủi ro T+2."}</p>
+          <p className={`mt-4 border-t border-[var(--border)] pt-3 text-[13px] leading-6 ${riskFlag === true ? "text-[var(--negative)]" : "text-[var(--muted)]"}`}><TermHint id="action_lock_flag">{v2 ? "Cờ rủi ro khi chờ cổ phiếu về" : "Cờ rủi ro T+2"}</TermHint>: {riskFlag === true ? "Có cảnh báo rủi ro trước khi cổ phiếu về tài khoản." : riskFlag === false ? (v2 ? "Báo cáo không bật cờ cảnh báo khi chờ cổ phiếu về; vẫn cần đối chiếu mức lỗ mô phỏng." : "Báo cáo không bật cờ cảnh báo T+2; vẫn cần đối chiếu mức lỗ mô phỏng.") : (v2 ? "Chưa có kết luận về cờ rủi ro khi chờ cổ phiếu về." : "Chưa có kết luận về cờ rủi ro T+2.")}</p>
         </section>
         <section className="min-w-0" aria-labelledby={`${uid}-kelly`}>
           <h4 id={`${uid}-kelly`} className="mb-4 text-base font-medium"><TermHint id="action_kelly">Kelly Criterion</TermHint> & quy mô vốn</h4>
