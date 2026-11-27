@@ -15,7 +15,7 @@ const stored = (page: Page, key: string) => page.evaluate(k => { try { return wi
 const insideDialog = (page: Page) => page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]'));
 
 if (!v2) {
-  test("Quant V2 tắt: không có tour, nút Cách đọc hay nút Giảm hiệu ứng", async ({ page }) => {
+  test("Quant V2 tắt: không có tour hay nút Cách đọc", async ({ page }) => {
     await openReport(page, { tour: true });
     await expect(page.locator(".quant-report-section")).toHaveCount(16);
     await expect(page.locator("[data-quant-tour], [data-quant-guide-open], [data-reduce-effects]")).toHaveCount(0);
@@ -127,33 +127,6 @@ if (!v2) {
     await expect(page.locator("#term-sharpe")).toBeInViewport();
     await expect(page.locator("[data-guide-term]")).toHaveCount(44);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
-  });
-
-  test("Giảm hiệu ứng: nút trong app được nhớ, hình hiện ngay trạng thái cuối, 3D không tự xoay", async ({ page }) => {
-    await openReport(page);
-    const button = page.getByRole("button", { name: "Giảm hiệu ứng", exact: true });
-    await expect(button).toHaveAttribute("aria-pressed", "false");
-    const enterAnimation = () => page.locator("[data-quant-glance]").evaluate(el => getComputedStyle(el.parentElement!).animationName);
-    expect(await enterAnimation()).not.toBe("none");
-    await button.click();
-    await expect(button).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("html")).toHaveAttribute("data-reduce-motion", "true");
-    expect(await enterAnimation()).toBe("none");
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Giảm hiệu ứng", exact: true })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("html")).toHaveAttribute("data-reduce-motion", "true");
-    await page.getByRole("button", { name: "Hiểu vì sao", exact: true }).click();
-    const figures = page.locator("[data-quant-explain] [data-figure]");
-    expect(await figures.count()).toBeGreaterThan(0);
-    for (const phase of await figures.evaluateAll(list => list.map(el => el.getAttribute("data-phase")))) expect(phase).toBe("static");
-    await deepLayer(page);
-    await page.getByRole("button", { name: "Monte Carlo", exact: true }).click();
-    const group = page.locator('details[data-quant-module="simulation_risk"]').getByRole("group", { name: "Chuyển 2D/3D Monte Carlo" });
-    await group.getByRole("button", { name: /3D/ }).click();
-    await expect(page.getByRole("button", { name: "Đã giảm chuyển động", exact: true })).toBeDisabled();
-    await page.getByRole("button", { name: "Giảm hiệu ứng", exact: true }).click();
-    await expect(page.locator("html")).not.toHaveAttribute("data-reduce-motion", "true");
-    await expect(page.getByRole("button", { name: "Đã giảm chuyển động", exact: true })).toHaveCount(0);
   });
 
   test("prefers-reduced-motion: hình hiện ngay trạng thái cuối, không hoạt ảnh vào lớp", async ({ page }) => {

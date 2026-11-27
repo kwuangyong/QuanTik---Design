@@ -39,7 +39,7 @@ test('Default (flag on) opens the summary layer with the three reading levels, t
   const html=renderToStaticMarkup(React.createElement(LiveQuantReport,{report:reportFixture()}));
   assert.match(html,/data-quant-glance/);assert.equal((html.match(/data-quant-module=/g)||[]).length,0);
   assert.match(html,/aria-pressed="true" data-level="summary"/);
-  assert.match(html,/data-quant-guide-open[^>]*>Cách đọc</);assert.match(html,/data-reduce-effects[^>]*>Giảm hiệu ứng</);
+  assert.match(html,/data-quant-guide-open[^>]*>Cách đọc</);assert.doesNotMatch(html,/data-reduce-effects|Giảm hiệu ứng/);
   assert.doesNotMatch(html,/data-quant-tour|data-quant-guide[ >]/);
  }finally{if(prev===undefined)delete process.env.NEXT_PUBLIC_QUANT_READER_V2;else process.env.NEXT_PUBLIC_QUANT_READER_V2=prev;}
 });

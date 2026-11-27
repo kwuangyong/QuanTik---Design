@@ -10,7 +10,6 @@ import { quantReaderV2Enabled } from "@/lib/quant-flags";
 import { QuantGlance } from "./quant-glance";
 import { QuantExplain } from "./quant-explain";
 import { QuantReadingLevel, useReadingLevel } from "./quant-reading-level";
-import { QuantReduceEffects, useReduceEffects } from "./quant-motion";
 import { QuantGuideDrawer } from "./quant-guide";
 import { QuantTour, tourSeen, markTourSeen } from "./quant-tour";
 import styles from "./quant-reader.module.css";
@@ -55,7 +54,6 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
   }, []);
   const v2 = quantReaderV2Enabled() && !compact;
   const [level, setLevel] = useReadingLevel(v2);
-  const [reduceEffects, setReduceEffects] = useReduceEffects(v2);
   const [guideOpen, setGuideOpen] = useState(false), [tourOpen, setTourOpen] = useState(false);
   // First visit: start the 4-step tour on the summary layer once the glance has rendered (the stored reading level is applied after mount).
   useEffect(() => {
@@ -105,7 +103,7 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
   </>;
   return <div ref={root} className={`quant-report ${styles.report} grid min-w-0 gap-6 ${compact ? "is-compact" : ""}`}>
     {!v2 ? deep : <>
-      <div className={glance.levelRow}><p>{report.symbol} · Báo cáo Quant · dữ liệu đến {report.data_as_of.slice(0, 10)}</p><div className={glance.tools}><button type="button" className={glance.toolBtn} data-quant-guide-open aria-haspopup="dialog" onClick={() => setGuideOpen(true)}>Cách đọc</button><QuantReduceEffects on={reduceEffects} onChange={setReduceEffects}/><QuantReadingLevel level={level} onChange={setLevel}/></div></div>
+      <div className={glance.levelRow}><p>{report.symbol} · Báo cáo Quant · dữ liệu đến {report.data_as_of.slice(0, 10)}</p><div className={glance.tools}><button type="button" className={glance.toolBtn} data-quant-guide-open aria-haspopup="dialog" onClick={() => setGuideOpen(true)}>Cách đọc</button><QuantReadingLevel level={level} onChange={setLevel}/></div></div>
       <QuantGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} onReplayTour={replayTour}/>
       {tourOpen && <QuantTour onClose={() => setTourOpen(false)}/>}
       {level === "summary" && <div className={glance.enter}><QuantGlance report={report} onOpenWhy={() => setLevel("why")} onOpenPlan={openPlan}/></div>}
