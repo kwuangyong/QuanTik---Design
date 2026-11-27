@@ -8,6 +8,7 @@ import { QuantModuleNavigation, quantModuleItems } from "./quant-module-navigati
 import { QuantActionSummary } from "./quant-action-summary";
 import { quantReaderV2Enabled } from "@/lib/quant-flags";
 import { QuantGlance } from "./quant-glance";
+import { QuantExplain } from "./quant-explain";
 import { QuantReadingLevel, useReadingLevel } from "./quant-reading-level";
 import styles from "./quant-reader.module.css";
 import glance from "./quant-glance.module.css";
@@ -66,6 +67,15 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
     setLevel("deep");
     requestAnimationFrame(() => requestAnimationFrame(() => root.current?.querySelector<HTMLElement>('section[aria-label="Hành động thực thi"], section[aria-label="Kế hoạch giao dịch"]')?.scrollIntoView({ block: "start", behavior: "instant" })));
   };
+  const openModule = (name: string) => {
+    setLevel("deep"); setSelectedModule(name);
+    // The deep layer mounts after the level change; wait two frames before scrolling to the module.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      const section = document.getElementById(sectionId(name));
+      section?.scrollIntoView({ block: "start", behavior: "instant" });
+      section?.querySelector<HTMLElement>("summary")?.focus({ preventScroll: true });
+    }));
+  };
   const deep = <>
     <QuantActionSummary report={report} compact={compact} showAction={showAction}/>
     <section id={sectionId("navigation")} aria-label="Phân tích từng module" className="grid min-w-0 gap-5">
@@ -84,7 +94,7 @@ export function LiveQuantReport({ report, compact = false, showAction = true }: 
     {!v2 ? deep : <>
       <div className={glance.levelRow}><p>{report.symbol} · Báo cáo Quant · dữ liệu đến {report.data_as_of.slice(0, 10)}</p><QuantReadingLevel level={level} onChange={setLevel}/></div>
       {level === "summary" && <div className={glance.enter}><QuantGlance report={report} onOpenWhy={() => setLevel("why")} onOpenPlan={openPlan}/></div>}
-      {level === "why" && <section aria-label="Hiểu vì sao" className={`${glance.enter} ${glance.card} ${glance.placeholder}`} data-quant-why-placeholder><h2 className="text-xl font-medium">Hiểu vì sao</h2><p>Lớp 3 phút (giải thích từng nhóm Rủi ro, Hiện trạng, Triển vọng, Mua bán) đang được hoàn thiện. Trong lúc chờ, bạn có thể xem Tóm tắt hoặc toàn bộ phân tích ở lớp Chuyên sâu.</p><div className={glance.cta}><button type="button" className={glance.btn} onClick={() => setLevel("summary")}>Về Tóm tắt</button><button type="button" className={glance.btn} onClick={() => setLevel("deep")}>Xem Chuyên sâu</button></div></section>}
+      {level === "why" && <div className={glance.enter}><QuantExplain report={report} onOpenModule={openModule} onOpenSummary={() => setLevel("summary")}/></div>}
       {level === "deep" && <div className={`${glance.enter} grid min-w-0 gap-6`}>{deep}</div>}
     </>}
   </div>;

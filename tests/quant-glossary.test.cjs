@@ -22,7 +22,7 @@ test('Legal/market entries keep the verification placeholder and nothing else',(
  const legal=quantGlossary.filter(g=>g.legal);
  assert.deepEqual(legal.map(g=>g.id).sort(),['price_band','settlement']);
  for(const g of legal)assert.match(g.meaning,new RegExp(LEGAL_PLACEHOLDER.replace(/[[\]]/g,'\\$&')));
- assert.match(glossaryById('roundtrip_cost').meaning,/\[chờ Haiku xác minh\]/);
+ assert.match(glossaryById('roundtrip_cost').meaning,/theo quy định hiện hành của công ty chứng khoán/);
 });
 test('Math-review corrections are present and prohibited claims are absent',()=>{
  assert.doesNotMatch(glossaryById('state_prob').meaning,/phiên cuối/);

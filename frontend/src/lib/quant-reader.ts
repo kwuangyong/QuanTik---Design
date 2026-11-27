@@ -4,7 +4,7 @@ export const record = (v: unknown): Record<string, unknown> => v && typeof v ===
 export const at = (v: unknown, path: string): unknown => path.split(".").reduce<unknown>((value, key) => record(value)[key], v);
 export const number = (v: unknown, suffix = "") => typeof v === "number" && Number.isFinite(v) ? v.toLocaleString("vi-VN", { maximumFractionDigits: 3 }) + suffix : "—";
 /** Model-state labels, not advice: the backend action is an unvalidated rule output. */
-export const actionNames: Record<string, string> = { BUY_NOW: "Mô hình: tín hiệu tích cực", BUY_SETUP: "Mô hình: chờ xác nhận", WATCH: "Mô hình: theo dõi", AVOID: "Mô hình: rủi ro cao" };
+export const actionNames: Record<string, string> = { BUY_NOW: "Mô hình: đủ điều kiện theo tiêu chí", BUY_SETUP: "Mô hình: chờ xác nhận", WATCH: "Mô hình: theo dõi", AVOID: "Mô hình: rủi ro cao" };
 export { factorLabels as factorNames } from "./quant-factors";
 
 // Only consume the new chart contract. Missing aggregates never use sample data.

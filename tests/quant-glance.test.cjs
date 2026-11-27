@@ -34,7 +34,7 @@ test('Complete: verdict is a model label, risk is a natural frequency from real 
  assert.match(t,/Mô hình: theo dõi/);
  assert.match(t,/Chưa đủ điều kiện thời điểm vào lệnh\./);
  assert.match(t,/khoảng 8 trong mỗi 100 lần \(từ 1\.000 lần mô phỏng\) lỗ hơn 3% khi chờ cổ phiếu về/);
- assert.match(t,/\[chờ Haiku xác minh\]: T\+/);
+ assert.match(t,/khi chờ cổ phiếu về tài khoản \(theo quy định hiện hành của công ty chứng khoán\)/);
  assert.match(t,/Lịch sử từng giảm tới 12% từ đỉnh/);
  const g=buildGlance(report);
  assert.ok(g.numbers.length<=3);

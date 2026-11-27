@@ -17,7 +17,8 @@ export type GlossaryEntry = {
   legal?: boolean;
 };
 
-export const LEGAL_PLACEHOLDER = '[chờ Haiku xác minh]';
+// Neutral wording for market/legal specifics we do not publish numbers for (T+ days, price band, fees).
+export const LEGAL_PLACEHOLDER = 'theo quy định hiện hành của công ty chứng khoán';
 export const quantModuleNames: readonly QuantModuleName[] = ['statistics', 'distribution', 'arima', 'garch', 'hmm', 'technical', 'directional_alpha', 'context', 'agreement', 'simulation_risk', 'costs', 'trade_plan', 'liquidity', 'data_quality', 'decision', 'commentary'];
 
 const e = (id: string, term: string, plain: string, meaning: string, example: string, modules: readonly QuantModuleName[], legal = false): GlossaryEntry => legal ? { id, term, plain, meaning, example, modules, legal } : { id, term, plain, meaning, example, modules };
@@ -56,9 +57,9 @@ export const quantGlossary: readonly GlossaryEntry[] = [
   e('agreement', 'Đồng thuận', 'Mức nhất trí giữa các mô hình', 'Không phải xác suất lãi.', 'Đồng thuận {agreement_pct}%: các mô hình cùng hướng đến mức nào.', ['agreement']),
   e('monte_carlo', 'Monte Carlo', 'Mô phỏng nhiều kịch bản giá', 'Chạy nhiều đường giá ngẫu nhiên theo giả định về dao động.', 'Trong 100 kịch bản mô phỏng, {prob_up} kịch bản có giá cuối kỳ cao hơn hôm nay.', ['simulation_risk']),
   e('percentiles', 'P05 / P50 / P95', '5 / 50 / 95 trong 100', 'P05: 5 trong 100 kịch bản thấp hơn mức này. P95: 95 trong 100 kịch bản thấp hơn mức này.', 'P05 {p05}: chỉ 5 trong 100 kịch bản đi thấp hơn mức này.', ['simulation_risk']),
-  e('settlement', 'T+ (chờ cổ phiếu về)', 'Thời gian chờ thanh toán', LEGAL_PLACEHOLDER, LEGAL_PLACEHOLDER, ['simulation_risk', 'trade_plan'], true),
+  e('settlement', 'T+ (chờ cổ phiếu về)', 'Thời gian chờ thanh toán', `Thời gian chờ thanh toán sau khi mua: ${LEGAL_PLACEHOLDER}.`, `Thời gian chờ thanh toán: ${LEGAL_PLACEHOLDER}.`, ['simulation_risk', 'trade_plan'], true),
   e('roundtrip_cost', 'Chi phí hai chiều', 'Tổng chi phí mua và bán', `Giả định của báo cáo, có thể gồm phí, thuế, trượt giá (không tách); thực tế theo công ty chứng khoán ${LEGAL_PLACEHOLDER}.`, 'Chi phí hai chiều {roundtrip_cost_pct}%: trừ vào dự báo gộp để ra dự báo sau chi phí.', ['costs']),
-  e('price_band', 'Biên độ giá', 'Giới hạn giá mỗi phiên', LEGAL_PLACEHOLDER, LEGAL_PLACEHOLDER, ['trade_plan'], true),
+  e('price_band', 'Biên độ giá', 'Giới hạn giá mỗi phiên', `Giới hạn giá tăng giảm trong một phiên: ${LEGAL_PLACEHOLDER}.`, `Biên độ giá: ${LEGAL_PLACEHOLDER}.`, ['trade_plan'], true),
   e('stop_target', 'Cắt lỗ / Mục tiêu', 'Mức giá của kế hoạch', 'Điều kiện của kế hoạch, không phải dự báo sẽ chạm.', 'Cắt lỗ {sl_swing}, mục tiêu {tp1}: các mức giá của kế hoạch.', ['trade_plan']),
   e('rr', 'Tỷ lệ lãi/lỗ (R:R)', 'So lãi mục tiêu với lỗ nếu sai', 'Trước chi phí: (mục tiêu - vào) / (vào - cắt lỗ). Giá trị sau chi phí lấy nguyên từ rr_net_cost, công thức chưa công bố. Không nói xác suất chạm mức nào.', 'R:R {rr2} trước chi phí; {rr_net_cost} sau chi phí theo báo cáo.', ['trade_plan']),
   e('kelly', 'Kelly', 'Cách chia vốn theo tỷ lệ thắng và tỷ lệ lãi/lỗ', 'Chỉ hiện khi báo cáo bật; không là khuyến nghị.', 'Kelly {kelly_pct}% vốn: chỉ là một cách tính, không phải đề xuất.', ['trade_plan']),

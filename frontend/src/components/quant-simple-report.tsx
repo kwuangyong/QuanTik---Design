@@ -66,7 +66,7 @@ export function SimpleQuantReport({ report, showAction, compact = false }: { rep
       <div className={styles.column}><ScenarioCard report={report}/><PlanCard report={report}/></div>
     </div>
     <section className={`${styles.card} ${styles.notes}`} aria-label="Điều cần theo dõi"><h3>Cần chú ý điều gì tiếp theo?</h3>
-      <ul>{(reasons.length ? reasons : ["Theo dõi bản phân tích ở phiên tiếp theo để xem tín hiệu và rủi ro có thay đổi hay không."]).map((text, index) => <li key={index}>{text}</li>)}</ul>
+      <ul>{(reasons.length ? reasons : ["Theo dõi bản phân tích ở phiên tiếp theo để xem kết quả và rủi ro có thay đổi hay không."]).map((text, index) => <li key={index}>{text}</li>)}</ul>
     </section>
   </div>;
 }

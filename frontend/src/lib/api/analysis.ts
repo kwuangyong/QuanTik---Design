@@ -38,7 +38,7 @@ export const analysisMessages: Record<string, string> = {
   INVALID_FORECAST: "Dự báo không đủ điều kiện sử dụng.", UNKNOWN_EXCHANGE: "Chưa xác định được sàn giao dịch.",
   VNI_DATA_MISSING: "Thiếu dữ liệu chỉ số thị trường.", DATA_QUALITY_FAIL: "Dữ liệu không đạt kiểm tra chất lượng.",
   LIQUIDITY_FAIL: "Thanh khoản chưa đạt điều kiện.", VNI_CRISIS: "Thị trường đang ở trạng thái rủi ro cao.",
-  TIMING_BLOCKED: "Điều kiện thời điểm đang chặn tín hiệu.", SETTLEMENT_LOCK_RISK: "Có cảnh báo rủi ro trong thời gian chờ thanh toán.",
+  TIMING_BLOCKED: "Điều kiện thời điểm chưa đạt.", SETTLEMENT_LOCK_RISK: "Có cảnh báo rủi ro trong thời gian chờ thanh toán.",
   NET_FORECAST_TOO_LOW: "Dự báo sau chi phí chưa đạt ngưỡng.", INVALID_TRADE_PLAN: "Kế hoạch vị thế chưa hợp lệ.",
   ZERO_POSITION_SIZE: "Quy mô vị thế tính được bằng không.", TIMING_NOT_READY: "Chưa đủ điều kiện thời điểm vào lệnh.",
   DATA_NOT_READY: "Chưa có bộ dữ liệu hoàn chỉnh cho phiên này.", SYMBOL_DATA_NOT_READY: "Mã này chưa có dữ liệu hợp lệ cho phiên đã chọn.",

@@ -108,7 +108,7 @@ export function buildGlance(report: AnalysisReport): Glance {
       return { id, label: h != null ? `Dự báo tổng hợp ${number(h)} phiên` : 'Dự báo tổng hợp', term: 'agreement', value: v != null ? signed(v) : '—', note: v != null ? 'Trước chi phí; chưa kiểm chứng ngoài mẫu' : 'Chưa công bố', available: v != null };
     }
     const v = numAt('trade_plan', 'sl.rr2');
-    return { id, label: 'Lãi/lỗ trước chi phí', term: 'rr', value: v != null && v > 0 ? number(v) : '—', note: v != null && v > 0 ? 'Mốc 1 là hòa; chưa tính chi phí' : 'Chưa công bố', available: v != null && v > 0 };
+    return { id, label: 'Tỷ lệ lời/lỗ kế hoạch (R:R)', term: 'rr', value: v != null && v > 0 ? number(v) : '—', note: v != null && v > 0 ? 'Lời tiềm năng gấp ' + number(v) + ' lần lỗ tối đa; chưa tính chi phí' : 'Chưa công bố', available: v != null && v > 0 };
   };
   const groups = (Object.keys(groupModules) as GlanceGroup['id'][]).map((id): GlanceGroup => {
     const def = groupModules[id];
