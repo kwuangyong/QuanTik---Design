@@ -2,6 +2,7 @@ import { analysisReason, type AnalysisReport } from './api/analysis';
 import { actionNames, at, metricText, number, record } from './quant-reader';
 import { readableMetrics } from './quant-presentation';
 import { quantSummary } from './quant-summary';
+import { readDecision } from './quant-decision';
 import { interpretationThresholds as limits } from './quant-interpretation-thresholds';
 
 export type ModuleAnalysis = { summary: string; details: string[] };
@@ -124,10 +125,10 @@ export function moduleAnalysis(name: string, input: unknown, report: AnalysisRep
         report.warnings.length ? `Các cảnh báo của báo cáo: ${report.warnings.map(code=>analysisReason(code)).join(' ')}` : 'Báo cáo không kèm cảnh báo ở trường warnings; điều này không xác nhận mọi nguồn đều đầy đủ. Cần đối chiếu trạng thái thiếu dữ liệu của từng module.');
     }
     case 'decision': {
-      const action=actionNames[String(report.decision.action)] || metricText(report.decision.action),score=n('rec.score'), executable=report.decision.executable;
+      const decision=readDecision(report),action=actionNames[decision.action] || metricText(decision.action||undefined),score=n('rec.score'), executable=decision.executable;
       return build(`${score==null ? 'Chưa có điểm Quant; ' : `Điểm Quant ${number(score)}/100 đi cùng `}kết luận “${action}”; ${executable===true ? 'báo cáo xác nhận đủ điều kiện thực thi' : 'báo cáo chưa xác nhận đủ điều kiện thực thi'}. Điểm là xếp hạng chất lượng theo hệ thống, không phải xác suất có lãi. Cần tuân theo kết luận và lý do của báo cáo thay vì chỉ nhìn điểm hoặc dự báo dương.`,
         `Cổng điều kiện ${v('action.gate_pass')}; điều kiện thực thi ${executable===true?'đạt':executable===false?'chưa đạt':'chưa công bố'}. Không có ngưỡng điểm giao diện nào ghi đè hành động gốc.`,
-        Array.isArray(report.decision.reason_codes) && report.decision.reason_codes.length ? `Lý do cụ thể: ${report.decision.reason_codes.map(code=>analysisReason(String(code))).join(' ')}` : 'Báo cáo chưa công bố lý do cụ thể; cần xem các phần dữ liệu, thời điểm, chi phí và rủi ro để biết thông tin nào còn thiếu.');
+        decision.reasonCodes.length ? `Lý do cụ thể: ${decision.reasonCodes.map(code=>analysisReason(code)).join(' ')}` : 'Báo cáo chưa công bố lý do cụ thể; cần xem các phần dữ liệu, thời điểm, chi phí và rủi ro để biết thông tin nào còn thiếu.');
     }
     case 'commentary': return build(quantSummary(report).map(([label,text])=>`${label}: ${text}`).join(' '));
     default: return unavailable();

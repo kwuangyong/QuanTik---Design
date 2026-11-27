@@ -1,4 +1,5 @@
 import type { AnalysisReport, QuantResearch } from './api/analysis';
+import { HMM_PROB_SUM_TOLERANCE } from './quant-interpretation-thresholds';
 
 const finite = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 const object = (v: unknown): Record<string, unknown> => v && typeof v === 'object' && !Array.isArray(v) ? v as Record<string, unknown> : {};
@@ -48,11 +49,12 @@ export function filteredHmmScore(report?: AnalysisReport): RadarValue {
   const method = read(report, 'hmm', 'hmm.method');
   if (method === 'fallback' || typeof method !== 'string' || !/hmm/i.test(method)) return missing('Chưa có HMM đã fit thành công');
   const kind = read(report, 'hmm', 'hmm.probability_kind');
-  if (kind != null && kind !== 'filtered') return missing('Cần xác suất filtered, không dùng smoothed/predicted');
+  if (kind == null) return missing('Loại xác suất chưa được cung cấp; không xác nhận là xác suất filtered');
+  if (kind !== 'filtered') return missing('Cần xác suất filtered, không dùng smoothed/predicted');
   // Existing API state_probs is predict_proba(features)[-1]: the last observation
   // has no future evidence. Never use historical smoothed probabilities here.
   const values = ['BULL', 'SIDEWAY', 'BEAR'].map(state => numeric(report, 'hmm', `hmm.state_probs.${state}`));
-  if (!values.every((v): v is number => v != null && v >= 0 && v <= 100) || Math.abs(values.reduce<number>((s,v) => s + (v ?? 0), 0) - 100) > .2) return missing('Thiếu hoặc sai đơn vị xác suất HMM (%)');
+  if (!values.every((v): v is number => v != null && v >= 0 && v <= 100) || Math.abs(values.reduce<number>((s,v) => s + (v ?? 0), 0) - 100) > HMM_PROB_SUM_TOLERANCE) return missing('Thiếu hoặc sai đơn vị xác suất HMM (%)');
   const score = values[0] + .5 * values[1];
   if (score < 0 || score > 100) return missing('Xác suất HMM không hợp lệ');
   return result(score, score, 'P từ API theo %: điểm = P(BULL) + 0,5 × P(SIDEWAY). <30: bear rõ; >70: bull rõ; 50: trung tính.');

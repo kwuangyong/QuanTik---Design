@@ -29,7 +29,7 @@ test('All 16 module buttons reopen their section and metrics open distinct five-
     await nav.getByRole('button',{name:label,exact:true}).click();
     await page.mouse.move(0,0); await page.keyboard.press('Escape');
     await expect(section).toHaveAttribute('open','');
-    if(name==='commentary'){await expect(section).toContainText('Điểm hỗ trợ');continue;}
+    if(name==='commentary'){await expect(section).toContainText('Các điểm mô tả');continue;}
     await expect(section.getByText('Hiểu mô hình · phương pháp & điều kiện',{exact:true})).toBeVisible();
     if(name==='directional_alpha') {
       await expect(section.getByLabel('Bằng chứng Momentum',{exact:true})).toBeVisible();

@@ -1,5 +1,6 @@
 import type { AnalysisReport } from "./api/analysis";
 import { at, record, researchFor } from "./quant-reader";
+import { HMM_PROB_SUM_TOLERANCE } from "./quant-interpretation-thresholds";
 
 export type ScenarioKind = "monte";
 export type ScenarioPoint = { x: number; y: number; z: number; label: string };
@@ -33,6 +34,6 @@ export function hmmPhaseData(report: AnalysisReport) {
   const states: HmmState[] = ["BULL","SIDEWAY","BEAR"];
   const validHistory = rows.length >= 2 && rows.every((p,i) => finite(p.price) && p.price > 0 && typeof p.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.date) && states.includes(p.state as HmmState) && (i === 0 || p.date > rows[i-1].date));
   const values = states.map(state => at(source,`state_probs.${state}`));
-  const validProbabilities = values.every(v => finite(v) && v >= 0 && v <= 100) && Math.abs(values.reduce<number>((sum,v)=>sum+(finite(v)?v:0),0)-100) <= 1.5;
+  const validProbabilities = values.every(v => finite(v) && v >= 0 && v <= 100) && Math.abs(values.reduce<number>((sum,v)=>sum+(finite(v)?v:0),0)-100) <= HMM_PROB_SUM_TOLERANCE;
   return {history:validHistory ? rows as {date:string;price:number;state:HmmState}[] : [], probabilities:validProbabilities ? Object.fromEntries(states.map((state,i)=>[state,values[i]])) as Record<HmmState,number> : null, fallback:source.method === "fallback"};
 }

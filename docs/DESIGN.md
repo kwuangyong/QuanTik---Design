@@ -2,7 +2,7 @@
 
 ## Gốc thiết kế
 
-Giữ Home cũ nguyên vẹn. Terminal dùng nền xanh đen của bản QuanTik hiện tại, điểm nhấn cam và màu giá theo bảng điện chứng khoán. IBM Plex Mono cho nội dung, menu, điều khiển, mã và số; có bộ ký tự tiếng Việt.
+Giữ Home cũ nguyên vẹn. Terminal dùng nền xanh đen của bản QuanTik hiện tại, điểm nhấn cam và màu giá theo bảng điện chứng khoán. Inter (có subset tiếng Việt) cho văn bản, menu và điều khiển; IBM Plex Mono cho số và mã. Báo cáo Quant mới dùng token `--q-*` trong `globals.css` (màu giá `--q-up/down/ref` tách khỏi màu trạng thái `--q-status-*`, đạt WCAG AA), chữ có nghĩa tối thiểu 14 px, chú thích phụ 13 px; các token này chỉ có tác dụng khi bật `NEXT_PUBLIC_QUANT_READER_V2`.
 
 | Thành phần | Cỡ chữ |
 | --- | --- |

@@ -21,13 +21,13 @@ report.research!.factors = [
   { id: "liquidity", label: "Thanh khoản", value: .8, min: -1, max: 1 },
   { id: "data_quality", label: "Chất lượng dữ liệu", value: .9, min: -1, max: 1 },
 ];
-report.commentary = { summary: "Bản xem thử giao diện bằng dữ liệu mẫu. Tín hiệu đang theo dõi và chưa đủ điều kiện thực thi.", detailed: "Lợi suất lịch sử cần được đối chiếu với mức sụt giảm. Bối cảnh pha tăng của ví dụ này không ghi đè điều kiện thời điểm còn thiếu. Theo dõi mức dự báo sau chi phí và các rủi ro trong thời gian chờ thanh toán." };
+report.commentary = { summary: "Bản xem thử giao diện bằng dữ liệu mẫu. Mô hình đang ở trạng thái theo dõi, chưa đủ điều kiện thực thi.", detailed: "Lợi suất lịch sử cần được đối chiếu với mức sụt giảm. Bối cảnh pha tăng của ví dụ này không ghi đè điều kiện thời điểm còn thiếu. Theo dõi mức dự báo sau chi phí và các rủi ro trong thời gian chờ thanh toán." };
 report.sections.statistics.metrics.stats = { ann_return_pct: 24.5, sharpe: 1.2, sortino: 1.7, max_dd_pct: -12, ann_vol_pct: 25 };
 report.sections.distribution.metrics = { dist: { verdict: { is_gaussian: false }, skewness: -.49, excess_kurtosis: 2.44 } };
 report.sections.agreement.metrics = { fcast: { horizon: 10, ensemble_ret_pct: 4.1, agreement_pct: 75, coverage_pct: 80, support_pct: 65 } };
 report.sections.costs.metrics = { costs: { gross_forecast_pct: 4.1, roundtrip_cost_pct: .6, net_forecast_pct: 3.5 } };
 report.sections.garch.metrics = { garch: { garch: { current_vol_pct: 2, alpha: .09, beta: .87, persistence: .96, half_life: 17, forecast_vol: [2,2.05,2.1], simulation_params: { omega_pct2: .1, alpha: .09, beta: .87 } }, egarch: { gamma: -.12 } } };
-report.sections.hmm.metrics = { hmm: { current: "BULL", method: "multivariate_hmm", prob_pct: 67, state_probs: { BULL: 67, SIDEWAY: 24, BEAR: 9 } } };
+report.sections.hmm.metrics = { hmm: { current: "BULL", method: "multivariate_hmm", probability_kind: "filtered", prob_pct: 67, state_probs: { BULL: 67, SIDEWAY: 24, BEAR: 9 } } };
 report.sections.technical.metrics = { flow: { cmf: .21 }, trend: { er: .58, r2: .72 }, alpha: { cross_sectional: { rs_20d_pct: 4.2 } } };
 report.sections.context.metrics = { sector: { name: "Công nghệ", trend: { trend_label: "Tăng", ret_20D_pct: 3.1 } }, cross_corr: { avg_pairwise_corr: .64 } };
 report.sections.directional_alpha.metrics = { momentum_alpha: { score: .4, active: true, components: { ret_5d_pct: 1, ret_10d_pct: 2, ret_20d_pct: 3, ret_60d_pct: 4 } }, hurst: { hurst: .61, regime: "PERSISTENT", confidence: .75, windows: [{ window: 64, hurst: .61 }] }, lightgbm_cross_sectional: { available: true, active: true, proj_pct: 2, rank_pct: 80, predicted_alpha_pct: 1 }, conditional_mr: { active: false, reason: "regime_or_extreme_not_confirmed" } };

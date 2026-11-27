@@ -91,6 +91,37 @@ button:disabled {
   --positive: #67d6a5;
   --negative: #f08088;
   --neutral: #e3c16c;
+  /* Quant reader V2 tokens (G2-ux-spec 8). Additive: unused unless NEXT_PUBLIC_QUANT_READER_V2 UI renders them.
+     Price colours (up/down/ref) only for numbers and price lines; status colours only for chips and card rails. */
+  --q-up: #67d6a5;
+  --q-down: #f08088;
+  --q-ref: #e3c16c;
+  --q-status-ok: #6cb6ff;
+  --q-status-neutral: #b7c3cb;
+  --q-status-caution: #f2b04a;
+  --q-status-risk: #f08cd4;
+  --q-status-nodata: #9fb0a6;
+  --q-band: #8c9bd8;
+  --q-line-strong: #557766;
+  --q-font-text: var(--font-sans, "Inter"), system-ui, sans-serif;
+  --q-font-num: "IBM Plex Mono", ui-monospace, monospace;
+  --q-text-body: 1rem;
+  --q-text-body-lh: 1.6;
+  --q-text-card-title: 1.125rem;
+  --q-text-group-title: 1.375rem;
+  --q-text-page-title: 1.875rem;
+  --q-text-num-lg: 1.5rem;
+  --q-text-num: .875rem;
+  --q-text-label: .875rem;
+  --q-text-note: .8125rem;
+  --q-measure: 68ch;
+  --q-space-1: .25rem;
+  --q-space-2: .5rem;
+  --q-space-3: .75rem;
+  --q-space-4: 1rem;
+  --q-space-5: 1.5rem;
+  --q-space-6: 2rem;
+  --q-gutter: 1rem;
 }
 .terminal[data-theme="light"] {
   --background: #f2f5f6;
@@ -104,6 +135,16 @@ button:disabled {
   --positive: #167554;
   --negative: #ba354b;
   --neutral: #896307;
+  --q-up: #167554;
+  --q-down: #ba354b;
+  --q-ref: #7a5700;
+  --q-status-ok: #0b5cad;
+  --q-status-neutral: #4a5a63;
+  --q-status-caution: #8a5200;
+  --q-status-risk: #a3166f;
+  --q-status-nodata: #56655e;
+  --q-band: #4c5fb0;
+  --q-line-strong: #74897e;
 }
 .info-dialog {
   --border: #34484f;

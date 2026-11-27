@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { AnalysisReport, QuantResearch } from "@/lib/api/analysis";
 import { analysisMessages } from "@/lib/api/analysis";
 import { stamp } from "@/lib/api/contracts";
+import { readDecision } from "@/lib/quant-decision";
 import { actionNames, number, record, researchFor } from "@/lib/quant-reader";
 import { LinePlot } from "./quant-research";
 import { ScenarioSpace, StateSpace } from "./quant-space";
@@ -34,7 +35,7 @@ function validCone(rows: QuantResearch["cone"]): boolean {
 }
 
 export function SimpleQuantReport({ report, showAction, compact = false }: { report: AnalysisReport; showAction: boolean; compact?: boolean }) {
-  const research = researchFor(report), action = String(report.decision.action || ""), executable = report.decision.executable === true;
+  const research = researchFor(report), action = readDecision(report).action, executable = readDecision(report).executable === true;
   const net = metric(report, "costs", "costs.net_forecast_pct"), drawdown = metric(report, "statistics", "stats.max_dd_pct");
   const hmm = metric(report, "hmm", "hmm.current"), fallback = metric(report, "hmm", "hmm.method") === "fallback";
   const state = typeof hmm === "string" ? stateNames[hmm.toUpperCase()] : undefined;
@@ -46,7 +47,7 @@ export function SimpleQuantReport({ report, showAction, compact = false }: { rep
     AVOID: "Mô hình ghi nhận rủi ro cao hơn lợi ích kỳ vọng ở thời điểm này. Xem phần rủi ro để hiểu các điểm cần thận trọng.",
   };
   const conclusion = action === "BUY_NOW" && !executable ? "Mô hình: chờ đủ điều kiện" : actionNames[action] || "Chưa có kết luận đầy đủ";
-  const rawReasons = Array.isArray(report.decision.reason_codes) ? report.decision.reason_codes.map(String) : [];
+  const rawReasons = readDecision(report).reasonCodes;
   const reasons = [...new Set([...rawReasons, ...report.warnings].map(code => analysisMessages[code] || "Một điều kiện của báo cáo chưa được xác nhận. Xem phần chuyên sâu để biết thêm."))];
   return <div className={`${styles.report} ${compact ? styles.compact : ""}`}>
     <section className={styles.hero} aria-label="Tổng hợp kết quả mô hình">
@@ -116,7 +117,7 @@ function RiskCard({ report }: { report: AnalysisReport }) {
 }
 
 function PlanCard({ report }: { report: AnalysisReport }) {
-  const sizing = metric(report, "trade_plan", "sizing_mode"), executable = report.decision.executable === true;
+  const sizing = metric(report, "trade_plan", "sizing_mode"), executable = readDecision(report).executable === true;
   const levels = [["Mốc xem xét vào lệnh", "sl.entry", "var(--accent)"], ["Mốc giới hạn lỗ", "sl.sl_swing", "var(--negative)"], ["Mục tiêu thứ nhất", "sl.tp1", "var(--positive)"], ["Mục tiêu thứ hai", "sl.tp2", "var(--positive)"]];
   return <section className={styles.card} aria-label="Kế hoạch giao dịch"><div><p className={styles.step}>CÁC MỐC THEO DÕI</p><h3>Nếu tiếp tục theo dõi, nên nhìn mốc nào?</h3><p className={styles.copy}>Đây là các mức giá của kế hoạch trong báo cáo. Dùng để đối chiếu khi giá thay đổi.</p></div>
     <dl className={styles.plan}>{levels.map(([label, path, color]) => <div className={styles.planRow} style={{ borderLeftColor: color }} key={path}><dt>{label}</dt><dd>{money(metric(report, "trade_plan", path))}</dd></div>)}</dl>
